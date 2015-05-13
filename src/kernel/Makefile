@@ -5,7 +5,7 @@ XCC     = gcc
 AS	= as
 AR	= ar
 LD  = ld
-CFLAGS  = -c -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I./include -I./src
+CFLAGS  = -O2 -c -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I./include -I./src
 # -g: include hooks for gdb
 # -c: only compile
 # -mcpu=arm920t: generate code for the 920t architecture
@@ -20,11 +20,7 @@ ARFLAGS = rcs
 
 LDFLAGS = -init main -Map kernel.map -N  -T orex.ld -L/u/wbcowan/gnuarm-4.0.2/lib/gcc/arm-elf/4.0.2 -L../lib
 
-# Kernel
-LIBS = -lbwio -lgcc # -lscreen -ltrains -ltermio -ltimer
-
 all: kernel.s kernel.elf
-
 
 
 

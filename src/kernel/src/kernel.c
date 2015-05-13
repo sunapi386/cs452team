@@ -8,8 +8,8 @@ int main( int argc, char* argv[] ) {
 
     data = (int *) junk;
     bwsetfifo( COM2, OFF );
-    bwputstr( COM2, "Page table base: " );
+    //bwputstr( COM2, "Page table base: " );
     bwputr( COM2, data );
-    bwputstr( COM2, "\n" );
+    //bwputstr( COM2, "\n" );
     return 0;
 }

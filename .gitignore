@@ -75,6 +75,11 @@ Temporary Items
 # Debug files
 *.dSYM/
 
+# Linkmap files
+*.map
+
+# Assembly files
+*.s
 
 ### LyX ###
 # Ignore LyX backup and autosave files
