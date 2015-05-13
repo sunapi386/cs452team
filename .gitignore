@@ -1,5 +1,8 @@
 # Created by https://www.gitignore.io/api/osx,linux,c,lyx
 
+### Manually added for doxygen
+doxygen*
+
 ### OSX ###
 .DS_Store
 .AppleDouble
