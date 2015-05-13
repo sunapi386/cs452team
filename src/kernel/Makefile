@@ -23,8 +23,6 @@ LDFLAGS = -init main -Map kernel.map -N  -T orex.ld -L/u/wbcowan/gnuarm-4.0.2/li
 all: kernel.s kernel.elf
 
 
-
-
 ###################################
 # bwio
 #
@@ -34,6 +32,17 @@ bwio.s: src/bwio.c
 
 bwio.o: bwio.s
 	$(AS) $(ASFLAGS) -o bwio.o bwio.s
+
+
+###################################
+# scheduler
+#
+
+scheduler.s: src/scheduler.c
+	$(XCC) -S $(CFLAGS) src/scheduler.c
+
+scheduler.o: scheduler.s
+	$(AS) $(ASFLAGS) -o scheduler.o scheduler.s
 
 
 ###################################
