@@ -1,0 +1,791 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"Buf",
+				"BufferEmpty"
+			],
+			[
+				"se",
+				"sensor_poll_time"
+			],
+			[
+				"sens",
+				"sensor_poll_time"
+			],
+			[
+				"tsi",
+				"trainsSensorInit"
+			],
+			[
+				"traini",
+				"trainsSwitchInit"
+			],
+			[
+				"sw",
+				"switch_changed"
+			],
+			[
+				"rcv",
+				"rcvbufCOM1"
+			],
+			[
+				"fron",
+				"frontCOM1"
+			],
+			[
+				"chan",
+				"chanrecs_t"
+			],
+			[
+				"buf",
+				"bufferCOM1"
+			],
+			[
+				"ch",
+				"channel_t"
+			],
+			[
+				"bc2",
+				"bufcom2"
+			],
+			[
+				"rcvbu",
+				"rcvbuf1"
+			],
+			[
+				"CBI",
+				"CB_IsFull"
+			],
+			[
+				"bu",
+				"circ_buffer_t"
+			],
+			[
+				"last",
+				"com1_last_sent_time"
+			],
+			[
+				"rcvbuf",
+				"rcvbufCOM2"
+			],
+			[
+				"n",
+				"name"
+			],
+			[
+				"fr",
+				"front"
+			],
+			[
+				"CIR",
+				"CIRC_NAME_SIZE"
+			],
+			[
+				"front",
+				"frontCOM2"
+			],
+			[
+				"clo",
+				"clock_called"
+			],
+			[
+				"ck",
+				"clock_called"
+			],
+			[
+				"el",
+				"elements"
+			],
+			[
+				"Buffer",
+				"BufferEmpty"
+			],
+			[
+				"ins",
+				"instruction1"
+			],
+			[
+				"instr",
+				"instruction1"
+			],
+			[
+				"inst",
+				"instruction3"
+			],
+			[
+				"train",
+				"train_number"
+			],
+			[
+				"par",
+				"parsebuffer"
+			],
+			[
+				"gm",
+				"gm2"
+			],
+			[
+				"nex",
+				"nextLargestGap"
+			],
+			[
+				"cover",
+				"coverage"
+			],
+			[
+				"sor",
+				"sort"
+			],
+			[
+				"mone",
+				"moneySpent"
+			],
+			[
+				"ori",
+				"original"
+			],
+			[
+				"rftd",
+				"rftd90"
+			],
+			[
+				"rft",
+				"rftd"
+			],
+			[
+				"rot",
+				"rotate90"
+			],
+			[
+				"refl",
+				"reflected"
+			],
+			[
+				"lon",
+				"longestInactive"
+			],
+			[
+				"cur",
+				"currentInactivityDuration"
+			],
+			[
+				"long",
+				"longestActive"
+			],
+			[
+				"logn",
+				"longestActive"
+			],
+			[
+				"ex",
+				"extlen_fwd"
+			],
+			[
+				"pir",
+				"printTable"
+			],
+			[
+				"fwd",
+				"extlen_fwd"
+			],
+			[
+				"curr",
+				"currentColor"
+			],
+			[
+				"ext",
+				"extlen"
+			],
+			[
+				"i_",
+				"i_bead"
+			],
+			[
+				"lar",
+				"largestPairs2"
+			],
+			[
+				"bea",
+				"beads"
+			],
+			[
+				"large",
+				"largestPairs1"
+			],
+			[
+				"forwad",
+				"forward_idx"
+			],
+			[
+				"forwa",
+				"forward_idx"
+			],
+			[
+				"pri",
+				"printArray"
+			],
+			[
+				"fri",
+				"friday"
+			],
+			[
+				"da",
+				"daysinmonth"
+			],
+			[
+				"day",
+				"dayofweek"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"settings":
+			{
+				"buffer_size": 0,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 167.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"sort",
+				"Sort Lines"
+			],
+			[
+				"uniq",
+				"Permute Lines: Unique"
+			],
+			[
+				"c",
+				"Set Syntax: C"
+			],
+			[
+				"sett",
+				"Preferences: Settings - User"
+			],
+			[
+				"make",
+				"Set Syntax: Makefile"
+			],
+			[
+				"matla",
+				"Set Syntax: MATLAB"
+			],
+			[
+				"html",
+				"Set Syntax: HTML"
+			],
+			[
+				"setting",
+				"Preferences: Settings - Default"
+			],
+			[
+				"SORT",
+				"Sort Lines"
+			]
+		],
+		"width": 404.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/jason/cs452team"
+	],
+	"file_history":
+	[
+		"/Users/jason/cs452/src/termio.c",
+		"/Users/jason/cs452/todo",
+		"/Users/jason/cs452/include/termio.h",
+		"/Users/jason/cs452/kernel/kernel.c",
+		"/Users/jason/cs452/src/menu.c",
+		"/Users/jason/cs452/src/trains.c",
+		"/Users/jason/cs452/include/trains.h",
+		"/Users/jason/cs452/include/buffer.h",
+		"/Users/jason/cs452/src/buffer.c",
+		"/Users/jason/cs452/kernel/orex.ld",
+		"/Users/jason/cs452/src/timer.c",
+		"/Users/jason/cs452/include/ts7200.h",
+		"/Users/jason/cs452/include/timer.h",
+		"/Users/jason/cs452/include/circ_buffer.h",
+		"/Users/jason/cs452/include/bool.h",
+		"/Users/jason/cs452/kernel/timer.c",
+		"/Users/jason/cs452/include/boolean.h",
+		"/Users/jason/cs452/src/todo",
+		"/Users/jason/cs452/include/menu.h",
+		"/Users/jason/cs452/kernel/kernel.h",
+		"/Users/jason/cs452/src/screen.c",
+		"/Users/jason/cs452/src/bwio.c",
+		"/Users/jason/cs452/kernel/menu.c",
+		"/Users/jason/cs452/include/bwio.h",
+		"/Users/jason/cs452/cs452-students-2015s",
+		"/Users/jason/cs452/kernel/Makefile",
+		"/Users/jason/cs452/kernel/mysteps.txt",
+		"/Users/jason/cs452/src/commio.c",
+		"/Users/jason/Library/Application Support/Sublime Text 3/Packages/User/Preferences.sublime-settings",
+		"/Users/jason/workspace/cs452/include/termio.h",
+		"/Users/jason/workspace/cs452/src/bwio.c",
+		"/Users/jason/workspace/cs452/include/bwio.h",
+		"/Users/jason/workspace/cs452/include/string.h",
+		"/Users/jason/workspace/cs452/src/screen.c",
+		"/Users/jason/workspace/cs452/kernel/Makefile",
+		"/Users/jason/workspace/cs452/kernel/kernel.c",
+		"/Users/jason/workspace/cs452/include/ts7200.h",
+		"/Users/jason/workspace/cs452/src/termio.c",
+		"/Users/jason/workspace/usaco/completed/barn1.cc",
+		"/Users/jason/workspace/usaco/barn1.in2",
+		"/Users/jason/workspace/usaco/barn1.in",
+		"/Users/jason/workspace/usaco/barn1.cc",
+		"/Users/jason/workspace/usaco/milk.in",
+		"/Users/jason/workspace/usaco/dualpal.in",
+		"/Users/jason/workspace/usaco/dualpal.cc",
+		"/Users/jason/workspace/usaco/palsquare.in",
+		"/Users/jason/workspace/usaco/palsquare.cc",
+		"/Users/jason/Library/Application Support/Sublime Text 3/Packages/Default/Preferences.sublime-settings",
+		"/Users/jason/workspace/usaco/namenum.cc",
+		"/Users/jason/workspace/usaco/namenumdict.txt",
+		"/Users/jason/workspace/usaco/namenum.in",
+		"/Users/jason/workspace/usaco/transform.in",
+		"/Users/jason/workspace/usaco/transform.cc",
+		"/Users/jason/workspace/usaco/milk2.in",
+		"/Users/jason/workspace/usaco/milk2.cc",
+		"/Users/jason/workspace/usaco/completed/beads.cc",
+		"/Users/jason/workspace/usaco/beads.in",
+		"/Users/jason/workspace/usaco/beads.cc",
+		"/Users/jason/workspace/usaco/friday.cc",
+		"/Users/jason/workspace/usaco/greedygifters.cc"
+	],
+	"find":
+	{
+		"height": 23.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": true,
+		"find_history":
+		[
+			"i1",
+			"back",
+			"sensor_poll_time",
+			"current_sensor_idx",
+			"sensor_poll_time",
+			"trainsPollSensor",
+			"switch_changed",
+			"polling",
+			"\"[",
+			"[",
+			"S.",
+			"S",
+			"short",
+			"sensors",
+			"pollbusy",
+			"sensor_poll_time",
+			"trainsSwitchInit",
+			"WITCH",
+			"*",
+			"TRAIN_SENSOR_BUFSIZ",
+			"TRAIN_NUM_SENSORS",
+			"TRAIN_SENSOR_BUFSIZ",
+			" \n",
+			"TRAIN_SENSOR_BUFSIZ",
+			"drawSensors",
+			"k",
+			"sensorbuf",
+			"WITCH_",
+			".",
+			"N_SWITCH_S",
+			"TRAIN_SENSOR_STATUS",
+			"N",
+			"TRAIN_SWITCH_STATUS_COL",
+			"TRAIN_SENSOR_STATUS_",
+			"TRAIN_SENSOR",
+			"TRAIN_SENSOR_STATUS_ROW",
+			"sensorcount",
+			"last_poll_time",
+			"12",
+			"d [",
+			"8",
+			"] \"",
+			"] ",
+			"TRAIN_NUM_SWITCHES",
+			"TRAIN_BUFFER_SIZE",
+			"switchStates",
+			"sw",
+			"s",
+			"%u",
+			"switch_num",
+			"termprintf",
+			"rcvbufCOM2",
+			"(char)",
+			"int",
+			"TRAIN_REVERSE",
+			"TRAIN_STOP",
+			"trains",
+			" unsigned",
+			"unsigned ",
+			"com1_last_sent_time",
+			"termputw",
+			"rcvbuf",
+			"rcvbuf1",
+			"termputc( channel",
+			"termputc",
+			"com2buf",
+			"com1buf",
+			" )",
+			"bufferCOM1",
+			"com2buf",
+			"com1buf",
+			"termputc",
+			"termputr",
+			"termputx",
+			"circ_buffer_t *bufcom1, circ_buffer_t bufcom2",
+			"bufcom1, bufcom2",
+			"TERMIO",
+			"crs->",
+			"crs-",
+			"bufferCOM2",
+			"bufferCOM1",
+			", ",
+			" circ_buffer_t *",
+			"termputc( ",
+			"termputc",
+			"termputc( channel, chl )",
+			"termputc",
+			"termputx",
+			"termputr",
+			"}\n",
+			"termputx",
+			"{'",
+			"circular_buffer_t",
+			"circular_buffer",
+			"IsEmpty",
+			"COM",
+			"COM1",
+			"sent_time",
+			"countCOM1",
+			"bufferCOM1",
+			"termsetfifo",
+			")",
+			"buffer",
+			"an",
+			"COM",
+			"buf",
+			"buffer_t",
+			"Buffer",
+			"BUFSIZ",
+			" =",
+			"rcvbufCOM1",
+			"sensorbuf",
+			"switchStates",
+			"SAVECURSOR",
+			"POS",
+			"CLS",
+			"i3",
+			"TERMIO",
+			"void ",
+			"t",
+			"10000",
+			"termprintf",
+			"PRINT",
+			"last_sent_time",
+			"RXFE_MASK",
+			"TXFE_MASK",
+			"LOG",
+			"unsigned"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 0,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 23.0
+	},
+	"input":
+	{
+		"height": 30.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "cs452team.sublime-project",
+	"replace":
+	{
+		"height": 42.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"bw",
+				"src/bwio.c"
+			],
+			[
+				"term",
+				"src/termio.c"
+			],
+			[
+				"buff",
+				"include/buffer.h"
+			],
+			[
+				"trin",
+				"include/trains.h"
+			],
+			[
+				"menu",
+				"src/menu.c"
+			],
+			[
+				"bu",
+				"include/buffer.h"
+			],
+			[
+				"orl",
+				"kernel/orex.ld"
+			],
+			[
+				"ter",
+				"include/termio.h"
+			],
+			[
+				"termh",
+				"include/termio.h"
+			],
+			[
+				"term.h",
+				"include/termio.h"
+			],
+			[
+				"buf",
+				"include/buffer.h"
+			],
+			[
+				"boo",
+				"include/bool.h"
+			],
+			[
+				"train.h",
+				"include/trains.h"
+			],
+			[
+				"timer",
+				"include/timer.h"
+			],
+			[
+				"todo",
+				"todo"
+			],
+			[
+				"termio",
+				"src/termio.c"
+			],
+			[
+				"tim",
+				"include/timer.h"
+			],
+			[
+				"ord",
+				"kernel/orex.ld"
+			],
+			[
+				"time",
+				"src/timer.c"
+			],
+			[
+				"men",
+				"include/menu.h"
+			],
+			[
+				"tra",
+				"include/trains.h"
+			],
+			[
+				"bwio",
+				"src/bwio.c"
+			],
+			[
+				"train",
+				"include/trains.h"
+			],
+			[
+				"trai",
+				"src/trains.c"
+			],
+			[
+				"scr",
+				"src/screen.c"
+			],
+			[
+				"termi",
+				"include/termio.h"
+			],
+			[
+				"kern",
+				"kernel/kernel.c"
+			],
+			[
+				"ker",
+				"kernel/kernel.c"
+			],
+			[
+				"make",
+				"kernel/Makefile"
+			],
+			[
+				"menu.h",
+				"include/menu.h"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 380.0
+	},
+	"select_symbol":
+	{
+		"height": 67.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"bwprintf",
+				"bwprintf"
+			],
+			[
+				"par",
+				"screenParse"
+			]
+		],
+		"width": 392.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 90.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
