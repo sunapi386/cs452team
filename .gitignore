@@ -1,7 +1,10 @@
 # Created by https://www.gitignore.io/api/osx,linux,c,lyx
 
-### Manually added for doxygen
+### Manually added
 doxygen*
+*.map
+*.s
+
 
 ### OSX ###
 .DS_Store
@@ -74,12 +77,6 @@ Temporary Items
 
 # Debug files
 *.dSYM/
-
-# Linkmap files
-*.map
-
-# Assembly files
-*.s
 
 ### LyX ###
 # Ignore LyX backup and autosave files
