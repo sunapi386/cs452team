@@ -2,12 +2,23 @@ ENTRY (main)
 
 MEMORY
 {
-ram : ORIGIN = 0x00002100, LENGTH = 32M /* Offset by 0x2100 */
+ram : ORIGIN = 0x00218000, LENGTH = 32M /* Offset */
 rom : ORIGIN = 0x60000000, LENGTH = 8M
 }
 
 SECTIONS
 {
+
+text : /* The actual instructions. */
+{
+*(.text)
+*(.got)
+*(.got.plt)
+*(.rodata)
+*(.glue_7)
+*(.glue_7t)
+} >ram
+
 data : /* Initialized data. */
 {
 _DataStart = . ;
@@ -22,13 +33,5 @@ _BssStart = . ;
 _BssEnd = . ;
 } >ram
 
-text : /* The actual instructions. */
-{
-*(.text)
-*(.got)
-*(.got.plt)
-*(.rodata)
-*(.glue_7)
-*(.glue_7t)
-} >ram
+
 }
