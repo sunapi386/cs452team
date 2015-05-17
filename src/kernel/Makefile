@@ -55,7 +55,7 @@ kernel.s: src/kernel.c
 kernel.o: kernel.s
 	$(AS) $(ASFLAGS) -o kernel.o kernel.s
 
-kernel.elf: kernel.o bwio.o
+kernel.elf: kernel.o bwio.o scheduler.o
 	# $(LD) $(LDFLAGS) -o $@ kernel.o $(LIBS) # libraries -lbwio
 	$(LD) $(LDFLAGS) -o $@ kernel.o bwio.o -lgcc
 

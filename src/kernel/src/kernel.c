@@ -3,6 +3,8 @@ kernel.c
 mmutest.c */
 #include <bwio.h>
 #include <ts7200.h>
+#include "scheduler.h"
+
 int main( int argc, char* argv[] ) {
     int data, *junk;
 
