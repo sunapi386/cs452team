@@ -1,7 +1,7 @@
 #ifndef __SCHEDULER_H
 #define __SCHEDULER_H
 
-#define TASK_QUEUE_SIZE 128
+#define NULL 0
 
 typedef struct TaskDescriptor TaskDescriptor;
 
@@ -10,15 +10,13 @@ typedef struct TaskDescriptor TaskDescriptor;
 typedef
 struct TaskQueue
 {
-	int head, tail;
-	TaskDescriptor *tasks[TASK_QUEUE_SIZE];
-}
-TaskQueue;
+    TaskDescriptor *head, *tail;
+} TaskQueue;
 
 // Scheduler
 
 void InitScheduler();
 TaskDescriptor * Scheuler();
-int EnqueueTask(TaskDescriptor *task);
+void EnqueueTask(TaskDescriptor *task);
 
 #endif

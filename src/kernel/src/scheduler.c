@@ -23,23 +23,23 @@ int GetTopPriorityQueueIndex()
 }
 
 /**
-Initialize scheduler data structures
+    Initialize scheduler data structures
  */
 void InitScheduler()
 {
     int i;
     for (i = 0; i < 32; i++)
     {
-        taskQueues[i].head = 0;
-        taskQueues[i].tail = 0;
+        taskQueues[i].head = NULL;
+        taskQueues[i].tail = NULL;
     }
 }
 
 /**
-Called by the kernel; dequeue the first task in the highest priority queue
-Returns:
-    Success: Pointer to the TD of the next active task
-    Fail: NULL
+    Called by the kernel; dequeue the first task in the highest priority queue
+    Returns:
+        Success: Pointer to the TD of the next active task
+        Fail: NULL
  */
 TaskDescriptor * Scheduler()
 {
@@ -53,47 +53,46 @@ TaskDescriptor * Scheduler()
     
     // Get the task queue with the highest priority
     TaskQueue *q = &taskQueues[index];
-    TaskDescriptor *active =  (TaskDescriptor *)0;
+    TaskDescriptor *active =  q->head;
     
-    int nextHead = (q->head + 1) % TASK_QUEUE_SIZE;
-    int nextTail = (q->tail + 1) % TASK_QUEUE_SIZE;
-    if (nextHead != nextTail)
-    {
-        q->head = nextHead;
-        active = q->tasks[nextHead];
+    q->head = active->next;
         
-        // if active task is the last task in the queue, set the status bit to zero
-        if ((nextHead + 1) % TASK_QUEUE_SIZE == nextTail)
-        {
-            queueStatus &= ~(1 << index);
-        }
+    if (q->head == NULL)
+    {
+        // if queue becomes empty, set the tail to NULL and
+        // clear the status bit
+        q->tail = NULL;
+        queueStatus &= ~(1 << index);
+    }
+    else
+    {
+        active->next = NULL;
     }
     
     return active;
 }
 
 /**
-Add an active task to the ready queue
-Returns:
-    Success: 0
-    Fail: -1
+    Add an active task to the ready queue
  */
-int EnqueueTask(TaskDescriptor *task)
+void EnqueueTask(TaskDescriptor *task)
 {
-    int retVal = 0;
     int priority = task->priority;
     TaskQueue *q = &taskQueues[priority];
     
-    if ((q->tail + 1) % TASK_QUEUE_SIZE == q->head)
+    if (q->tail == NULL)
     {
-        // overflow: wrap around
-        q->tail = q->head;
-        retVal = -1;
+        // set up head and tail to the same task; task->next should be NULL;
+        // set the bit in queue status to 1 to indicate queue not empty
+        q->head = task;
+        q->tail = task;
+        task->next = NULL;
+        queueStatus |= 1 << priority;
     }
-    
-    q->tail = (q->tail + 1) % TASK_QUEUE_SIZE;
-    q->tasks[q->tail] = task;
-    queueStatus |= 1 << priority;
-        
-    return retVal;
+    else
+    {
+        // add the task to the tail
+        q->tail->next = task;
+        q->tail = task;
+    }
 }
