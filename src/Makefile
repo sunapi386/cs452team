@@ -27,8 +27,8 @@ all: kernel.s kernel.elf
 # bwio
 #
 
-bwio.s: src/bwio.c
-	$(XCC) -S $(CFLAGS) src/bwio.c
+bwio.s: bwio.c
+	$(XCC) -S $(CFLAGS) bwio.c
 
 bwio.o: bwio.s
 	$(AS) $(ASFLAGS) -o bwio.o bwio.s
@@ -38,8 +38,8 @@ bwio.o: bwio.s
 # scheduler
 #
 
-scheduler.s: src/scheduler.c
-	$(XCC) -S $(CFLAGS) src/scheduler.c
+scheduler.s: scheduler.c
+	$(XCC) -S $(CFLAGS) scheduler.c
 
 scheduler.o: scheduler.s
 	$(AS) $(ASFLAGS) -o scheduler.o scheduler.s
@@ -49,8 +49,8 @@ scheduler.o: scheduler.s
 # kernel
 #
 
-kernel.s: src/kernel.c
-	$(XCC) -S $(CFLAGS) src/kernel.c
+kernel.s: kernel.c
+	$(XCC) -S $(CFLAGS) kernel.c
 
 kernel.o: kernel.s
 	$(AS) $(ASFLAGS) -o kernel.o kernel.s
