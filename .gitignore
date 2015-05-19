@@ -4,7 +4,8 @@
 doxygen*
 *.map
 *.s
-
+*.sublime*
+sftp-config.json
 
 ### OSX ###
 .DS_Store
