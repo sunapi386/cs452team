@@ -4,6 +4,7 @@
 doxygen*
 *.map
 *.s
+*.d
 *.sublime*
 sftp-config.json
 
