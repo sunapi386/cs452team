@@ -2,10 +2,7 @@
 # Makefile for kernel-side
 #
 XCC     = gcc
-AS	= as
-AR	= ar
-LD  = ld
-CFLAGS  = -O2 -c -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I./include -I./src
+CFLAGS  = -O2 -c -fPIC -Wall -Wextra -Werror -mcpu=arm920t -msoft-float -I. -Iinclude
 # -g: include hooks for gdb
 # -c: only compile
 # -mcpu=arm920t: generate code for the 920t architecture
@@ -13,53 +10,41 @@ CFLAGS  = -O2 -c -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I./include -I./src
 # -Wall: report all warnings
 # -msoft-float: use software for floating point
 
+AS	= as
 ASFLAGS	= -mcpu=arm920t -mapcs-32
 # -mapcs-32: always create a complete stack frame
 
-ARFLAGS = rcs
 
-LDFLAGS = -init main -Map kernel.map -N  -T orex.ld -L/u/wbcowan/gnuarm-4.0.2/lib/gcc/arm-elf/4.0.2 -L../lib
+LD  = ld
+LDFLAGS = -init main -Map kernel.map -N -T linker.ld -L/u/wbcowan/gnuarm-4.0.2/lib/gcc/arm-elf/4.0.2
 
-all: kernel.s kernel.elf
+# .PRECIOUS: if make is interrupted during execution, the target is not deleted.
+.PRECIOUS: %.s
 
-
-###################################
-# bwio
-#
-
-bwio.s: bwio.c
-	$(XCC) -S $(CFLAGS) bwio.c
-
-bwio.o: bwio.s
-	$(AS) $(ASFLAGS) -o bwio.o bwio.s
+# .PHONY: make will run its recipe unconditionally
+.PHONY: all clean
 
 
-###################################
-# scheduler
-#
+all = kernel.elf
 
-scheduler.s: scheduler.c
-	$(XCC) -S $(CFLAGS) scheduler.c
+sources := $(wildcard *.c)
+asm_sources := $(patsubst %c,%s,$(sources))
+hand_assemblies := $(filter-out $(assembled_sources),$(wildcard *.s))
+objects := $(patsubst %.c,%.o,$(sources)) $(patsubst %.s,%.o,$(hand_assemblies))
 
-scheduler.o: scheduler.s
-	$(AS) $(ASFLAGS) -o scheduler.o scheduler.s
-
-
-###################################
-# kernel
-#
-
-kernel.s: kernel.c
-	$(XCC) -S $(CFLAGS) kernel.c
-
-kernel.o: kernel.s
-	$(AS) $(ASFLAGS) -o kernel.o kernel.s
-
-kernel.elf: kernel.o bwio.o
-	# $(LD) $(LDFLAGS) -o $@ kernel.o $(LIBS) # libraries -lbwio
-	$(LD) $(LDFLAGS) -o $@ kernel.o bwio.o -lgcc
+kernel.elf: $(objects) linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lgcc
 
 
+%.s: %.c
+	$(CC) -S $(CFLAGS) $<
+
+%.o: %.s
+	$(AS) $(ASFLAGS) -o $@ $<
+
+%.d : %.c
+	@set -e; rm -f $@; \
+	    $(CC) -MM $(CFLAGS) $< | sed 's,\($*\)\.o[ :]*,\1.s $@ : ,g' > $@;
 
 clean:
-	-rm -f *.s *.a *.o
+	-rm -f kernel.elf $(objects) $(assembled_sources) $(sources:.c=.d) kernel.map
