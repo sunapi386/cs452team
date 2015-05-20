@@ -1,6 +1,6 @@
-fndef __CPSR_H
+#ifndef __CPSR_H
 #define __CPSR_H 1
- 
+
 #define NegativeMask (1<<31)
 #define ZeroMask (1<<30)
 #define CarryMask (1<<29)
