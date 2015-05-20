@@ -28,7 +28,7 @@ LDFLAGS = -init main -Map kernel.map -N -T linker.ld -L/u/wbcowan/gnuarm-4.0.2/l
 all = kernel.elf
 
 sources := $(wildcard *.c)
-asm_sources := $(patsubst %c,%s,$(sources))
+assembled_sources := $(patsubst %c,%s,$(sources))
 hand_assemblies := $(filter-out $(assembled_sources),$(wildcard *.s))
 objects := $(patsubst %.c,%.o,$(sources)) $(patsubst %.s,%.o,$(hand_assemblies))
 
