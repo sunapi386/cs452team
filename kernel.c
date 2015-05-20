@@ -22,23 +22,20 @@ struct TaskDescriptor {
 };
 
 void userTask() {
-    bwputr( COM2, "UserTask\n" );
-    asm volatile( "swi 0" ); //  c-switch
-}
+    // asm volatile( "swi 0" ); //  c-switch
 
-static void initTask(struct TaskDescriptor *task) {
-    // task owns stack from 0x300000 to 0x400000, stack starting at 0x400000
-    task->ret = 0;
-    task->cpsr = UserMode;
-    task->sp = 0x400000;
-
+    bwprintf( COM2, "UserTask\n" );
 }
 
 
 
-int main( int argc, char* argv[] ) {
-    bwsetfifo( COM2, OFF );
-    bwputr( COM2, "UserTask\n" );
-
+int main() {
+    // bwsetfifo( COM2, OFF );
+    bwprintf( COM2, "Xing in.. " );
+    asm volatile (
+        "stmfd sp!, {r3-r12, r14}\n\t"  // 1 Push kregs on kstack
+        "ldmfd sp!, {r3-r12, r14}\n\t"  // 1 Pop kregs off kstack
+    );
+    bwprintf( COM2, "Came out" );
     return 0;
 }

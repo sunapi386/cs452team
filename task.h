@@ -18,6 +18,7 @@ struct TaskDescriptor {
     int id;
     int parent_id;
     int priority;
+    int ret; // return valeue
     unsigned int sp; // stackpointer
     unsigned int cpsr; // save this with the TD
     struct TaskDescriptor *next; // linked list style
@@ -40,8 +41,8 @@ i• -1 – if the priority is invalid.
 • -2 – if the kernel is out of task descriptors.
 Do rough tests to ensure that the function pointer argument is valid.
 */
-int Create( int priority, void (*code) ( ) ) {
-    swi( create );
+int Create( int priority, void (*code) ( ) );
+    // swi( create );
     // what the little code above this is is doing is moving arguments: taking them from where gcc has put them
     // (*f()) is going to be put into the memory map // we can put a piece of memory as designated of the memory map.
     // moving the return value, taking it where the kernel put it and put it where gcc wants it to be
@@ -53,15 +54,13 @@ int Create( int priority, void (*code) ( ) ) {
     // save the kernel, install the task, movs
 
     // what happens when the swi is claled in the middle of this? we run the middle of this. movs (save the user task)< install the kernel.
-}
 
-swi(create ) {
+// swi(create ) {
     // 1/ the allocation of a task descriptor and as long as the free list of td is not empty, then we can allocate to it. we keep td in arrays because we want constant time operation.
     // 2/ you need some memory. in your initalizaiton of the kernel, you made a decisiooon of how to divide up the memmory; you need a stack to put its memeoyr in
     // 3/ you need a task id. it should be chosen so it is easy to find the td out of the td array.
     // you need the user's stack pointer. so what kinds of things might you put in stack? - register contents (user stack).
     // maybies in the td stack: the ptid, the extra linkregister (lr). could be in the stack or the td. we also need a return value - when task 4 creates priority of task 3
-}
 
 /**
 Name. MyTid - find my task id.
@@ -71,9 +70,7 @@ Returns.
 • tid – the positive integer task id of the task that calls it.
 • Errors should be impossible!
 */
-int MyTid( ) {
-    return
-}
+int MyTid( );
 
 /**
 Name. MyParentTid - find the task id of the task that created the running

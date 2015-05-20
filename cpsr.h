@@ -1,5 +1,5 @@
 #ifndef __CPSR_H
-#define __CPSR_H 1
+#define __CPSR_H
 
 #define NegativeMask (1<<31)
 #define ZeroMask (1<<30)
