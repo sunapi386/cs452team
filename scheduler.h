@@ -3,20 +3,18 @@
 
 #define NULL 0
 
-typedef struct TaskDescriptor TaskDescriptor;
-
 // Task Queue
 
 typedef
 struct TaskQueue
 {
-    TaskDescriptor *head, *tail;
+    struct TaskDescriptor *head, *tail;
 } TaskQueue;
 
 // Scheduler
 
 void InitScheduler();
-TaskDescriptor * Scheuler();
-void EnqueueTask(TaskDescriptor *task);
+struct TaskDescriptor * Scheduler();
+void EnqueueTask(struct TaskDescriptor *task);
 
 #endif

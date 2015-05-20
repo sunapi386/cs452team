@@ -2,35 +2,64 @@
 #include <ts7200.h>
 #include <stdbool.h>
 #include <cpsr.h>
+#include <task.h>
+#include <scheduler.h>
 
-struct TaskDescriptor {
-    // char name[32];
-    // int id;
-    // int parent_id;
-    // int priority;
-    unsigned int sp; // stackpointer
-    unsigned int cpsr; // save this with the TD
-    unsigned int ret;
-    // struct TaskDescriptor *next; // linked list style
-
-    // enum state {
-        // TASK_READY,
-        // TASK_ACTIVE,
-        // TASK_ZOMBIE,
-    // };
-
-};
-
-void userTask() {
+void firstTask() {
     // asm volatile( "swi 0" ); //  c-switch
 
     bwprintf( COM2, "UserTask\n" );
 }
 
+void InitKernel(TaskDescriptor pool[])
+{
+    // Initialize swi jump table
+    //*(unsigned int)(0x28) = &kernel_entry;    
+    
+    // Initialize tasks
+    int i;
+    for (i = 0; i < MAX_NUM_TASKS; i++)
+    {
+        TaskDescriptor *task = &pool[i];
+        task->id = i;
+        task->parent_id = 0;
+        task->priority = 0;
+        task->ret = 0;
+        task->sp = NULL;
+        task->cpsr = 0;
+        task->next = NULL;
+    }
 
+    InitScheduler();
+}
 
-int main() {
+void HandleRequest(int request)
+{
+
+}
+
+int main()
+{
+    TaskDescriptor taskPool[MAX_NUM_TASKS];
+    InitKernel(taskPool);
+    
+    for (;;)
+    {
+        int request = 0;
+        TaskDescriptor *task = Scheduler();
+        
+        if (task == NULL)
+        {
+            break;
+        }
+
+        //KernelExit(task, &request);
+        HandleRequest(request);
+    }
+
+    return 0;
     // bwsetfifo( COM2, OFF );
+    /*
     bwprintf( COM2, "Xing in.. " );
     asm volatile (
         "stmfd sp!, {r3-r12, r14}\n\t"  // 1 Push kregs on kstack
@@ -38,4 +67,5 @@ int main() {
     );
     bwprintf( COM2, "Came out" );
     return 0;
+*/
 }
