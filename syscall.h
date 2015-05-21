@@ -1,6 +1,31 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
 
+// These are necessary to be macros, because of 
+// the way I use it with xstr() macro in SWI()
+
+#define SyscallCreate      0
+#define SyscallMyTid       1
+#define SyscallMyParentTid 2
+#define SyscallPass        3
+#define SyscallExit        4
+
+typedef
+struct SyscallArgs {
+    unsigned int arg1, arg2;
+} SyscallArgs;
+
+/*
+typedef
+enum {
+    SyscallCreate = 0,
+    SyscallMyTid,
+    SyscallMyParentTid,
+    SyscallPass,
+    SyscallExit,
+} SyscallType;
+*/
+
 /**
 Name. Create - instantiate a task.
 Synopsis. int Create( int priority, void (*code) ( ) )
@@ -48,7 +73,7 @@ Synopsis. int MyParentTid( )
 Description. MyParentTid returns the task id of the task that created the calling task.
 This will be problematic only if the task has exited or been destroyed, in which case the return value is implementation-dependent.
 Returns.
-    tid: the task id of the task that created the calling task.
+    MyParentTidtid: the task id of the task that created the calling task.
     -1 : if the parent has exited, been destroyed, or is in the process of being destroyed
 */
 int MyParentTid( );
