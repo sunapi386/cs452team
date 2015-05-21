@@ -49,3 +49,5 @@ kernel.elf: $(objects) linker.ld
 
 clean:
 	-rm -f kernel.elf $(objects) $(assembled_sources) $(sources:.c=.d) kernel.map
+
+-include $(sources:.c=.d)
