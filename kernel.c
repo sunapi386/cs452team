@@ -4,95 +4,86 @@
 #include <cpsr.h>
 #include <task.h>
 #include <scheduler.h>
+#include <context_switch.h>
 
-// void firstTask() {
-//     // asm volatile( "swi 0" ); //  c-switch
+void firstTask() {
+     // asm volatile( "swi 0" ); //  c-switch
+     bwprintf( COM2, "UserTask\n" );
+}
 
-//     bwprintf( COM2, "UserTask\n" );
-// }
+void InitKernel(TaskDescriptor pool[])
+{
+     // Initialize swi jump table
+     //*(unsigned int)(0x28) = &kernel_entry;
 
-// void InitKernel(TaskDescriptor pool[])
-// {
-//     // Initialize swi jump table
-//     //*(unsigned int)(0x28) = &kernel_entry;
+     // Initialize tasks
+     int i;
+     for (i = 0; i < MAX_NUM_TASKS; i++)
+     {
+         TaskDescriptor *task = &pool[i];
+         task->id = i;
+         task->parent_id = 0;
+         task->priority = 0;
+         task->ret = 0;
+         task->sp = &(task->stack[255]);
+         task->cpsr = 0;
+         task->next = NULL;
+     }
 
-//     // Initialize tasks
-//     int i;
-//     for (i = 0; i < MAX_NUM_TASKS; i++)
-//     {
-//         TaskDescriptor *task = &pool[i];
-//         task->id = i;
-//         task->parent_id = 0;
-//         task->priority = 0;
-//         task->ret = 0;
-//         task->sp = NULL;
-//         task->cpsr = 0;
-//         task->next = NULL;
-//     }
+     InitScheduler();
+}
 
-//     InitScheduler();
-// }
+void HandleRequest(int request)
+{
 
-// void HandleRequest(int request)
-// {
+}
 
-// }
+//void KernelExit()
+//{
+    //asm volatile();
+//}
+
+//void KernelEnter()
+//{
+    
+//}
 
 int main()
 {
-     asm volatile(
-        "KernelExit:\n\t"
-        "mov ip, sp\n\t"
-        "stmfd sp!, {fp, ip, lr, pc}\n\t"  // save kregs on kstack
-        "sub fp, ip, #4\n\t"
-        "sub sp, sp, #12\n\t"
-        "str r1, [fp, #-24]\n\t"
-        "str r0, [fp, #-20]\n\t"
-        "str r1, [fp, #-24]\n\t"
-        "ldr r3, [fp, #-20]\n\t"
-        "ldr r3, [r3, #20]\n\t"
-        "str r3, [fp, #-16]\n\t"
-        "ldr r3, [fp, #-16]\n\t"
-        "mov r0, #1\n\t"
-        "mov r1, r3\n\t"
-        "bl bwputr(PLT)\n\t"
-        "sub sp, fp, #12\n\t"
-        "ldmfd sp, {fp, sp, pc}\n\t"
-        "KernelEnter:\n\t"
-        "mov ip, sp\n\t"
-        "stmfd sp!, {fp, ip, lr, pc}\n\t"
-        "sub fp, ip, #4\n\t"
-        "ldmfd sp, {fp, sp, pc}\n\t"
-    );
+    //TaskDescriptor taskPool[MAX_NUM_TASKS];
 
+    //InitKernel(taskPool);
 
+    //TaskDescriptor *first = &taskPool[0];
+    TaskDescriptor first;
+    first.priority = 0;
+    unsigned int *ptr = first.stack;
+    first.sp = ptr+64;
+    first.cpsr = 1610612944;
+    int i;
+    for (i=0;i < USER_STACK_SIZE ;i++)
+    {
+        first.stack[i] = (unsigned int)(firstTask);
+    }
+  bwputr(COM2, first.stack[1]);
+    int request;
+    KernelExit(&first, &request);
 
-    // TaskDescriptor taskPool[MAX_NUM_TASKS];
-    // InitKernel(taskPool);
-
-    // for (;;)
-    // {
-    //     int request = 0;
-    //     TaskDescriptor *task = Scheduler();
-
-    //     if (task == NULL)
-    //     {
-    //         break;
-    //     }
-
-    //     //KernelExit(task, &request);
-    //     HandleRequest(request);
-    // }
-
-    return 0;
-    // bwsetfifo( COM2, OFF );
     /*
-    bwprintf( COM2, "Xing in.. " );
-    asm volatile (
-        "stmfd sp!, {r3-r12, r14}\n\t"  // 1 Push kregs on kstack
-        "ldmfd sp!, {r3-r12, r14}\n\t"  // 1 Pop kregs off kstack
-    );
-    bwprintf( COM2, "Came out" );
+    EnqueueTask(first);
+
+    for (;;)
+    {
+         int request = 0;
+         TaskDescriptor *task = Scheduler();
+
+         if (task == NULL)
+         {
+             break;
+         }
+        
+         KernelExit(task, &request);
+         HandleRequest(request);
+    }*/
     return 0;
-*/
 }
