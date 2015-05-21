@@ -7,8 +7,9 @@
 #include <context_switch.h>
 
 void firstTask() {
-     // asm volatile( "swi 0" ); //  c-switch
-     bwprintf( COM2, "UserTask\n" );
+    // asm volatile( "swi 0" ); //  c-switch
+    bwprintf(COM2, "UserTask\n\r");
+    //asm volatile ("swi 12");
 }
 
 void InitKernel(TaskDescriptor pool[])
@@ -37,16 +38,6 @@ void HandleRequest(int request)
 
 }
 
-//void KernelExit()
-//{
-    //asm volatile();
-//}
-
-//void KernelEnter()
-//{
-    
-//}
-
 int main()
 {
     //TaskDescriptor taskPool[MAX_NUM_TASKS];
@@ -54,28 +45,37 @@ int main()
     //InitKernel(taskPool);
 
     //TaskDescriptor *first = &taskPool[0];
+    // *(unsigned int *)(0x28) = 2195456 + (unsigned int)(&KernelEnter);
+    
     TaskDescriptor first;
     
     first.priority = 0;
     unsigned int *ptr = first.stack;
     first.sp = ptr + USER_STACK_SIZE - 1;
-    //first.cpsr = 0x10;
+
     int i;
     for (i=0;i < USER_STACK_SIZE ;i++)
     {
         first.stack[i] = i;
         //first.stack[i] = 2195456 + (unsigned int)(firstTask);
     }
-    
-    // r2 - code address
-    *(first.sp) = 2195456 + (unsigned int)(firstTask);
+
+    // r2 - pc (code address)
+    *(first.sp - 11) = 2195456 + (unsigned int)(firstTask);
     
     // r3 - user cpsr
-    *(first.sp - 1) = 0x10;
+    *(first.sp - 10) = 16;
+
+    first.sp -= 11;
+
+    //bwputr(COM2, first.sp);
+    //bwprintf(COM2, "sp-1 val: %d\n",*(first.sp-1));
 
     int request;
     KernelExit(&first, &request);
 
+    //bwprintf(COM2, "Request: %d", request);
+    
     /*
     EnqueueTask(first);
 
