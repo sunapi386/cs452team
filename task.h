@@ -23,7 +23,6 @@ typedef struct TaskDescriptor {
     int priority;
     int ret; // return valeue
     unsigned int *sp; // stackpointer
-    unsigned int cpsr; // save this with the TD
     struct TaskDescriptor *next; // linked list style
     unsigned int stack[USER_STACK_SIZE];
     //enum state {

@@ -26,7 +26,6 @@ void InitKernel(TaskDescriptor pool[])
          task->priority = 0;
          task->ret = 0;
          task->sp = &(task->stack[255]);
-         task->cpsr = 0;
          task->next = NULL;
      }
 
@@ -56,16 +55,24 @@ int main()
 
     //TaskDescriptor *first = &taskPool[0];
     TaskDescriptor first;
+    
     first.priority = 0;
     unsigned int *ptr = first.stack;
-    first.sp = ptr+64;
-    first.cpsr = 1610612944;
+    first.sp = ptr + USER_STACK_SIZE - 1;
+    //first.cpsr = 0x10;
     int i;
     for (i=0;i < USER_STACK_SIZE ;i++)
     {
-        first.stack[i] = (unsigned int)(firstTask);
+        first.stack[i] = i;
+        //first.stack[i] = 2195456 + (unsigned int)(firstTask);
     }
-  bwputr(COM2, first.stack[1]);
+    
+    // r2 - code address
+    *(first.sp) = 2195456 + (unsigned int)(firstTask);
+    
+    // r3 - user cpsr
+    *(first.sp - 1) = 0x10;
+
     int request;
     KernelExit(&first, &request);
 
