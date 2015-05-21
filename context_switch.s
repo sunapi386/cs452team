@@ -15,7 +15,7 @@ KernelExit:
     # change to system mode
     msr cpsr_c, #0xdf
 
-    # Put sp from TD to sp
+    # Put sp from TD+16 to sp
     ldr sp, [r0, #16]
 
     # 2) load all user registers
@@ -25,13 +25,8 @@ KernelExit:
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
-    # Get cpsr_usr to r0 and put it to spsr_svc
-    # ldr r0, [r0, #20]
+    # Put r3 (cpsr_usr) it to spsr_svcddress) 
     msr spsr, r3
-
-    # mov r0, #1
-    # mov r1, r4
-    # bl bwputr(PLT)
 
     # execute user code
     movs pc, r2
@@ -43,37 +38,48 @@ KernelExit:
 KernelEnter:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 1, uses_anonymous_args = 0
-    
-    # Put swi argument in r0
-    # ldr r0, [lr, #-4]
  
-    # Put lr_svc (pc_usr) in r1
+    # Put lr_svc (pc_usr) in r2
     mov r2, lr
 
-    # Put spsr (cpsr_usr) in r2
+    # Put spsr (cpsr_usr) in r3
     mrs r3, spsr
+
+    # Put swi_arg in r4
+    ldr r4, [lr, #-4]
+
+    # turns out you need to & the bits out
+    bic r4, r4, #0xff000000
 
     # change to system mode
     msr cpsr_c, #0xdf
 
-    # put r1 (pc_usr) in lr_usr
-    # mov lr, r1
-
     # 2) store all user registers to user stack
     stmfd   sp!, {r2-r12, lr}
     
-    # put sp_usr in r1
-    mov r0, sp
+    # put sp_usr in r2
+    mov r2, sp
 
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
     # now:
-    # r0: sp_usr
+    # r2: sp_usr
+    # r4: swi_arg
 
-    # 1) load all kernel registers from stack (pick up from where kerexit left off)
-    ldmfd sp!, {r0-r12, pc} 
-    # replace lr by pc}
+    # load r0 (task) and r1 (request)
+    ldmfd sp!, {r0, r1}
+
+    # mov r0, #1
+    # bl bwputr(PLT);
+
+    # hand sp_usr, swi_arg to task->sp, request
+    str r2, [r0, #16]
+    # mov r3, #0xff
+    str r4, [r1]
+
+    # 1) load the rest of the kernel registers from stack
+    ldmfd sp!, {r2-r12, pc}
 
 	.size	KernelEnter, .-KernelEnter
 	.ident	"GCC: (GNU) 4.0.2"
