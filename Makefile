@@ -2,7 +2,7 @@
 # Makefile for kernel-side
 #
 CC     = gcc
-CFLAGS  = -O2 -c -g -fPIC -Wall -Wextra -mcpu=arm920t -msoft-float -std=gnu99 -I. -Iinclude
+CFLAGS  = -O2 -c -fPIC -Wall -Wextra -mcpu=arm920t -msoft-float -std=gnu99 -I. -Iinclude
 # -g: include hooks for gdb
 # -c: only compile
 # -mcpu=arm920t: generate code for the 920t architecture
