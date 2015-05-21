@@ -9,7 +9,7 @@ rom : ORIGIN = 0x60000000, LENGTH = 8M
 SECTIONS
 {
 
-    text : /* The actual instructions. */
+    text 0x218000 : /* The actual instructions. */
     {
     *(.text)
     *(.got)
