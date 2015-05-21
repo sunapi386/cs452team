@@ -38,10 +38,11 @@ void HandleRequest(TaskDescriptor *td, int request)
     // TODO: Enums for requests?
     switch (request)
     {
-    case 1: // Create()
-        
+    case 1: // User task called Create()
+        // TODO: CreateTask() function
+        break;
     default:
-            break;
+        break;
     }
 }
 

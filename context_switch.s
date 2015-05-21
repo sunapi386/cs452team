@@ -75,7 +75,6 @@ KernelEnter:
 
     # hand sp_usr, swi_arg to task->sp, request
     str r2, [r0, #16]
-    # mov r3, #0xff
     str r4, [r1]
 
     # 1) load the rest of the kernel registers from stack
