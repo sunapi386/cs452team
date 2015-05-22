@@ -1,0 +1,906 @@
+#LyX 2.1 created this file. For more info see http://www.lyx.org/
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+CS 452 Kernel 1
+\end_layout
+
+\begin_layout Author
+Jason Sun (#20387090) and Shuo Chang (#???????)
+\end_layout
+
+\begin_layout Date
+May 22, 2015
+\end_layout
+
+\begin_layout Section
+Program Operation
+\end_layout
+
+\begin_layout LyX-Code
+> load -b 0x00200000 -h 129.97.167.12 "ARM/sun-chang-team/k1.elf"
+\end_layout
+
+\begin_layout LyX-Code
+> go
+\end_layout
+
+\begin_layout Standard
+All system calls required by assignment are supported:
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+\series bold
+int
+\begin_inset space ~
+\end_inset
+
+Create(int
+\begin_inset space ~
+\end_inset
+
+priority,
+\begin_inset space ~
+\end_inset
+
+void
+\begin_inset space ~
+\end_inset
+
+(*code)())
+\family default
+\series default
+ Schedule a task with specified
+\family typewriter
+priority
+\family default
+ and function pointer
+\family typewriter
+ code
+\family default
+.
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+\series bold
+int
+\begin_inset space ~
+\end_inset
+
+MyTid()
+\family default
+\series default
+ Return the task id for the calling task.
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+int
+\begin_inset space ~
+\end_inset
+
+MyParentTid()
+\family default
+ Return the task id of the parent of the calling task.
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+\series bold
+void
+\begin_inset space ~
+\end_inset
+
+Pass()
+\family default
+\series default
+ No-op for entering the kernel.
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+void
+\begin_inset space ~
+\end_inset
+
+Exit()
+\family default
+ Exits the calling task and never schedule it again.
+\end_layout
+
+\begin_layout Section
+Kernel Details
+\end_layout
+
+\begin_layout Subsection
+Context Switch
+\end_layout
+
+\begin_layout Standard
+From kernel space to user space:
+\end_layout
+
+\begin_layout Enumerate
+Save user task
+\family typewriter
+ sp
+\family default
+ into
+\family typewriter
+ r0
+\family default
+, variable register called
+\family typewriter
+ sp_
+\end_layout
+
+\begin_layout Enumerate
+Save user task
+\family typewriter
+ spsr
+\family default
+ into
+\family typewriter
+ r1
+\family default
+, variable register called
+\family typewriter
+ spsr_
+\end_layout
+
+\begin_layout Enumerate
+Stack all kernel registers and return address {
+\family typewriter
+r2-r12
+\family default
+,
+\family typewriter
+ lr
+\family default
+} on kernel stack.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Pop task
+\family typewriter
+ pc
+\family default
+ as first word off
+\family typewriter
+ r0
+\family default
+ (task
+\family typewriter
+ sp
+\family default
+) into kernel
+\family typewriter
+ lr
+\family default
+ (restoring state for
+\family typewriter
+ movs
+\family default
+).
+\end_layout
+
+\begin_layout Enumerate
+Restore
+\family typewriter
+ spsr
+\family default
+ from
+\family typewriter
+ spsr_
+\family default
+.
+\end_layout
+
+\begin_layout Enumerate
+Switch to system mode:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Restore user task
+\family typewriter
+ sp
+\family default
+ from
+\family typewriter
+ sp_
+\family default
+.
+\end_layout
+
+\begin_layout Enumerate
+Unroll trap frame from task
+\family typewriter
+ sp
+\family default
+ for registers {
+\family typewriter
+r0-r12
+\family default
+,
+\family typewriter
+ lr
+\family default
+}.
+ Note this is the task's
+\family typewriter
+ lr
+\family default
+ and not the kernel's.
+\end_layout
+
+\begin_layout Enumerate
+Switch to supervisor mode 
+\family typewriter
+msr cpsr_c, #0xd3
+\family default
+.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Jump to userspace
+\family typewriter
+ movs pc, lr
+\family default
+.
+\end_layout
+
+\begin_layout Paragraph
+From user space to kernel:
+\end_layout
+
+\begin_layout Standard
+Via
+\family typewriter
+ swi n
+\family default
+ jumping to 
+\family typewriter
+KernelEnter
+\family default
+ label
+\end_layout
+
+\begin_layout Enumerate
+Switch to system mode:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Store user task registers 
+\family typewriter
+{r0-r12
+\family default
+,
+\family typewriter
+ lr
+\family default
+} on user stack.
+ 
+\family typewriter
+pc
+\family default
+.
+\end_layout
+
+\begin_layout Enumerate
+Move
+\family typewriter
+ sp
+\family default
+ into
+\family typewriter
+ r0
+\family default
+.
+ Note this is 
+\family typewriter
+sp_
+\family default
+.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Switch to supervisor mode.
+\end_layout
+
+\begin_layout Enumerate
+Push
+\family typewriter
+ lr
+\family default
+ (the task's
+\family typewriter
+ pc
+\family default
+) onto stack pointed by
+\family typewriter
+ r0
+\family default
+ (task
+\family typewriter
+ sp
+\family default
+) and increment
+\family typewriter
+ r0
+\family default
+.
+\end_layout
+
+\begin_layout Enumerate
+Move
+\family typewriter
+ spsr
+\family default
+ into
+\family typewriter
+ r1
+\family default
+.
+\end_layout
+
+\begin_layout Enumerate
+Pop kernel registers from kernel stack 
+\family typewriter
+{r2-r12
+\family default
+,
+\family typewriter
+ lr
+\family default
+}.
+\end_layout
+
+\begin_layout Enumerate
+Restore 
+\family typewriter
+r0
+\family default
+ (task
+\family typewriter
+ sp
+\family default
+) and
+\family typewriter
+ 
+\end_layout
+
+\begin_layout Enumerate
+Restore
+\family typewriter
+ r1
+\family default
+ (task
+\family typewriter
+ spsr
+\family default
+) into task descriptor.
+\end_layout
+
+\begin_layout Subsubsection
+Description in armlish
+\end_layout
+
+\begin_layout Standard
+The piece of code responsible for context switch is:
+\end_layout
+
+\begin_layout LyX-Code
+register unsigned int *sp_  asm("r2") = active->sp;   // r2 <- sp
+\end_layout
+
+\begin_layout LyX-Code
+register unsigned int spsr_ asm("r3") = active->spsr; // r3 <- spsr
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+*(sp_ + 1) = first.ret;       // save ret on stack
+\end_layout
+
+\begin_layout LyX-Code
+unsigned int arg0, arg1;
+\end_layout
+
+\begin_layout LyX-Code
+asm volatile(
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+"stmfd sp!, {r4-r12, lr}
+\backslash
+n
+\backslash
+t"  // save kregs on kstack
+\end_layout
+
+\begin_layout LyX-Code
+"ldmfd %0!, {lr}
+\backslash
+n
+\backslash
+t"          // sp_ <- lr (the stored pc)
+\end_layout
+
+\begin_layout LyX-Code
+"msr spsr, %1
+\backslash
+n
+\backslash
+t"              // spsr <- spsr_
+\end_layout
+
+\begin_layout LyX-Code
+"msr cpsr_c, #0xdf
+\backslash
+n
+\backslash
+t"         // switch to system mode
+\end_layout
+
+\begin_layout LyX-Code
+"mov sp, %0
+\backslash
+n
+\backslash
+t"                // sp <- sp_
+\end_layout
+
+\begin_layout LyX-Code
+"ldmfd sp!, {r0-r12, lr}
+\backslash
+n
+\backslash
+t"  // pop task's registers
+\end_layout
+
+\begin_layout LyX-Code
+"msr cpsr_c, #0xd3
+\backslash
+n
+\backslash
+t"         // switch to supervisor mode
+\end_layout
+
+\begin_layout LyX-Code
+"movs pc, lr
+\backslash
+n
+\backslash
+t"              // jump to userspace
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+"KernelEnter:
+\backslash
+n
+\backslash
+t"              // label (swi jumps here)
+\end_layout
+
+\begin_layout LyX-Code
+"msr cpsr_c, #0xdf
+\backslash
+n
+\backslash
+t"         // switch to system mode
+\end_layout
+
+\begin_layout LyX-Code
+"stmfd sp!, {r0-r12, lr}
+\backslash
+n
+\backslash
+t"  // store task registers
+\end_layout
+
+\begin_layout LyX-Code
+"mov %0, sp
+\backslash
+n
+\backslash
+t"                // sp_ <- sp save task's sp
+\end_layout
+
+\begin_layout LyX-Code
+"msr cpsr_c, #0xd3
+\backslash
+n
+\backslash
+t"         // switch to supervisor mode
+\end_layout
+
+\begin_layout LyX-Code
+"stmfd %0!, {lr}
+\backslash
+n
+\backslash
+t"          // sp + 0 <- lr save task's pc to stack
+\end_layout
+
+\begin_layout LyX-Code
+"mrs %1, spsr
+\backslash
+n
+\backslash
+t"              // spsr_ <- spsr save activity's spsr
+\end_layout
+
+\begin_layout LyX-Code
+"ldmfd sp!, {r4-r12, r14}
+\backslash
+n
+\backslash
+t"  // unroll kregs from kstack
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+"mov %2, r0
+\backslash
+n
+\backslash
+t"                // copy arg0
+\end_layout
+
+\begin_layout LyX-Code
+"mov %3, r1
+\backslash
+n
+\backslash
+t"                // copy arg1
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+: "+r"(sp_), "+r"(spsr_), "=r"(arg0), "=r"(arg1)  // output
+\end_layout
+
+\begin_layout LyX-Code
+: // input
+\end_layout
+
+\begin_layout LyX-Code
+: "r0", "r1"  // force asmblr not use any of these registers
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+);
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+active->sp = sp_;         
+\end_layout
+
+\begin_layout LyX-Code
+active->spsr = spsr_;
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout Subsubsection
+Trap Frame
+\end_layout
+
+\begin_layout Standard
+When the user does a syscall, a trap frame is set up and calls the kernel.
+ The trap frame is pushed on the calling task's stack, storing its state
+ (registers).
+ The layout of registers stored is: 
+\end_layout
+
+\begin_layout LyX-Code
+[     ] <-- SP after storing trap frame
+\end_layout
+
+\begin_layout LyX-Code
+[ PC  ]  
+\end_layout
+
+\begin_layout LyX-Code
+[ LR  ]
+\end_layout
+
+\begin_layout LyX-Code
+[ r12 ]
+\end_layout
+
+\begin_layout LyX-Code
+[ r11 ]
+\end_layout
+
+\begin_layout LyX-Code
+[ ...
+ ]
+\end_layout
+
+\begin_layout LyX-Code
+[ r0  ] <-- SP at SWI instruction
+\end_layout
+
+\begin_layout LyX-Code
+[ ...
+ ]  
+\end_layout
+
+\begin_layout Standard
+Initializing the trap frame and returning from a call is written in assembly
+ code, and can be found in context_switch.s, or inlined with
+\family typewriter
+ asm
+\family default
+ operand.
+ On return, the result of the syscall is stored in register
+\family typewriter
+r0
+\family default
+ and execution resumes at the point where the syscall occurred.
+\end_layout
+
+\begin_layout Subsection
+Syscalls
+\end_layout
+
+\begin_layout Standard
+Syscalls defined in C functions, in 
+\family typewriter
+syscall.{c,h}
+\family default
+ files.
+ They execute
+\family typewriter
+ swi n
+\family default
+ where 
+\family typewriter
+n
+\family default
+ is the syscall defined in the header.
+ 
+\end_layout
+
+\begin_layout Subsection
+Tasks
+\end_layout
+
+\begin_layout Subsection
+Scheduling
+\end_layout
+
+\begin_layout Section
+Source Code Location
+\end_layout
+
+\begin_layout Standard
+Code is located under
+\family typewriter
+/u1/j53sun/cs452team/
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Compiling is as simple as running
+\family typewriter
+make
+\family default
+, which will also copy the local
+\family typewriter
+kernel.elf
+\family default
+ to
+\family typewriter
+/u/cs452/tftp/ARM/cs452_05/kernel_k0.elf
+\family default
+.
+\end_layout
+
+\begin_layout Paragraph
+
+\family typewriter
+File md5sums
+\end_layout
+
+\begin_layout LyX-Code
+j53sun@ubuntu1204-002:~/cs452team$ md5sum * 
+\end_layout
+
+\begin_layout LyX-Code
+99b14b7cdf8c75a76aa95a84baa99b7a  bwio.d 
+\end_layout
+
+\begin_layout LyX-Code
+e4b6fb3bba23dbc7894365d089569084  bwio.s 
+\end_layout
+
+\begin_layout LyX-Code
+7325710433d4c3f2ca2ef7d024b4090c  context_switch.h
+\end_layout
+
+\begin_layout LyX-Code
+1380c061df6d3fcf5ca731ca0870f12a  context_switch.s
+\end_layout
+
+\begin_layout LyX-Code
+e9ecc0c507565cc766ec637a9aec3ab6  cpsr.h
+\end_layout
+
+\begin_layout LyX-Code
+208557261c197d03bdc6b12d51bb17a6  doxygen.config 17928a24ca4436c15190a8e77b2608eb
+  kernel.c
+\end_layout
+
+\begin_layout LyX-Code
+e87799ad275ab3fd1199dba2ea334e5c  linker.ld 
+\end_layout
+
+\begin_layout LyX-Code
+bb9d37dae24e4e08a43483e8ca8e110f  Makefile 
+\end_layout
+
+\begin_layout LyX-Code
+53fdea2ffa00ca6f9bbbea8f47d7b5ea  readme.md
+\end_layout
+
+\begin_layout LyX-Code
+7e3c4c63adb0b9be9ae4fa8f3677957c  scheduler.c
+\end_layout
+
+\begin_layout LyX-Code
+f80b164c2c64c33e7f0c3c4f053806b9  scheduler.h 
+\end_layout
+
+\begin_layout LyX-Code
+620368217046ce3bd0f60b135af8f7c8  sftp-config.json d6bdf5714a8d499da29f1064973580
+ae  stdbool.h 
+\end_layout
+
+\begin_layout LyX-Code
+c4514d457ae97d5926b8267f8702aa8c  syscall.c 
+\end_layout
+
+\begin_layout LyX-Code
+f9a2fd02c38d6487ecb03eedac299098  syscall.h 
+\end_layout
+
+\begin_layout LyX-Code
+d3575bed4f5cacfc59d13e7ee2b3931d  task.h 
+\end_layout
+
+\begin_layout LyX-Code
+e4a2610f5d6aba2f5d7b46a720e91668  ts7200.h
+\end_layout
+
+\begin_layout Section
+Program Output
+\end_layout
+
+\begin_layout LyX-Code
+RedBoot> go
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+Program completed with status 0
+\end_layout
+
+\begin_layout Paragraph
+Explaination
+\end_layout
+
+\end_body
+\end_document
