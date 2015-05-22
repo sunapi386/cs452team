@@ -1,15 +1,14 @@
-#include <bwio.h>
 #include <ts7200.h>
 #include <stdbool.h>
 #include <cpsr.h>
 #include <task.h>
+#include <syscall.h>
 #include <scheduler.h>
 #include <context_switch.h>
 
 void firstTask() {
-    // asm volatile( "swi 0" ); //  c-switch
-    bwprintf(COM2, "UserTask\n\r");
-    asm volatile ("swi 12");
+    bwprintf(COM2, "First task!\n\r");
+    volatile int tid = MyTid();
 }
 
 void InitKernel(TaskDescriptor pool[])
@@ -38,8 +37,18 @@ void HandleRequest(TaskDescriptor *td, int request)
     // TODO: Enums for requests?
     switch (request)
     {
-    case 1: // User task called Create()
+    case SyscallCreate: // User task called Create()
         // TODO: CreateTask() function
+        break;
+    case SyscallMyTid:
+        bwprintf(COM2, "tid: %d", td->id);
+        td->ret = td->id;
+        break;
+    case SyscallMyParentTid:
+        break;
+    case SyscallPass:
+        break;
+    case SyscallExit:
         break;
     default:
         break;
@@ -79,8 +88,6 @@ int main()
     volatile int request;
     // bwputr(COM2, &request);
     KernelExit(&first, &request);
-
-    bwprintf(COM2, "%d", request);
     
     HandleRequest(&first, request);
 

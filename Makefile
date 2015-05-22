@@ -2,8 +2,7 @@
 # Makefile for kernel-side
 #
 CC     = gcc
-CFLAGS  = -c -fPIC -Wall -Wextra -mcpu=arm920t -msoft-float -std=gnu99 -I. -Iinclude
-# -g: include hooks for gdb
+CFLAGS  = -O2 -c -fPIC -Wall -Wextra -mcpu=arm920t -msoft-float -std=gnu99 -I. -Iinclude -Ilib
 # -c: only compile
 # -mcpu=arm920t: generate code for the 920t architecture
 # -fpic: emit position-independent code
@@ -16,7 +15,7 @@ ASFLAGS	= -mcpu=arm920t -mapcs-32
 
 
 LD  = ld
-LDFLAGS = -init main -Map kernel.map -N -T linker.ld -L/u/wbcowan/gnuarm-4.0.2/lib/gcc/arm-elf/4.0.2
+LDFLAGS = -init main -Map kernel.map -N -T linker.ld -L/u/wbcowan/gnuarm-4.0.2/lib/gcc/arm-elf/4.0.2 -L./lib
 
 # .PRECIOUS: if make is interrupted during execution, the target is not deleted.
 .PRECIOUS: %.s
@@ -33,7 +32,7 @@ hand_assemblies := $(filter-out $(assembled_sources),$(wildcard *.s))
 objects := $(patsubst %.c,%.o,$(sources)) $(patsubst %.s,%.o,$(hand_assemblies))
 
 kernel.elf: $(objects) linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lgcc
+	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lbwio -lgcc
 	cp kernel.elf /u/cs452/tftp/ARM/${USER}/k1.elf
 	chmod 755 /u/cs452/tftp/ARM/${USER}/k1.elf
 
