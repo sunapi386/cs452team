@@ -1,21 +1,17 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
 
-// These are necessary to be macros, because of 
-// the way I use it with xstr() macro in SWI()
-
-#define SyscallCreate      0
-#define SyscallMyTid       1
-#define SyscallMyParentTid 2
-#define SyscallPass        3
-#define SyscallExit        4
+#define SYS_CREATE          0
+#define SYS_MY_TID          1
+#define SYS_MY_PARENT_TID   2
+#define SYS_PASS            3
+#define SYS_EXIT            4
 
 typedef
 struct Syscall {
     unsigned int type, arg1, arg2;
     int ret;
 } Syscall;
-
 
 /**
 Name. Create - instantiate a task.
@@ -28,25 +24,6 @@ Returns.
 Do rough tests to ensure that the function pointer argument is valid.
 */
 int Create( int priority, void (*code) ( ) );
-    // swi( create );
-    // what the little code above this is is doing is moving arguments: taking them from where gcc has put them
-    // (*f()) is going to be put into the memory map // we can put a piece of memory as designated of the memory map.
-    // moving the return value, taking it where the kernel put it and put it where gcc wants it to be
-    // there's no reasonable at all why the kernel can't just pick up and put down the variabels where gcc is going to look for it.
-    // gcc looks in r1, r2, r3. and there is one system call that has 5 arguments; 5th argument is the stack
-    // gcc is going to put whatever is returned at the end of the computation at r0.
-    // the kerne lalso needs to read the
-
-    // save the kernel, install the task, movs
-
-    // what happens when the swi is claled in the middle of this? we run the middle of this. movs (save the user task)< install the kernel.
-
-// swi(create ) {
-    // 1/ the allocation of a task descriptor and as long as the free list of td is not empty, then we can allocate to it. we keep td in arrays because we want constant time operation.
-    // 2/ you need some memory. in your initalizaiton of the kernel, you made a decisiooon of how to divide up the memmory; you need a stack to put its memeoyr in
-    // 3/ you need a task id. it should be chosen so it is easy to find the td out of the td array.
-    // you need the user's stack pointer. so what kinds of things might you put in stack? - register contents (user stack).
-    // maybies in the td stack: the ptid, the extra linkregister (lr). could be in the stack or the td. we also need a return value - when task 4 creates priority of task 3
 
 /**
 Name. MyTid - find my task id.

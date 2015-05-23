@@ -1,13 +1,9 @@
 #include <syscall.h>
 
-#define str(s) #s
-#define xstr(s) str(s)
-#define mswi(i)  asm volatile("swi #" xstr(i))
-#define swiret(i) mswi(i); \
-                  register int ret asm("r0"); \
-                  return ret;
+static Syscall s;
 
-
+// Don't modify this! I know there isn't are return statement!
+// It's magic! (It needs the request parameter too)
 int swi(Syscall *request)
 {
     asm volatile("swi");
@@ -15,36 +11,33 @@ int swi(Syscall *request)
 
 int Create(int priority, void (*code) ())
 {
-    Syscall s;
+    s.type = SYS_CREATE:
     s.arg1 = priority;
     s.arg2 = (unsigned int)code;
-    
-    swiret(SyscallCreate);
+    return swi(&s);
 }
 
 int MyTid()
 {
-    Syscall s;
-    s.type = SyscallMyTid;
-    //bwprintf("Req addr should match this: %x\n\r", &s);
+    s.type = SYS_MY_TID;
     return swi(&s);
 }
 
 int MyParentTid()
 {
-    Syscall s;
-    s.type = SyscallMyParentTid;
+    s.type = SYS_MY_PARENT_TID;
     return swi(&s);
 }
 
 
 void Pass()
 {
-    mswi(SyscallPass);
+    s.type = SYS_PASS;
+    swi(&s);
 }
 
 void Exit()
 {
-    mswi(SyscallExit);
+    s.type = SYS_EXIT;
+    swi(&s);
 }
-
