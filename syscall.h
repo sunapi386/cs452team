@@ -1,30 +1,14 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
 
-// These are necessary to be macros, because of 
+// These are necessary to be macros, because of
 // the way I use it with xstr() macro in SWI()
 
-#define SyscallCreate      0
-#define SyscallMyTid       1
-#define SyscallMyParentTid 2
-#define SyscallPass        3
-#define SyscallExit        4
-
-typedef
-struct SyscallArgs {
-    unsigned int arg1, arg2;
-} SyscallArgs;
-
-/*
-typedef
-enum {
-    SyscallCreate = 0,
-    SyscallMyTid,
-    SyscallMyParentTid,
-    SyscallPass,
-    SyscallExit,
-} SyscallType;
-*/
+#define SYS_CREATE          0
+#define SYS_MY_TID          1
+#define SYS_MY_PARENT_TID   2
+#define SYS_PASS            3
+#define SYS_EXIT            4
 
 /**
 Name. Create - instantiate a task.
