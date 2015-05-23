@@ -11,7 +11,7 @@ int swi(Syscall *request)
 
 int Create(int priority, void (*code) ())
 {
-    s.type = SYS_CREATE:
+    s.type = SYS_CREATE;
     s.arg1 = priority;
     s.arg2 = (unsigned int)code;
     return swi(&s);
