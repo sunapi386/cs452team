@@ -11,20 +11,11 @@
 #define SyscallExit        4
 
 typedef
-struct SyscallArgs {
-    unsigned int arg1, arg2;
-} SyscallArgs;
+struct Syscall {
+    unsigned int type, arg1, arg2;
+    int ret;
+} Syscall;
 
-/*
-typedef
-enum {
-    SyscallCreate = 0,
-    SyscallMyTid,
-    SyscallMyParentTid,
-    SyscallPass,
-    SyscallExit,
-} SyscallType;
-*/
 
 /**
 Name. Create - instantiate a task.

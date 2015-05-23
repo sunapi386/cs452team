@@ -2,14 +2,20 @@
 
 #define str(s) #s
 #define xstr(s) str(s)
-#define swi(i)  asm volatile("swi #" xstr(i))
-#define swiret(i) swi(i); \
+#define mswi(i)  asm volatile("swi #" xstr(i))
+#define swiret(i) mswi(i); \
                   register int ret asm("r0"); \
                   return ret;
 
+
+int swi(Syscall *request)
+{
+    asm volatile("swi");
+}
+
 int Create(int priority, void (*code) ())
 {
-    SyscallArgs s;
+    Syscall s;
     s.arg1 = priority;
     s.arg2 = (unsigned int)code;
     
@@ -18,22 +24,27 @@ int Create(int priority, void (*code) ())
 
 int MyTid()
 {
-    swiret(SyscallMyTid);
+    Syscall s;
+    s.type = SyscallMyTid;
+    //bwprintf("Req addr should match this: %x\n\r", &s);
+    return swi(&s);
 }
 
 int MyParentTid()
 {
-    swiret(SyscallMyParentTid);
+    Syscall s;
+    s.type = SyscallMyParentTid;
+    return swi(&s);
 }
 
 
 void Pass()
 {
-    swi(SyscallPass);
+    mswi(SyscallPass);
 }
 
 void Exit()
 {
-    swi(SyscallExit);
+    mswi(SyscallExit);
 }
 
