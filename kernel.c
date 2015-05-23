@@ -30,7 +30,6 @@ void InitKernel(TaskDescriptor pool[])
         task->parent_id = 0;
         task->priority = 0;
         task->ret = 0;
-        task->sp = &(task->stack[255]);
         task->next = NULL;
     }
 
@@ -44,44 +43,29 @@ void HandleRequest(TaskDescriptor *td, Syscall *request)
     // TODO: Enums for requests?
     switch (request->type)
     {
-    case SyscallCreate: // User task called Create()
-        // TODO: CreateTask() function
+    case SYS_CREATE:
+        //td->ret = taskCreate(request->arg1, request->arg2, stack_size, parent_id);
         break;
-    case SyscallMyTid:
+    case SYS_MY_TID:
         bwprintf(COM2, "Setting return value for mytid: %d\n\r", td->id);
         td->ret = td->id;
-        request->ret = td->id;
         break;
-    case SyscallMyParentTid:
+    case SYS_MY_PARENT_TID:
         bwprintf(COM2, "Setting return value parent_tid: %d\n\r", td->parent_id);
         td->ret = td->parent_id;
-        request->ret = td->parent_id;
         break;
-    case SyscallPass:
+    case SYS_PASS:
+        // Reschedule task
+        EnqueueTask(td);
         break;
-    case SyscallExit:
+    case SYS_EXIT:
+        // Do not reschedule
+        // taskExit();
         break;
     default:
+        bwprintf(COM2, "Invalid syscall %u!", request->type);
         break;
-    }
-}
-
-void printStack(unsigned int *ptr)
-{
-     int j;
-    for (j =220; j < 256; j++)
-    {
-        bwprintf(COM2, "%d : %d\n\r", j, *(ptr + j));
-    }
-}
-
-void printTaskInfo(TaskDescriptor *td)
-{
-    bwprintf(COM2, "id: %d\n\r", td->id);
-bwprintf(COM2, "parent_id: %d\n\r", td->parent_id);
-bwprintf(COM2, "priority: %d\n\r", td->priority);
-bwprintf(COM2, "ret: %d\n\r", td->ret);
-bwprintf(COM2, "sp: %x\n\r", td->sp);
+   }
 }
 
 int main()
@@ -93,7 +77,6 @@ int main()
     //TaskDescriptor *first = &taskPool[0];
 
     TaskDescriptor first;
-    
     first.id = 1234;
     first.parent_id = 100;
     first.priority = 0;
@@ -113,18 +96,15 @@ int main()
 
     // r3 - user cpsr
     *(first.sp - 10) = 16;
-    
+
     // 12 registers will be poped from user stack
     first.sp -= 11;
 
     Syscall **request = 0;
-    
-    bwputr(COM2, &(first.id));
 
-    //printTaskInfo(&first);
     TaskDescriptor *td = &first;
+    
     KernelExit(td, request);
-    //printTaskInfo(&first);
 
     HandleRequest(&first, *request);
 
@@ -148,7 +128,7 @@ int main()
          {
              break;
          }
-        
+
          KernelExit(task, &request);
          HandleRequest(request);
     }*/
