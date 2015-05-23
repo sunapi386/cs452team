@@ -9,7 +9,10 @@
 void firstTask() {
     bwprintf(COM2, "First task!\n\r");
     volatile int tid = MyTid();
+    bwprintf(COM2, "Back! My tid: %d\n\r", tid);
+    Exit();
 }
+
 
 void InitKernel(TaskDescriptor pool[])
 {
@@ -65,6 +68,7 @@ int main()
 
     TaskDescriptor first;
     
+    first.id = 5;
     first.priority = 0;
     unsigned int *ptr = first.stack;
     first.sp = ptr + USER_STACK_SIZE - 1;
@@ -91,6 +95,9 @@ int main()
     
     HandleRequest(&first, request);
 
+    KernelExit(&first, &request);
+
+    bwprintf(COM2, "Back to kernel main! bye bye!");
     /*
     EnqueueTask(first);
 

@@ -25,7 +25,10 @@ KernelExit:
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
-    # Put r3 (cpsr_usr) it to spsr_svcddress) 
+    # restore return value
+    ldr r0, [r0, #12]
+
+    # Put r3 (cpsr_usr) it to spsr_svc 
     msr spsr, r3
 
     # execute user code
