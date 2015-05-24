@@ -21,7 +21,7 @@ static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
 
-void initTaskSystem(void (*initialTask)(void)) {
+void initTaskSystem() {
     global_next_unique_task_id = 1;
     global_current_stack_address = (unsigned int *) TASK_STACK_HIGH;
 
@@ -33,11 +33,7 @@ void initTaskSystem(void (*initialTask)(void)) {
         task->sp = NULL;
         task->next = NULL;
     }
-    // setup first task, kernel_task
-    TaskDescriptor *first = taskCreate(1, initialTask, -1);
-    if( first == NULL ) {
-        bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
-    }
+
 }
 
 // IMPROVE: Implement recycling here
@@ -96,7 +92,7 @@ inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
     task->ret = ret;
 }
 
-TaskDescriptor *getTask(int task_id) {
+TaskDescriptor *taskGetTDById(int task_id) {
     int index = task_id & TASK_INDEX_MASK;
     if( index < 0 || index >= TASK_MAX_TASKS ) {
         return NULL;

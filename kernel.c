@@ -19,13 +19,16 @@ void firstUserTask() {
 void initKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
-
-    initTaskSystem(&firstUserTask);
-
+    initTaskSystem();
     initScheduleSystem();
 
+    // setup first task, kernel_task
+    int first_tid = taskCreate(0, &firstUserTask, -1);
+    if( first_tid < 0 ) {
+        bwprintf( COM2, "FATAL: fail creating first task: %d.\n\r", first_tid );
+    }
     // Initialize first user task
-    queueTask(taskCreate(0, &firstUserTask, -1));
+    queueTask(taskGetTDById(first_tid));
 }
 
 void handleRequest(TaskDescriptor *td, Syscall *request) {

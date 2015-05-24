@@ -64,14 +64,14 @@ typedef struct TaskDescriptor {
 
 
 int taskCreate(int priority, void (*code)(void), int parent_id);
-void initTaskSystem(void (*initialTask)(void));
+void initTaskSystem();
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 int taskGetMyId(TaskDescriptor *task);
 int taskGetMyParentId(TaskDescriptor *task);
 int taskGetPriority(TaskDescriptor *task);
 
 /* Returns NULL on invalid task_id */
-TaskDescriptor *getTask(int task_id);
+TaskDescriptor *taskGetTDById(int task_id);
 
 
 #endif
