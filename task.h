@@ -1,15 +1,14 @@
 #ifndef __TASK_H
 #define __TASK_H
 
-// FIXME: Shuo please verify this.
 // Trap size is # of registers pushed on stack during c-switch. Layout:
-// sp + 0 = r15 (pc)
-// sp + 1 = r0
+// sp + 0 = r1 (pc)
+// sp + 1 = r2 (cpsr_user)
 // ...
-// sp + 12 = r11 (fp)
-// sp + 13 = r12
-// sp + 14 = r14 (lr)
-#define TASK_TRAP_SIZE      15
+// sp + 11 = r12
+// sp + 12 = lr
+
+#define TASK_TRAP_SIZE      12
 #define TASK_BITS           8   // 2^8 = 128
 #define TASK_PRIORITY_BITS  5   // 2^5 = 32  Warning: Brujin table is 32.
 
@@ -60,7 +59,6 @@ typedef struct TaskDescriptor {
     int parent_id;
     int ret;
     unsigned int *sp;
-    unsigned int spsr;
     struct TaskDescriptor *next; // linked list through tasks
 } TaskDescriptor;
 
@@ -68,55 +66,28 @@ typedef struct TaskDescriptor {
 void initTaskSystem();
 
 /* Returns:
-   -1: invalid priority or code pointer
-   -2: too many tasks created
-   -3: no more stack space
-   non-negative: newly created task id
+    Pointer to TaskDescriptor
+    NULL: failed for the following reason(s):
+        invalid priority or code pointer
+        too many tasks created
+        no more stack space
  */
 TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id);
-void taskSetReturnValue(TaskDescriptor *task, int ret);
 
-int taskGetMyId(TaskDescriptor *task);
-int taskGetMyParentId(TaskDescriptor *task);
-int taskGetPriority(TaskDescriptor *task);
-
-
-
-static inline unsigned int taskCalcStackHigh(int task_id) {
-    unsigned int index = task_id;
-    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
-}
-
-static inline unsigned int taskCalcStackLow(int task_id) {
-    unsigned int index = task_id;
-    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
-}
-
-// Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
-static inline int taskMakeId(int index, int priority, int unique) {
-    return
-        (index << TASK_INDEX_OFFSET) |
-        (priority << TASK_PRIORITY_OFFSET) |
-        (unique << TASK_UNIQUE_OFFSET);
-}
-
-
-
-inline int taskGetMyId(TaskDescriptor *task) {
+static inline int taskGetMyId(TaskDescriptor *task) {
     return task->id;
 }
 
-inline int taskGetPriority(TaskDescriptor *task) {
+static inline int taskGetPriority(TaskDescriptor *task) {
     return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
 }
 
-inline int taskGetMyParentId(TaskDescriptor *task) {
+static inline int taskGetMyParentId(TaskDescriptor *task) {
     return task->parent_id;
 }
 
-inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
+static inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
     task->ret = ret;
 }
-
 
 #endif
