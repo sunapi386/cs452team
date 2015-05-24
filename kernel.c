@@ -16,14 +16,14 @@ void firstTask() {
 }
 
 
-void InitKernel() {
+void initKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
     initTaskSystem();
-    InitScheduler();
+    initScheduler();
 }
 
-void HandleRequest(TaskDescriptor *td, Syscall *request)
+void handleRequest(TaskDescriptor *td, Syscall *request)
 {
     bwprintf(COM2, "Handling tid: %d\n\r", td->id);
 
@@ -43,7 +43,7 @@ void HandleRequest(TaskDescriptor *td, Syscall *request)
         break;
     case SYS_PASS:
         // Reschedule task
-        EnqueueTask(td);
+        enqueueTask(td);
         break;
     case SYS_EXIT:
         // Do not reschedule
@@ -57,22 +57,11 @@ void HandleRequest(TaskDescriptor *td, Syscall *request)
 
 int main()
 {
-    InitKernel();
+    initKernel();
 
     TaskDescriptor first;
     first.id = 1234;
     first.parent_id = 100;
-    first.priority = 0;
-    first.ret = 17;
-    unsigned int *ptr = first.stack;
-    first.sp = ptr + USER_STACK_SIZE - 1;
-
-    int i;
-    for (i=0;i < USER_STACK_SIZE ;i++)
-    {
-        first.stack[i] = i;
-        //first.stack[i] = 2195456 + (unsigned int)(firstTask);
-    }
 
     // r2 - pc (code address)
     *(first.sp - 11) = (unsigned int)(firstTask); // + 2195456
@@ -89,7 +78,7 @@ int main()
 
     KernelExit(td, request);
 
-    HandleRequest(&first, *request);
+    handleRequest(&first, *request);
 
     KernelExit(&first, request);
 
@@ -100,12 +89,12 @@ int main()
     bwprintf(COM2, "Bye!\n\r");
 
     /*
-    EnqueueTask(first);
+    enqueueTask(first);
 
     for (;;)
     {
          int request = 0;
-         TaskDescriptor *task = Scheduler();
+         TaskDescriptor *task = scheduler();
 
          if (task == NULL)
          {
@@ -113,7 +102,7 @@ int main()
          }
 
          KernelExit(task, &request);
-         HandleRequest(request);
+         handleRequest(request);
     }*/
     return 0;
 }

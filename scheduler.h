@@ -13,8 +13,8 @@ struct TaskQueue
 
 // Scheduler
 
-void InitScheduler();
-struct TaskDescriptor * Scheduler();
-void EnqueueTask(struct TaskDescriptor *task);
+void initScheduler();
+struct TaskDescriptor * scheduler();
+void enqueueTask(struct TaskDescriptor *task);
 
 #endif
