@@ -8,6 +8,8 @@ int swi(Syscall *request)
 {
     register Syscall *arg0_register asm("r0") = request;
     asm volatile("swi");
+    // after kernel handles syscall the result should be in r0
+    return arg0_register;
 }
 
 int Create(int priority, void (*code) ())

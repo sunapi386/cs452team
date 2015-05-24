@@ -5,6 +5,7 @@
 #include <syscall.h>
 #include <context_switch.h>
 #include <scheduler.h>
+#include <bwio.h>
 
 void firstUserTask() {
     bwprintf(COM2, "First task!\n\r");
@@ -18,13 +19,17 @@ void firstUserTask() {
 void initKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
-    
     initTaskSystem();
-
+    
     initScheduler();
 
-    // Initialize first user task
-    queueTask(taskCreate(0, &firstUserTask, -1));
+    // setup first task, kernel_task
+    TaskDescriptor *initialTask = taskCreate(0, &firstUserTask, -1);
+    if( !initialTask ) {
+        bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
+        return;
+    }
+    queueTask(initialTask);
 }
 
 void handleRequest(TaskDescriptor *td, Syscall *request) {

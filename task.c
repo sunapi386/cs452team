@@ -9,7 +9,7 @@ static TaskDescriptor global_task_table[TASK_MAX_TASKS];
 
 
 // Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
-static inline int taskMakeId(int index, int priority, int unique) {
+static inline int makeId(int index, int priority, int unique) {
     return
         (index << TASK_INDEX_OFFSET) |
         (priority << TASK_PRIORITY_OFFSET) |
@@ -40,7 +40,7 @@ static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
 
-TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id) {
+TaskDescriptor* taskCreate(int priority, void (*code)(void), int parent_id) {
     if( priority < 0 || priority >= TASK_MAX_PRIORITY || code == NULL ) {
         bwprintf( COM2, "FATAL: create task bad priority %d.\n\r", priority );
         return NULL; // invalid params
@@ -61,14 +61,14 @@ TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id) {
     int unique_id = global_next_unique_task_id++;
     int task_table_index = taskFindFreeTaskTableIndex();
     TaskDescriptor *new_task = &global_task_table[task_table_index];
-    new_task->id = taskMakeId( task_table_index, priority, unique_id );
+    new_task->id = makeId( task_table_index, priority, unique_id );
     new_task->parent_id = parent_id;
     new_task->ret = 0;
     new_task->sp = global_current_stack_address - TASK_TRAP_SIZE;
     new_task->next = NULL;
     global_current_stack_address -= (TASK_TRAP_SIZE + TASK_STACK_SIZE);
 
-    // FIXME: Shuo: init trap frame on stack for c-switch
+    // init trap frame on stack for c-switch
     *(new_task->sp) = (unsigned int)code;                       // r1: pc
     *(new_task->sp + 1) = UserMode | DisableIRQ | DisableFIQ;   // r2: cpsr_user
 
@@ -89,4 +89,12 @@ inline int taskGetMyParentId(TaskDescriptor *task) {
 
 inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
     task->ret = ret;
+}
+
+TaskDescriptor *taskGetTDById(int task_id) {
+    int index = task_id & TASK_INDEX_MASK;
+    if( index < 0 || index >= TASK_MAX_TASKS ) {
+        return NULL;
+    }
+    return global_task_table + index;
 }

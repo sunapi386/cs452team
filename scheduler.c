@@ -1,14 +1,13 @@
 #include <scheduler.h>
 #include <task.h>
-
-#define COM2 1
+#include <bwio.h>
 
 static unsigned int queueStatus = 0;
 static TaskQueue taskQueues[32];
 
 static inline int getQueueIndex()
 {
-    static const int bitPositions[32] =    
+    static const int bitPositions[32] =
     {
         0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
         31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
@@ -39,22 +38,22 @@ TaskDescriptor * schedule()
         bwprintf(COM2, "Schedule failed, queue status is 0.\n\r");
         return NULL;
     }
-    
+
     // Get the least set 1 bit from queueStatus
     int index = getQueueIndex();
-    
+
     // Get the task queue with the highest priority
     TaskQueue *q = &taskQueues[index];
     TaskDescriptor *active = q->head;
 
     if (active == NULL)
     {
-        bwprintf("Error: active is NULL but index is returned: %d\n\r", index);
+        bwprintf(COM2, "Error: active is NULL but index is returned: %d\n\r", index);
         return NULL;
     }
 
     q->head = active->next;
-        
+
     if (q->head == NULL)
     {
         // if queue becomes empty, set the tail to NULL and
@@ -66,7 +65,7 @@ TaskDescriptor * schedule()
     {
         active->next = NULL;
     }
-    
+
     if (active == NULL)
     {
         bwprintf(COM2, "Schedule failed, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
@@ -86,7 +85,7 @@ void queueTask(TaskDescriptor *task)
 {
     int priority = taskGetPriority(task);
     TaskQueue *q = &taskQueues[priority];
-    
+
     if (q->tail == NULL)
     {
         // set up head and tail to the same task; task->next should be NULL;
