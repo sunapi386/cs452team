@@ -5,6 +5,7 @@
 #include <syscall.h>
 #include <context_switch.h>
 #include <scheduler.h>
+#include <bwio.h>
 
 void firstUserTask() {
     bwprintf(COM2, "First task!\n\r");
@@ -18,10 +19,10 @@ void firstUserTask() {
 void initKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
-    
-    initTaskSystem();
 
-    initScheduler();
+    initTaskSystem(&firstUserTask);
+
+    initScheduleSystem();
 
     // Initialize first user task
     queueTask(taskCreate(0, &firstUserTask, -1));
@@ -32,7 +33,7 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
 
     switch (request->type) {
     case SYS_CREATE:
-        td->ret = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
+        td->ret = taskCreate( request->arg1, (void*)request->arg2, td->parent_id);
         break;
     case SYS_MY_TID:
         bwprintf(COM2, "Setting return value for mytid: %d\n\r", td->id);
@@ -45,7 +46,7 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
     case SYS_PASS:
         break;
     case SYS_EXIT:
-        taskExit();
+        // FIXME: Shuo, look into this
         break;
     default:
         bwprintf(COM2, "Invalid syscall %u!", request->type);
