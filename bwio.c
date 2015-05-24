@@ -15,8 +15,8 @@
  *  no parity
  *  fifos enabled
  */
-volatile int bwsetfifo( int channel, int state ) {
-    int *line, buf;
+int bwsetfifo( int channel, int state ) {
+    volatile int *line, buf;
     switch( channel ) {
     case COM1:
         line = (int *)( UART1_BASE + UART_LCRH_OFFSET );
@@ -34,8 +34,8 @@ volatile int bwsetfifo( int channel, int state ) {
     return 0;
 }
 
-volatile int bwsetspeed( int channel, int speed ) {
-    int *high, *low;
+int bwsetspeed( int channel, int speed ) {
+    volatile int *high, *low;
     switch( channel ) {
     case COM1:
         high = (int *)( UART1_BASE + UART_LCRM_OFFSET );
@@ -63,8 +63,8 @@ volatile int bwsetspeed( int channel, int speed ) {
     }
 }
 
-volatile int bwputc( int channel, char c ) {
-    int *flags, *data;
+int bwputc( int channel, char c ) {
+    volatile int *flags, *data;
     switch( channel ) {
     case COM1:
         flags = (int *)( UART1_BASE + UART_FLAG_OFFSET );
@@ -83,13 +83,13 @@ volatile int bwputc( int channel, char c ) {
     return 0;
 }
 
-volatile char c2x( char ch ) {
+char c2x( char ch ) {
     if ( (ch <= 9) ) return '0' + ch;
     return 'a' + ch - 10;
 }
 
-volatile int bwputx( int channel, char c ) {
-    char chh, chl;
+int bwputx( int channel, char c ) {
+    volatile char chh, chl;
 
     chh = c2x( c / 16 );
     chl = c2x( c % 16 );
@@ -97,15 +97,15 @@ volatile int bwputx( int channel, char c ) {
     return bwputc( channel, chl );
 }
 
-volatile int bwputr( int channel, unsigned int reg ) {
-    int byte;
-    char *ch = (char *) &reg;
+int bwputr( int channel, unsigned int reg ) {
+    volatile int byte;
+    volatile char *ch = (char *) &reg;
 
     for( byte = 3; byte >= 0; byte-- ) bwputx( channel, ch[byte] );
     return bwputc( channel, ' ' );
 }
 
-volatile int bwputstr( int channel, char *str ) {
+int bwputstr( int channel, char *str ) {
     while( *str ) {
         if( bwputc( channel, *str ) < 0 ) return -1;
         str++;
@@ -113,18 +113,18 @@ volatile int bwputstr( int channel, char *str ) {
     return 0;
 }
 
-volatile void bwputw( int channel, int n, char fc, char *bf ) {
-    char ch;
-    char *p = bf;
+void bwputw( int channel, int n, char fc, char *bf ) {
+    volatile char ch;
+    volatile char *p = bf;
 
     while( *p++ && n > 0 ) n--;
     while( n-- > 0 ) bwputc( channel, fc );
     while( ( ch = *bf++ ) ) bwputc( channel, ch );
 }
 
-volatile int bwgetc( int channel ) {
-    int *flags, *data;
-    unsigned char c;
+int bwgetc( int channel ) {
+    volatile int *flags, *data;
+    volatile unsigned char c;
 
     switch( channel ) {
     case COM1:
@@ -144,14 +144,14 @@ volatile int bwgetc( int channel ) {
     return c;
 }
 
-volatile int bwa2d( char ch ) {
+int bwa2d( char ch ) {
     if( ch >= '0' && ch <= '9' ) return ch - '0';
     if( ch >= 'a' && ch <= 'f' ) return ch - 'a' + 10;
     if( ch >= 'A' && ch <= 'F' ) return ch - 'A' + 10;
     return -1;
 }
 
-volatile char bwa2i( char ch, char **src, int base, int *nump ) {
+char bwa2i( char ch, char **src, int base, int *nump ) {
     int num, digit;
     char *p;
 
@@ -165,7 +165,7 @@ volatile char bwa2i( char ch, char **src, int base, int *nump ) {
     return ch;
 }
 
-volatile void bwui2a( unsigned int num, unsigned int base, char *bf ) {
+void bwui2a( unsigned int num, unsigned int base, char *bf ) {
     int n = 0;
     int dgt;
     unsigned int d = 1;
@@ -183,7 +183,7 @@ volatile void bwui2a( unsigned int num, unsigned int base, char *bf ) {
     *bf = 0;
 }
 
-volatile void bwi2a( int num, char *bf ) {
+void bwi2a( int num, char *bf ) {
     if( num < 0 ) {
         num = -num;
         *bf++ = '-';
@@ -191,7 +191,7 @@ volatile void bwi2a( int num, char *bf ) {
     bwui2a( num, 10, bf );
 }
 
-volatile void bwformat ( int channel, char *fmt, va_list va ) {
+void bwformat ( int channel, char *fmt, va_list va ) {
     char bf[12];
     char ch, lz;
     int w;
@@ -247,7 +247,7 @@ volatile void bwformat ( int channel, char *fmt, va_list va ) {
     }
 }
 
-volatile void bwprintf( int channel, char *fmt, ... ) {
+void bwprintf( int channel, char *fmt, ... ) {
         va_list va;
 
         va_start(va,fmt);
