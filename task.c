@@ -1,22 +1,45 @@
 #include <task.h>
 #include <cpsr.h>
-#include <bwio.h>
+
+#define COM2 1
 
 static int global_next_unique_task_id;
 static unsigned int *global_current_stack_address;
 static TaskDescriptor global_task_table[TASK_MAX_TASKS];
 
-void initTaskSystem(void (*firstTask)(void)) {
+static inline unsigned int taskCalcStackHigh(int task_id) {
+    unsigned int index = task_id;
+    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
+}
+
+static inline unsigned int taskCalcStackLow(int task_id) {
+    unsigned int index = task_id;
+    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
+}
+
+// Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
+static inline int taskMakeId(int index, int priority, int unique) {
+    return
+        (index << TASK_INDEX_OFFSET) |
+        (priority << TASK_PRIORITY_OFFSET) |
+        (unique << TASK_UNIQUE_OFFSET);
+}
+
+// FIXME: Implement recycling here
+static inline int taskFindFreeTaskTableIndex() {
+    return global_next_unique_task_id;
+}
+
+void initTaskSystem() {
     global_next_unique_task_id = 1;
     global_current_stack_address = (unsigned int *) TASK_STACK_HIGH;
-    // FIXME: should zero out the entire stack, high to low
+
     for( int i = 1; i < TASK_MAX_TASKS; i++ ) {
         TaskDescriptor *task = global_task_table + i;
         task->id = 0;
         task->parent_id = 0;
         task->ret = 0;
         task->sp = NULL;
-        task->spsr = 0;
         task->next = NULL;
     }
     // setup first task, kernel_task
@@ -56,28 +79,12 @@ TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id) {
     new_task->parent_id = parent_id;
     new_task->ret = 0;
     new_task->sp = global_current_stack_address - TASK_TRAP_SIZE;
-    new_task->spsr = UserMode | DisableIRQ | DisableFIQ;
     new_task->next = NULL;
     global_current_stack_address -= (TASK_TRAP_SIZE + TASK_STACK_SIZE);
 
     // FIXME: Shuo: init trap frame on stack for c-switch
-    *(new_task->sp) = 0; //
-    *(new_task->sp + 1) = 0; //
-    *(new_task->sp + 2) = 0; //
-    *(new_task->sp + 3) = 0; //
-    *(new_task->sp + 4) = 0; //
-    *(new_task->sp + 5) = 0; //
-    *(new_task->sp + 6) = 0; //
-    *(new_task->sp + 7) = 0; //
-    *(new_task->sp + 8) = 0; //
-    *(new_task->sp + 9) = 0; //
-    *(new_task->sp + 10) = 0; //
-    *(new_task->sp + 11) = 0; //
-    *(new_task->sp + 12) = 0; //
-    *(new_task->sp + 13) = 0; //
-    *(new_task->sp + 14) = 0; //
-
-    *(new_task->sp) =  (unsigned int) new_task->sp + 15; // FIXME
+    *(new_task->sp) = (unsigned int)code;                       // r1: pc
+    *(new_task->sp + 1) = UserMode | DisableIRQ | DisableFIQ;   // r2: cpsr_user
 
     return new_task;
 }

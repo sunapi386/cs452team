@@ -1,58 +1,108 @@
 #include <scheduler.h>
 #include <task.h>
-static TaskDescriptor *global_active_kernel_task;
-static unsigned int global_queue_status;
-static TaskQueue global_task_queues[32];
-static int global_debruijn_lookup[32];
+
+#define COM2 1
+
+static unsigned int queueStatus = 0;
+static TaskQueue taskQueues[32];
+
+static inline int getQueueIndex()
+{
+    static const int bitPositions[32] =    
+    {
+        0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
+        31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
+    };
+    return bitPositions[(unsigned int)((queueStatus ^ (queueStatus & (queueStatus - 1))) * 0x077CB531U) >> 27];
+}
+
+void initScheduler()
+{
+    volatile int i;
+    for (i = 0; i < 32; i++)
+    {
+        taskQueues[i].head = NULL;
+        taskQueues[i].tail = NULL;
+    }
+}
 
 /**
-Get the position of the least significant set bit position in global_queue_status
-Credit: http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
+    Called by the kernel; dequeue the first task in the highest priority queue
+    Returns:
+        Success: Pointer to the TD of the next active task
+        Fail: NULL
  */
-static inline int highestPQIndex() {
-    return global_debruijn_lookup[ ((global_queue_status ^ (global_queue_status & (global_queue_status - 1))) * TASK_DBRJN_SQN) >> 27 ];
-}
-
-static inline void taskQueuePush(TaskDescriptor *task) {
-    int priority = taskGetPriority(task);
-    TaskQueue *q = &global_task_queues[priority];
-    *(q->tail) = task; // head <- task
-    q->tail = &(task->next); // same as t->next == NULL ? NULL : t->next
-    global_queue_status |= 1 << priority;
-}
-
-static inline TaskDescriptor *taskQueuePop(int priority) {
-    TaskQueue *q = &global_task_queues[priority];
-    TaskDescriptor *active =  q->head;
-    q->head = active->next;
-    active->next = NULL;
-    if( ! q->head ) {
-        // queue empty, set the tail to NULL, clear the status bit
-        q->tail = &q->head;
-        global_queue_status &= ~(1 << priority);
+TaskDescriptor * schedule()
+{
+    if (queueStatus == 0)
+    {
+        bwprintf(COM2, "Schedule failed, queue status is 0.\n\r");
+        return NULL;
     }
+    
+    // Get the least set 1 bit from queueStatus
+    int index = getQueueIndex();
+    
+    // Get the task queue with the highest priority
+    TaskQueue *q = &taskQueues[index];
+    TaskDescriptor *active = q->head;
+
+    if (active == NULL)
+    {
+        bwprintf("Error: active is NULL but index is returned: %d\n\r", index);
+        return NULL;
+    }
+
+    q->head = active->next;
+        
+    if (q->head == NULL)
+    {
+        // if queue becomes empty, set the tail to NULL and
+        // clear the status bit
+        q->tail = NULL;
+        queueStatus &= ~(1 << index);
+    }
+    else
+    {
+        active->next = NULL;
+    }
+    
+    if (active == NULL)
+    {
+        bwprintf(COM2, "Schedule failed, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
+    }
+    else
+    {
+        bwprintf(COM2, "Schedule successful, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
+    }
+
     return active;
 }
 
-TaskDescriptor *scheduleTask() {
-    if( global_active_kernel_task ) {
-        taskQueuePush( global_active_kernel_task );
+/**
+    Add an active task to the ready queue
+ */
+void queueTask(TaskDescriptor *task)
+{
+    int priority = taskGetPriority(task);
+    TaskQueue *q = &taskQueues[priority];
+    
+    if (q->tail == NULL)
+    {
+        // set up head and tail to the same task; task->next should be NULL;
+        // set the bit in queue status to 1 to indicate queue not empty
+        q->head = task;
+        q->tail = task;
+        task->next = NULL;
+        queueStatus |= 1 << priority;
     }
-    if( global_queue_status ) {
-        return global_active_kernel_task = taskQueuePop( highestPQIndex() );
+    else
+    {
+        // add the task to the tail
+        q->tail->next = task;
+        q->tail = task;
     }
-    return NULL;
+
+    bwprintf(COM2, "Enqueue successful, head: %x, tail: %x\n\r", q->head, q->tail);
 }
 
-void initScheduleSystem() {
-    global_active_kernel_task = NULL;
-    global_queue_status = 0;
-    for( int i = 0; i < TASK_MAX_PRIORITY; i++ ) {
-        global_task_queues[i].head = NULL;
-        global_task_queues[i].tail = &global_task_queues[i].head;
-    }
-    for( int i = 0; i < TASK_MAX_PRIORITY; i++ ) {
-        global_debruijn_lookup[ ((1 << i) * TASK_DBRJN_SQN) >> 27 ] = i;
-    }
-
-}

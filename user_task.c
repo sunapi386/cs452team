@@ -1,5 +1,6 @@
 #include "user_task.h"
-#include "bwio.h"
+
+#define COM2 1
 
 void userModeTask(){
     while(1) {

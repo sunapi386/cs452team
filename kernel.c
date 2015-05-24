@@ -4,8 +4,9 @@
 #include <task.h>
 #include <syscall.h>
 #include <context_switch.h>
+#include <scheduler.h>
 
-void firstTask() {
+void firstUserTask() {
     bwprintf(COM2, "First task!\n\r");
     int tid = MyParentTid();
     bwprintf(COM2, "Back! My parent_tid: %d\n\r", tid);
@@ -14,15 +15,19 @@ void firstTask() {
     Exit();
 }
 
-
-void InitKernel() {
+void initKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
-    initTaskSystem(&firstTask);
-    initScheduleSystem();
+    
+    initTaskSystem();
+
+    initScheduler();
+
+    // Initialize first user task
+    queueTask(taskCreate(0, &firstUserTask, -1));
 }
 
-void HandleRequest(TaskDescriptor *td, Syscall *request) {
+void handleRequest(TaskDescriptor *td, Syscall *request) {
     bwprintf(COM2, "Handling tid: %d\n\r", td->id);
 
     switch (request->type) {
@@ -50,54 +55,20 @@ void HandleRequest(TaskDescriptor *td, Syscall *request) {
 
 int main()
 {
-    InitKernel();
-
-    TaskDescriptor first;
-    int priority = 1;
-    first.id = 1 | (priority << TASK_PRIORITY_OFFSET);
-    first.parent_id = 100;
-    first.ret = 17;
-
-    // r2 - pc (code address)
-    *(first.sp - 11) = (unsigned int)(firstTask); // + 2195456
-
-    // r3 - user cpsr
-    *(first.sp - 10) = 16;
-
-    // 12 registers will be poped from user stack
-    first.sp -= 11;
-
-    Syscall **request = 0;
-
-    TaskDescriptor *td = &first;
-
-    KernelExit(td, request);
-
-    HandleRequest(&first, *request);
-
-    KernelExit(&first, request);
-
-    bwprintf(COM2, "Kernel main! Try again!\n\r");
-
-    KernelExit(&first, request);
-
-    bwprintf(COM2, "Bye!\n\r");
-
-    /*
-    EnqueueTask(first);
+    initKernel();
 
     for (;;)
     {
-         int request = 0;
-         TaskDescriptor *task = Scheduler();
-
+         Syscall **request = NULL;
+         TaskDescriptor *task = schedule();
          if (task == NULL)
          {
+             bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
              break;
          }
+         KernelExit(task, request);
+         handleRequest(task, *request);
+    }
 
-         KernelExit(task, &request);
-         HandleRequest(request);
-    }*/
     return 0;
 }

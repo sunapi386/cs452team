@@ -7,7 +7,8 @@
 #define SYS_PASS            3
 #define SYS_EXIT            4
 
-typedef struct Syscall {
+typedef
+struct Syscall {
     unsigned int type, arg1, arg2;
     int ret;
 } Syscall;
