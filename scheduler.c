@@ -15,7 +15,7 @@ static inline int getQueueIndex()
     return bitPositions[(unsigned int)((queueStatus ^ (queueStatus & (queueStatus - 1))) * 0x077CB531U) >> 27];
 }
 
-void initScheduler()
+void initScheduleSystem()
 {
     volatile int i;
     for (i = 0; i < 32; i++)
@@ -48,7 +48,7 @@ TaskDescriptor * schedule()
 
     if (active == NULL)
     {
-        bwprintf("Error: active is NULL but index is returned: %d\n\r", index);
+        bwprintf(COM2, "Error: active is NULL but index is returned: %d\n\r", index);
         return NULL;
     }
 
