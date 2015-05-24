@@ -83,4 +83,4 @@
 #define UART_HDLCRIB_OFFSET 0x218
 #define UART_HDLCSTS_OFFSET 0x21c
 
-#endif // __TS7200_H
+#endif
