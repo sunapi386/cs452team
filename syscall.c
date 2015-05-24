@@ -5,6 +5,7 @@ static Syscall s;
 // Don't modify this! I know there isn't a return statement!
 // It's magic! (It needs the request parameter too)
 static inline int swi(Syscall *request) {
+    register unsigned int arg0_register asm("r0") = request;
     asm volatile("swi");
 }
 
