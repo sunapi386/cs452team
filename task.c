@@ -31,7 +31,7 @@ static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
 
-int taskCreate(int priority, void (*code)(void), int parent_id) {
+TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id) {
     if( priority < 0 || priority >= TASK_MAX_PRIORITY || code == NULL ) {
         return -1; // invalid params
     }
@@ -75,7 +75,7 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
 
     *(new_task->sp) = new_task->sp + 15; // FIXME
 
-    return new_task->id;
+    return new_task;
 }
 
 

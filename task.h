@@ -73,7 +73,7 @@ void initTaskSystem();
    -3: no more stack space
    non-negative: newly created task id
  */
-int taskCreate(int priority, void (*code)(void), int parent_id);
+TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id);
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 
 int taskGetMyId(TaskDescriptor *task);
