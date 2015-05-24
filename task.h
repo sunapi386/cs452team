@@ -66,31 +66,13 @@ typedef struct TaskDescriptor {
 
 
 void initTaskSystem();
-
-/* Returns:
-   -1: invalid priority or code pointer
-   -2: too many tasks created
-   -3: no more stack space
-   non-negative: newly created task id
- */
 TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id);
 void taskSetReturnValue(TaskDescriptor *task, int ret);
-
 int taskGetMyId(TaskDescriptor *task);
 int taskGetMyParentId(TaskDescriptor *task);
 int taskGetPriority(TaskDescriptor *task);
 
 
-
-static inline unsigned int taskCalcStackHigh(int task_id) {
-    unsigned int index = task_id;
-    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
-}
-
-static inline unsigned int taskCalcStackLow(int task_id) {
-    unsigned int index = task_id;
-    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
-}
 
 // Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
 static inline int taskMakeId(int index, int priority, int unique) {
@@ -99,8 +81,6 @@ static inline int taskMakeId(int index, int priority, int unique) {
         (priority << TASK_PRIORITY_OFFSET) |
         (unique << TASK_UNIQUE_OFFSET);
 }
-
-
 
 inline int taskGetMyId(TaskDescriptor *task) {
     return task->id;
