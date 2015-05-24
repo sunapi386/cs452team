@@ -19,19 +19,16 @@ void firstTask() {
 void InitKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
-    initTaskSystem();
+    initTaskSystem(&firstTask);
     InitScheduler();
 }
 
-void HandleRequest(TaskDescriptor *td, Syscall *request)
-{
+void HandleRequest(TaskDescriptor *td, Syscall *request) {
     bwprintf(COM2, "Handling tid: %d\n\r", td->id);
 
-    // TODO: Enums for requests?
-    switch (request->type)
-    {
+    switch (request->type) {
     case SYS_CREATE:
-        //td->ret = taskCreate(request->arg1, request->arg2, stack_size, parent_id);
+        td->ret = taskCreate(request->arg1, request->arg2, parent_id);
         break;
     case SYS_MY_TID:
         bwprintf(COM2, "Setting return value for mytid: %d\n\r", td->id);
