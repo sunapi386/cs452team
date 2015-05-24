@@ -4,17 +4,11 @@
 
 static int global_next_unique_task_id;
 static unsigned int *global_current_stack;
-static TaskDescriptor *global_active_kernel_task;
 static TaskDescriptor global_task_table[TASK_MAX_TASKS];
-static unsigned int global_queue_status;
-static TaskQueue global_task_queues[32];
-static int global_debruijn_lookup[32];
 
 void initTaskSystem(void (*firstTask)(void)) {
     global_next_unique_task_id = 1;
-    global_active_kernel_task = NULL;
     global_current_stack = (unsigned int *) TASK_STACK_HIGH;
-    global_queue_status = 0;
     for( int i = 1; i < TASK_MAX_TASKS; i++ ) {
         TaskDescriptor *task = global_task_table + i;
         task->id = 0;
@@ -29,14 +23,6 @@ void initTaskSystem(void (*firstTask)(void)) {
     if( ret < 0 ) {
         bwprintf( COM2, "FATAL: initTaskSystem fail creating first task %d.\n\r", ret );
     }
-    for( int i = 0; i < TASK_MAX_PRIORITY; i++ ) {
-        global_task_queues[i].head = NULL;
-        global_task_queues[i].tail = &global_task_queues[i].head;
-    }
-    for( int i = 0; i < TASK_MAX_PRIORITY; i++ ) {
-        global_debruijn_lookup[ ((1 << i) * TASK_DBRJN_SQN) >> 27 ] = i;
-    }
-
 }
 
 
@@ -73,51 +59,3 @@ int taskFindFreeTaskTableIndex(); // FIXME: Jason: Implement this
 void taskExit() {
     global_active_kernel_task = NULL;
 }
-
-
-// Begin Scheduler Code
-/** scheduler.h
-The task at the front of the highest-priority FIFO queue will be granted the CPU until it terminates or blocks.
-The dispatcher uses a 32-level priority scheme to determine the order of task execution.
-*/
-
-/**
-Get the position of the least significant set bit position in global_queue_status
-Credit: http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
- */
-static inline int highestPQIndex() {
-    return global_debruijn_lookup[ ((global_queue_status ^ (global_queue_status & (global_queue_status - 1))) * TASK_DBRJN_SQN) >> 27 ];
-}
-
-static inline void taskQueuePush(TaskDescriptor *task) {
-    int priority = taskGetPriority(task);
-    TaskQueue *q = &global_task_queues[priority];
-    *(q->tail) = task; // head <- task
-    q->tail &= (q->next); // same as t->next == NULL ? NULL : t->next
-    global_queue_status |= 1 << priority;
-}
-
-static inline TaskDescriptor *taskQueuePop(int priority) {
-    TaskQueue *q = &global_task_queues[priority];
-    TaskDescriptor *active =  q->head;
-    q->head = active->next;
-    active->next = NULL;
-    if( ! q->head ) {
-        // queue empty, set the tail to NULL, clear the status bit
-        q->tail = &q->head;
-        global_queue_status &= ~(1 << priority);
-    }
-    return active;
-}
-
-TaskDescriptor *scheduleTask() {
-    if( global_active_kernel_task ) {
-        taskQueuePush( global_active_kernel_task );
-    }
-    if( global_queue_status ) {
-        return global_active_kernel_task = taskQueuePop( highestPQIndex() );
-    }
-    return NULL;
-}
-
-// End Scheduler Code

@@ -33,25 +33,8 @@
 #define TASK_STACK_LOW      (TASK_STACK_HIGH - \
                             TASK_MAX_TASKS * (TASK_STACK_SIZE + TASK_TRAP_SIZE))
 
-
-
-//  Begin Scheduler Code
 #define NULL 0
-#define TASK_DBRJN_SQN 0x077CB531U
 
-typedef struct TaskQueue {
-    struct TaskDescriptor *head;
-    struct TaskDescriptor **tail;
-} TaskQueue;
-
-/** scheduleTask()
-Called by the kernel; dequeue the first task in the highest priority queue
-    Returns:
-        Success: Pointer to the TD of the next active task
-        Fail: NULL
- */
-struct TaskDescriptor *scheduleTask();
-// End Scheduler Code
 
 /**
 Task.h
