@@ -16,30 +16,17 @@ void firstTask() {
 }
 
 
-void InitKernel(TaskDescriptor pool[])
-{
+void InitKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
-
-    // Initialize tasks
-    int i;
-    for (i = 0; i < MAX_NUM_TASKS; i++)
-    {
-        TaskDescriptor *task = &pool[i];
-        task->id = i;
-        task->parent_id = 0;
-        task->priority = 0;
-        task->ret = 0;
-        task->next = NULL;
-    }
-
+    initTaskSystem();
     InitScheduler();
 }
 
 void HandleRequest(TaskDescriptor *td, Syscall *request)
 {
     bwprintf(COM2, "Handling tid: %d\n\r", td->id);
-    
+
     // TODO: Enums for requests?
     switch (request->type)
     {
@@ -48,11 +35,11 @@ void HandleRequest(TaskDescriptor *td, Syscall *request)
         break;
     case SYS_MY_TID:
         bwprintf(COM2, "Setting return value for mytid: %d\n\r", td->id);
-        td->ret = td->id;
+        td->ret = taskGetMyId(td);
         break;
     case SYS_MY_PARENT_TID:
         bwprintf(COM2, "Setting return value parent_tid: %d\n\r", td->parent_id);
-        td->ret = td->parent_id;
+        td->ret = taskGetMyParentId(td);
         break;
     case SYS_PASS:
         // Reschedule task
@@ -70,11 +57,7 @@ void HandleRequest(TaskDescriptor *td, Syscall *request)
 
 int main()
 {
-    TaskDescriptor taskPool[MAX_NUM_TASKS];
-
-    InitKernel(taskPool);
-
-    //TaskDescriptor *first = &taskPool[0];
+    InitKernel();
 
     TaskDescriptor first;
     first.id = 1234;
@@ -103,7 +86,7 @@ int main()
     Syscall **request = 0;
 
     TaskDescriptor *td = &first;
-    
+
     KernelExit(td, request);
 
     HandleRequest(&first, *request);
