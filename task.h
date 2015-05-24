@@ -74,7 +74,6 @@ void initTaskSystem();
    non-negative: newly created task id
  */
 int taskCreate(int priority, void (*code)(void), int parent_id);
-void taskExit();
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 
 int taskGetMyId(TaskDescriptor *task);
@@ -100,12 +99,6 @@ static inline int taskMakeId(int index, int priority, int unique) {
         (priority << TASK_PRIORITY_OFFSET) |
         (unique << TASK_UNIQUE_OFFSET);
 }
-
-// FIXME
-static inline unsigned int *taskMakeSp(int task_id) {
-    return 0;
-}
-
 
 
 
