@@ -6,10 +6,13 @@ static Syscall s;
 // It's magic! (It needs the request parameter too)
 int swi(Syscall *request)
 {
-    register Syscall *arg0_register asm("r0") = request;
+    //register Syscall *arg0_register asm("r0") = request;
     asm volatile("swi");
+    
+    register unsigned int r0 asm("r0");
     // after kernel handles syscall the result should be in r0
-    return arg0_register;
+    //return arg0_register;
+    return r0;
 }
 
 int Create(int priority, void (*code) ())
