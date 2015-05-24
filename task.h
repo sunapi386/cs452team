@@ -11,7 +11,7 @@
 // sp + 14 = r14 (lr)
 #define TASK_TRAP_SIZE      15
 #define TASK_BITS           8   // 2^8 = 128
-#define TASK_PRIORITY_BITS  5   // 2^5 = 32
+#define TASK_PRIORITY_BITS  5   // 2^5 = 32  Warning: Brujin table is 32.
 
 #define TASK_MAX_TASKS      (1<<TASK_BITS)
 #define TASK_MAX_PRIORITY   (1<<TASK_PRIORITY_BITS)
@@ -37,14 +37,20 @@
 
 //  Begin Scheduler Code
 #define NULL 0
+#define TASK_DBRJN_SQN 0x077CB531U
 
 typedef struct TaskQueue {
-    struct TaskDescriptor *head, *tail;
+    struct TaskDescriptor *head;
+    struct TaskDescriptor **tail;
 } TaskQueue;
 
-void InitScheduler();
-struct TaskDescriptor * Scheduler();
-void EnqueueTask(struct TaskDescriptor *task);
+/** scheduleTask()
+Called by the kernel; dequeue the first task in the highest priority queue
+    Returns:
+        Success: Pointer to the TD of the next active task
+        Fail: NULL
+ */
+struct TaskDescriptor *scheduleTask();
 // End Scheduler Code
 
 /**
@@ -84,8 +90,8 @@ void initTaskSystem();
    -3: no more stack space
    non-negative: newly created task id
  */
-int taskCreate(unsigned int priority, void (*code)(void), int parent_id);
-
+int taskCreate(int priority, void (*code)(void), int parent_id);
+void taskExit();
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 
 int taskGetMyId(TaskDescriptor *task);
@@ -95,7 +101,13 @@ int taskGetPriority(TaskDescriptor *task);
 
 
 static inline unsigned int taskCalcStackHigh(int task_id) {
-    return TASK_STACK_HIGH - (TASK_STACK_SIZE * next_task_id + TASK_TRAP_SIZE);
+    unsigned int index = task_id;
+    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
+}
+
+static inline unsigned int taskCalcStackLow(int task_id) {
+    unsigned int index = task_id;
+    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
 }
 
 // Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
@@ -108,8 +120,7 @@ static inline int taskMakeId(int index, int priority, int unique) {
 
 // FIXME
 static inline unsigned int *taskMakeSp(int task_id) {
-
-    return
+    return 0;
 }
 
 
@@ -128,8 +139,8 @@ inline int taskGetMyParentId(TaskDescriptor *task) {
 }
 
 inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
-    *(task->ret) = ret;
+    task->ret = ret;
 }
 
 
-#endif /* __TASK_H */
+#endif

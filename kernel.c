@@ -3,7 +3,6 @@
 #include <cpsr.h>
 #include <task.h>
 #include <syscall.h>
-#include <scheduler.h>
 #include <context_switch.h>
 
 void firstTask() {
@@ -20,7 +19,6 @@ void InitKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
     initTaskSystem(&firstTask);
-    InitScheduler();
 }
 
 void HandleRequest(TaskDescriptor *td, Syscall *request) {
@@ -28,7 +26,7 @@ void HandleRequest(TaskDescriptor *td, Syscall *request) {
 
     switch (request->type) {
     case SYS_CREATE:
-        td->ret = taskCreate(request->arg1, request->arg2, parent_id);
+        td->ret = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
         break;
     case SYS_MY_TID:
         bwprintf(COM2, "Setting return value for mytid: %d\n\r", td->id);
@@ -39,12 +37,9 @@ void HandleRequest(TaskDescriptor *td, Syscall *request) {
         td->ret = taskGetMyParentId(td);
         break;
     case SYS_PASS:
-        // Reschedule task
-        EnqueueTask(td);
         break;
     case SYS_EXIT:
-        // Do not reschedule
-        // taskExit();
+        taskExit();
         break;
     default:
         bwprintf(COM2, "Invalid syscall %u!", request->type);
@@ -57,19 +52,10 @@ int main()
     InitKernel();
 
     TaskDescriptor first;
-    first.id = 1234;
+    int priority = 1;
+    first.id = 1 | (priority << TASK_PRIORITY_OFFSET);
     first.parent_id = 100;
-    first.priority = 0;
     first.ret = 17;
-    unsigned int *ptr = first.stack;
-    first.sp = ptr + USER_STACK_SIZE - 1;
-
-    int i;
-    for (i=0;i < USER_STACK_SIZE ;i++)
-    {
-        first.stack[i] = i;
-        //first.stack[i] = 2195456 + (unsigned int)(firstTask);
-    }
 
     // r2 - pc (code address)
     *(first.sp - 11) = (unsigned int)(firstTask); // + 2195456
