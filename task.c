@@ -1,21 +1,12 @@
 #include <task.h>
 #include <cpsr.h>
-
-#define COM2 1
+#include <bwio.h>
 
 static int global_next_unique_task_id;
 static unsigned int *global_current_stack_address;
 static TaskDescriptor global_task_table[TASK_MAX_TASKS];
 
-static inline unsigned int taskCalcStackHigh(int task_id) {
-    unsigned int index = task_id;
-    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
-}
 
-static inline unsigned int taskCalcStackLow(int task_id) {
-    unsigned int index = task_id;
-    return TASK_STACK_HIGH - (TASK_STACK_SIZE * index + TASK_TRAP_SIZE);
-}
 
 // Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
 static inline int taskMakeId(int index, int priority, int unique) {
@@ -30,7 +21,7 @@ static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
 
-void initTaskSystem() {
+void initTaskSystem(TaskDescriptor *firstTask) {
     global_next_unique_task_id = 1;
     global_current_stack_address = (unsigned int *) TASK_STACK_HIGH;
 
@@ -87,4 +78,20 @@ TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id) {
     *(new_task->sp + 1) = UserMode | DisableIRQ | DisableFIQ;   // r2: cpsr_user
 
     return new_task;
+}
+
+inline int taskGetMyId(TaskDescriptor *task) {
+    return task->id;
+}
+
+inline int taskGetPriority(TaskDescriptor *task) {
+    return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
+}
+
+inline int taskGetMyParentId(TaskDescriptor *task) {
+    return task->parent_id;
+}
+
+inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
+    task->ret = ret;
 }

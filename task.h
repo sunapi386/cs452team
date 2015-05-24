@@ -63,35 +63,11 @@ typedef struct TaskDescriptor {
 } TaskDescriptor;
 
 
-void initTaskSystem();
 TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id);
+void initTaskSystem(TaskDescriptor *firstTask);
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 int taskGetMyId(TaskDescriptor *task);
 int taskGetMyParentId(TaskDescriptor *task);
 int taskGetPriority(TaskDescriptor *task);
-
-// Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
-static inline int taskMakeId(int index, int priority, int unique) {
-    return
-        (index << TASK_INDEX_OFFSET) |
-        (priority << TASK_PRIORITY_OFFSET) |
-        (unique << TASK_UNIQUE_OFFSET);
-}
-
-static inline int taskGetMyId(TaskDescriptor *task) {
-    return task->id;
-}
-
-static inline int taskGetPriority(TaskDescriptor *task) {
-    return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
-}
-
-static inline int taskGetMyParentId(TaskDescriptor *task) {
-    return task->parent_id;
-}
-
-static inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
-    task->ret = ret;
-}
 
 #endif
