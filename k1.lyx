@@ -69,11 +69,11 @@
 \begin_body
 
 \begin_layout Title
-CS 452 Kernel 1
+CS 452: Kernel 1
 \end_layout
 
 \begin_layout Author
-Jason Sun (#20387090) and Shuo Chang (#???????)
+Jason Sun (#20387090) and Shuo Chang (#20378235)
 \end_layout
 
 \begin_layout Date
@@ -232,7 +232,6 @@ r2-r12
  lr
 \family default
 } on kernel stack.
- 
 \end_layout
 
 \begin_layout Enumerate
@@ -310,7 +309,7 @@ r0-r12
 \end_layout
 
 \begin_layout Enumerate
-Switch to supervisor mode 
+Switch to supervisor mode
 \family typewriter
 msr cpsr_c, #0xd3
 \family default
@@ -335,7 +334,7 @@ Via
 \family typewriter
  swi n
 \family default
- jumping to 
+ jumping to
 \family typewriter
 KernelEnter
 \family default
@@ -348,7 +347,7 @@ Switch to system mode:
 
 \begin_deeper
 \begin_layout Enumerate
-Store user task registers 
+Store user task registers
 \family typewriter
 {r0-r12
 \family default
@@ -357,7 +356,6 @@ Store user task registers
  lr
 \family default
 } on user stack.
- 
 \family typewriter
 pc
 \family default
@@ -374,7 +372,7 @@ Move
  r0
 \family default
 .
- Note this is 
+ Note this is
 \family typewriter
 sp_
 \family default
@@ -423,7 +421,7 @@ Move
 \end_layout
 
 \begin_layout Enumerate
-Pop kernel registers from kernel stack 
+Pop kernel registers from kernel stack
 \family typewriter
 {r2-r12
 \family default
@@ -435,7 +433,7 @@ Pop kernel registers from kernel stack
 \end_layout
 
 \begin_layout Enumerate
-Restore 
+Restore
 \family typewriter
 r0
 \family default
@@ -444,8 +442,6 @@ r0
  sp
 \family default
 ) and
-\family typewriter
- 
 \end_layout
 
 \begin_layout Enumerate
@@ -677,7 +673,7 @@ t"                // copy arg1
 \end_layout
 
 \begin_layout LyX-Code
-active->sp = sp_;         
+active->sp = sp_;
 \end_layout
 
 \begin_layout LyX-Code
@@ -696,7 +692,7 @@ Trap Frame
 When the user does a syscall, a trap frame is set up and calls the kernel.
  The trap frame is pushed on the calling task's stack, storing its state
  (registers).
- The layout of registers stored is: 
+ The layout of registers stored is:
 \end_layout
 
 \begin_layout LyX-Code
@@ -704,7 +700,7 @@ When the user does a syscall, a trap frame is set up and calls the kernel.
 \end_layout
 
 \begin_layout LyX-Code
-[ PC  ]  
+[ PC  ]
 \end_layout
 
 \begin_layout LyX-Code
@@ -730,7 +726,7 @@ When the user does a syscall, a trap frame is set up and calls the kernel.
 
 \begin_layout LyX-Code
 [ ...
- ]  
+ ]
 \end_layout
 
 \begin_layout Standard
@@ -752,29 +748,142 @@ Syscalls
 \end_layout
 
 \begin_layout Standard
-Syscalls defined in C functions, in 
+Syscalls defined in C functions, in
 \family typewriter
-syscall.{c,h}
+ syscall.{c,h}
 \family default
  files.
- They execute
+ There is a
 \family typewriter
- swi n
+Syscall
 \family default
- where 
-\family typewriter
-n
-\family default
- is the syscall defined in the header.
- 
+ structure that contains the syscall type, and args 1 and args 2.
 \end_layout
 
 \begin_layout Subsection
 Tasks
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Standard
+A task can be created off a function pointer and represents a chunk of code
+ to execute.
+\end_layout
+
+\begin_layout Subsubsection
+Task Descriptor
+\end_layout
+
+\begin_layout Standard
+A TaskDescriptor struct holds:
+\end_layout
+
+\begin_layout Itemize
+task id, contains an index into a global table of task descriptors pre-allocated.
+\end_layout
+
+\begin_layout Itemize
+parent id, whoever called
+\family typewriter
+ Create()
+\family default
+.
+
+\end_layout
+
+\begin_layout Itemize
+return value,
+\end_layout
+
+\begin_layout Itemize
+stack pointer,
+\family typewriter
+sp
+\family default
+ and
+\family typewriter
+ spsr
+\family default
+ are manipulated by the context switch.
+
+\end_layout
+
+\begin_layout Itemize
+saved program status register
+\end_layout
+
+\begin_layout Itemize
+and a pointer to the next task descriptor for singly linked list.
+\end_layout
+
+\begin_layout Standard
+Currently only can create 128 tasks before failing to create more tasks.
+\end_layout
+
+\begin_layout Subsubsection
 Scheduling
+\end_layout
+
+\begin_layout Standard
+Tasks each has a priority level.
+ The scheduler tracks this tasks' priority via 32 ring buffer queues.
+
+\end_layout
+
+\begin_layout Standard
+A bitmask keeps track of which of the 32 queues contains tasks.
+ Using this bitmask, we efficiently computing the number of right leading
+ zeroes in the bitmask with De Bruijn table lookup.
+
+\end_layout
+
+\begin_layout Standard
+The kernel calls
+\family typewriter
+taskSchedule()
+\family default
+ on each loop, and the queue with the highest priority is returned.
+ The head of that queue is rotated to be the tail and the pointer is returned
+ as the next task to be scheduled.
+\end_layout
+
+\begin_layout Subsubsection
+Task Creation
+\end_layout
+
+\begin_layout Standard
+A task is created by specifying a priority, a function pointer, and parent
+ task id.
+ The
+\family typewriter
+ Create()
+\family default
+ syscall is implemented by this function.
+\end_layout
+
+\begin_layout Standard
+A task descriptor is filled in to the task table.
+ Then a stack is allocated, a size of 4096 words.
+ There is syscall to change a task's stack size.
+ It also initializes a trap frame by setting
+\family typewriter
+pc
+\family default
+ to the value of the function pointer and saved stored program register.
+
+\end_layout
+
+\begin_layout Standard
+Finally the kernel adds the task descriptor to priority queue.
+\end_layout
+
+\begin_layout Subsubsection
+Task Exit & Deletion
+\end_layout
+
+\begin_layout Standard
+Once a task is removed from the priority queues, the task will not be scheduled
+ again.
+ No effort is made to reclaim task descriptors.
 \end_layout
 
 \begin_layout Section
@@ -787,21 +896,20 @@ Code is located under
 /u1/j53sun/cs452team/
 \family default
 .
- 
 \end_layout
 
 \begin_layout Standard
-Compiling is as simple as running
+Compiling by running
 \family typewriter
-make
+ make
 \family default
-, which will also copy the local
+, which also copies the local
 \family typewriter
-kernel.elf
+ kernel.elf
 \family default
  to
 \family typewriter
-/u/cs452/tftp/ARM/cs452_05/kernel_k0.elf
+/u/cs452/tftp/ARM/j53sun/cs452team/k1.elf
 \family default
 .
 \end_layout
@@ -812,75 +920,72 @@ kernel.elf
 File md5sums
 \end_layout
 
-\begin_layout LyX-Code
-j53sun@ubuntu1204-002:~/cs452team$ md5sum * 
-\end_layout
+
 
 \begin_layout LyX-Code
-99b14b7cdf8c75a76aa95a84baa99b7a  bwio.d 
+8da586d949d31e239dfbe0c8356588f6  bwio.c
 \end_layout
-
 \begin_layout LyX-Code
-e4b6fb3bba23dbc7894365d089569084  bwio.s 
+db0bab80ffcef52c8ce1a968c65587a9  bwio.h
 \end_layout
-
 \begin_layout LyX-Code
-7325710433d4c3f2ca2ef7d024b4090c  context_switch.h
+d02b490ecfa9f94ca03ccb1004f23efe  context_switch.h
 \end_layout
-
 \begin_layout LyX-Code
-1380c061df6d3fcf5ca731ca0870f12a  context_switch.s
+1ba8cd1b57c22116b57e96d22022cec5  context_switch.s
 \end_layout
-
 \begin_layout LyX-Code
 e9ecc0c507565cc766ec637a9aec3ab6  cpsr.h
 \end_layout
-
 \begin_layout LyX-Code
-208557261c197d03bdc6b12d51bb17a6  doxygen.config 17928a24ca4436c15190a8e77b2608eb
-  kernel.c
+6bf72fad920c3d9e326401a101e31ac0  k1.lyx
 \end_layout
-
 \begin_layout LyX-Code
-e87799ad275ab3fd1199dba2ea334e5c  linker.ld 
+524bf9b87a0c352c3f62a46c15618ca3  k1.pdf
 \end_layout
-
 \begin_layout LyX-Code
-bb9d37dae24e4e08a43483e8ca8e110f  Makefile 
+8fa76c583dac06f80d4028cdee20d7c3  kernel.c
 \end_layout
-
+\begin_layout LyX-Code
+e87799ad275ab3fd1199dba2ea334e5c  linker.ld
+\end_layout
+\begin_layout LyX-Code
+7c1b255735fd098a6ecd2b8a8903a0d9  Makefile
+\end_layout
 \begin_layout LyX-Code
 53fdea2ffa00ca6f9bbbea8f47d7b5ea  readme.md
 \end_layout
-
 \begin_layout LyX-Code
-7e3c4c63adb0b9be9ae4fa8f3677957c  scheduler.c
+d8e9046f472dc425d1cb3f884e0c939e  scheduler.c
+\end_layout
+\begin_layout LyX-Code
+0954bdc95abf5a2dfe291e04b8dedb80  scheduler.h
+\end_layout
+\begin_layout LyX-Code
+d6bdf5714a8d499da29f1064973580ae  stdbool.h
+\end_layout
+\begin_layout LyX-Code
+d8382c43b39efd0f066522396ddb41b5  syscall.c
+\end_layout
+\begin_layout LyX-Code
+702846c6401a9fddeb232c1244e03511  syscall.h
+\end_layout
+\begin_layout LyX-Code
+8e4e2530209d10a7f2a7b9c450cafd08  task.c
+\end_layout
+\begin_layout LyX-Code
+11d63ce61f395dde30e120fd11ed183a  task.h
+\end_layout
+\begin_layout LyX-Code
+2c5fc627ac5386f1f96a65d2f8dc9d67  ts7200.h
+\end_layout
+\begin_layout LyX-Code
+1e7dca0aa66b495b8d4f1e89490b88f1  user_task.c
+\end_layout
+\begin_layout LyX-Code
+962dc8dab4c71088e86d7c7c6bb9adc8  user_task.h
 \end_layout
 
-\begin_layout LyX-Code
-f80b164c2c64c33e7f0c3c4f053806b9  scheduler.h 
-\end_layout
-
-\begin_layout LyX-Code
-620368217046ce3bd0f60b135af8f7c8  sftp-config.json d6bdf5714a8d499da29f1064973580
-ae  stdbool.h 
-\end_layout
-
-\begin_layout LyX-Code
-c4514d457ae97d5926b8267f8702aa8c  syscall.c 
-\end_layout
-
-\begin_layout LyX-Code
-f9a2fd02c38d6487ecb03eedac299098  syscall.h 
-\end_layout
-
-\begin_layout LyX-Code
-d3575bed4f5cacfc59d13e7ee2b3931d  task.h 
-\end_layout
-
-\begin_layout LyX-Code
-e4a2610f5d6aba2f5d7b46a720e91668  ts7200.h
-\end_layout
 
 \begin_layout Section
 Program Output
