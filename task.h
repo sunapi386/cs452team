@@ -34,6 +34,19 @@
                             TASK_MAX_TASKS * (TASK_STACK_SIZE + TASK_TRAP_SIZE))
 
 
+
+//  Begin Scheduler Code
+#define NULL 0
+
+typedef struct TaskQueue {
+    struct TaskDescriptor *head, *tail;
+} TaskQueue;
+
+void InitScheduler();
+struct TaskDescriptor * Scheduler();
+void EnqueueTask(struct TaskDescriptor *task);
+// End Scheduler Code
+
 /**
 Task.h
 Each task has a task descriptor (TD), which is the most important data structure
