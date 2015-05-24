@@ -19,6 +19,7 @@ void InitKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
     initTaskSystem(&firstTask);
+    initScheduleSystem();
 }
 
 void HandleRequest(TaskDescriptor *td, Syscall *request) {

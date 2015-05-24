@@ -13,5 +13,6 @@ Called by the kernel; dequeue the first task in the highest priority queue
         Success: Pointer to the TD of the next active task
         Fail: NULL
  */
+void initScheduleSystem();
 struct TaskDescriptor *scheduleTask();
 #endif
