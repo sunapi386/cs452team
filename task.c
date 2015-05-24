@@ -21,7 +21,7 @@ static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
 
-void initTaskSystem(TaskDescriptor *firstTask) {
+void initTaskSystem() {
     global_next_unique_task_id = 1;
     global_current_stack_address = (unsigned int *) TASK_STACK_HIGH;
 
@@ -32,11 +32,6 @@ void initTaskSystem(TaskDescriptor *firstTask) {
         task->ret = 0;
         task->sp = NULL;
         task->next = NULL;
-    }
-    // setup first task, kernel_task
-    TaskDescriptor *first = taskCreate(1, firstTask, -1);
-    if( first == NULL ) {
-        bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
     }
 }
 

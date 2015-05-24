@@ -19,8 +19,7 @@ Synopsis. int Create( int priority, void (*code) ( ) )
 Description. Create allocates and initializes a task descriptor, using the given priority, and the given function pointer as a pointer to the entry point of executable code, essentially a function with no arguments and no return value. When Create returns the task descriptor has all the state needed to run the task, the task’s stack has been suitably initialized, and the task has been entered into its ready queue so that it will run the next time it is scheduled.
 Returns.
     tid: positive integer task id of the newly created task. The task id must be unique, in the sense that no task has, will have or has had the same task id.
-    -1 : the priority is invalid.
-    -2 : the kernel is out of task descriptors.
+    -1 : error(s) occured
 Do rough tests to ensure that the function pointer argument is valid.
 */
 int Create( int priority, void (*code) ( ) );

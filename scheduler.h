@@ -5,7 +5,7 @@ typedef struct TaskQueue {
     struct TaskDescriptor *tail;
 } TaskQueue;
 
-void initScheduleSystem();
+void initScheduler();
 
 /** schedule()
 Called by the kernel; dequeue the first task in the highest priority queue

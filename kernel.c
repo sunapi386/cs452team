@@ -32,8 +32,19 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
 
     switch (request->type) {
     case SYS_CREATE:
-        td->ret = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
+    {
+        TaskDescriptor *task = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
+        if (task)
+        {
+            queueTask(task);
+            td->ret = 0;
+        }
+        else
+        {
+            td->ret = -1;
+        }
         break;
+    }
     case SYS_MY_TID:
         bwprintf(COM2, "Setting return value for mytid: %d\n\r", td->id);
         td->ret = taskGetMyId(td);
@@ -45,12 +56,14 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
     case SYS_PASS:
         break;
     case SYS_EXIT:
-        taskExit();
-        break;
+        return;
     default:
         bwprintf(COM2, "Invalid syscall %u!", request->type);
         break;
-   }
+    }
+
+    // requeue the task if we haven't returned (from SYS_EXIT)
+    queueTask(td);
 }
 
 int main()

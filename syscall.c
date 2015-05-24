@@ -6,7 +6,7 @@ static Syscall s;
 // It's magic! (It needs the request parameter too)
 int swi(Syscall *request)
 {
-    register unsigned int arg0_register asm("r0") = request;
+    register Syscall *arg0_register asm("r0") = request;
     asm volatile("swi");
 }
 
