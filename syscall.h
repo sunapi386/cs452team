@@ -9,7 +9,7 @@
 
 typedef
 struct Syscall {
-    unsigned int type, arg1, arg2;
+    unsigned int type, arg1, arg2, arg3, arg4, arg5;
     int ret;
 } Syscall;
 
@@ -59,5 +59,31 @@ Returns. Exit does not return. If a point occurs where all tasks have exited the
 */
 void Exit( );
 
+/**
+Send - send a message
+
+Returns: The size of the message supplied by the replying task.
+    -1 – if the task id is impossible.
+    -2 – if the task id is not an existing task.
+    -3 – if the send-receive-reply transaction is incomplete.
+ */
+int Send( int tid, char *msg, int msglen, char *reply, int replylen );
+
+/**
+Receive - receive a message
+
+Returns: The size of the message sent.
+*/
+int Receive( int *tid, char *msg, int msglen );
+
+/**
+Reply - reply to a message
+
+Returns: 0 if the reply succeeds.
+    -1 – if the task id is not a possible task id.
+    -2 – if the task id is not an existing task.
+    -3 – if the task is not reply blocked.
+*/
+int Reply( int tid, char *reply, int replylen );
 
 #endif
