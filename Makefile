@@ -33,8 +33,8 @@ objects := $(patsubst %.c,%.o,$(sources)) $(patsubst %.s,%.o,$(hand_assemblies))
 
 kernel.elf: $(objects) linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lgcc
-	cp kernel.elf /u/cs452/tftp/ARM/${USER}/k1.elf
-	chmod 755 /u/cs452/tftp/ARM/${USER}/k1.elf
+	cp kernel.elf /u/cs452/tftp/ARM/${USER}/k2.elf
+	chmod 755 /u/cs452/tftp/ARM/${USER}/k2.elf
 
 %.s: %.c
 	$(CC) -S $(CFLAGS) $<
