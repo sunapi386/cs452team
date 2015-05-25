@@ -2,7 +2,7 @@
 #include <task.h>
 #include <bwio.h>
 
-static unsigned int queueStatus = 0;
+static volatile unsigned int queueStatus = 0;
 static TaskQueue taskQueues[32];
 
 static inline int getQueueIndex()
@@ -17,7 +17,7 @@ static inline int getQueueIndex()
 
 void initScheduler()
 {
-    volatile int i;
+    int i;
     for (i = 0; i < 32; i++)
     {
         taskQueues[i].head = NULL;
@@ -31,7 +31,7 @@ void initScheduler()
         Success: Pointer to the TD of the next active task
         Fail: NULL
  */
-TaskDescriptor * schedule()
+volatile TaskDescriptor * schedule()
 {
     if (queueStatus == 0)
     {
@@ -46,9 +46,10 @@ TaskDescriptor * schedule()
     TaskQueue *q = &taskQueues[index];
     TaskDescriptor *active = q->head;
 
-    if (active == NULL)
+    if (q->head == NULL && 
+        queueStatus == 0)
     {
-        bwprintf(COM2, "Error: active is NULL but index is returned: %d\n\r", index);
+        bwprintf(COM2, "Error: head is NULL but index is returned: %d\n\r", index);
         return NULL;
     }
 
@@ -102,6 +103,6 @@ void queueTask(TaskDescriptor *task)
         q->tail = task;
     }
 
-    bwprintf(COM2, "Enqueue successful, head: %x, tail: %x\n\r", q->head, q->tail);
+    bwprintf(COM2, "Enqueue successful, pri: %d, head: %x, tail: %x\n\r", priority, q->head, q->tail);
 }
 

@@ -13,7 +13,7 @@ Called by the kernel; dequeue the first task in the highest priority queue
         Success: Pointer to the TD of the next active task
         Fail: NULL
  */
-struct TaskDescriptor *schedule();
+volatile struct TaskDescriptor *schedule();
 void queueTask(struct TaskDescriptor *task);
 #endif
 
