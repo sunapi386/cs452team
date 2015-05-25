@@ -4,46 +4,37 @@ static Syscall s;
 
 // Don't modify this! I know there isn't are return statement!
 // It's magic! (It needs the request parameter too)
-int swi(Syscall *request)
-{
-    //register Syscall *arg0_register asm("r0") = request;
+int swi(Syscall *request) {
+    (void)request;
     asm volatile("swi");
-    
     register unsigned int r0 asm("r0");
-    // after kernel handles syscall the result should be in r0
-    //return arg0_register;
     return r0;
 }
 
-int Create(int priority, void (*code) ())
-{
+int Create(int priority, void (*code) ()) {
     s.type = SYS_CREATE;
     s.arg1 = priority;
     s.arg2 = (unsigned int)code;
     return swi(&s);
 }
 
-int MyTid()
-{
+int MyTid() {
     s.type = SYS_MY_TID;
     return swi(&s);
 }
 
-int MyParentTid()
-{
+int MyParentTid() {
     s.type = SYS_MY_PARENT_TID;
     return swi(&s);
 }
 
 
-void Pass()
-{
+void Pass() {
     s.type = SYS_PASS;
     swi(&s);
 }
 
-void Exit()
-{
+void Exit() {
     s.type = SYS_EXIT;
     swi(&s);
 }
