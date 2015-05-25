@@ -9,9 +9,9 @@
 
 void firstUserTask() {
     bwprintf(COM2, "First task!\n\r");
-    int tid = MyParentTid();
+    int tid = MyTid();
     bwprintf(COM2, "Back! My parent_tid: %d\n\r", tid);
-    Exit();
+    Pass();
     bwprintf(COM2, "Back again!");
     Exit();
 }
@@ -78,7 +78,7 @@ int main()
     for (;;)
     {
          Syscall **request = NULL;
-         TaskDescriptor *task = schedule();
+         volatile TaskDescriptor *task = schedule();
          if (task == NULL)
          {
              bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
