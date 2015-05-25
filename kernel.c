@@ -6,30 +6,17 @@
 #include <context_switch.h>
 #include <scheduler.h>
 #include <bwio.h>
-
-void secondUserTask() {
-    bwprintf(COM2, "Hello from second user task!\n\r");
-    Exit();
-}
-
-void firstUserTask() {
-    bwprintf(COM2, "First task!\n\r");
-    int ret = Create(0, &secondUserTask);
-    bwprintf(COM2, "Back! Create() returned: %d\n\r", ret);
-    Pass();
-    bwprintf(COM2, "Back again!");
-    Exit();
-}
+#include <user_task.h>
 
 void initKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
     initTaskSystem();
-    
+
     initScheduler();
 
     // setup first task, kernel_task
-    TaskDescriptor *initialTask = taskCreate(0, &firstUserTask, -1);
+    TaskDescriptor *initialTask = taskCreate(0, &userModeTask, -1);
     if( !initialTask ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
