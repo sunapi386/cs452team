@@ -7,10 +7,15 @@
 #include <scheduler.h>
 #include <bwio.h>
 
+void secondUserTask() {
+    bwprintf(COM2, "Hello from second user task!\n\r");
+    Exit();
+}
+
 void firstUserTask() {
     bwprintf(COM2, "First task!\n\r");
-    int tid = MyTid();
-    bwprintf(COM2, "Back! My parent_tid: %d\n\r", tid);
+    int ret = Create(0, &secondUserTask);
+    bwprintf(COM2, "Back! Create() returned: %d\n\r", ret);
     Pass();
     bwprintf(COM2, "Back again!");
     Exit();
