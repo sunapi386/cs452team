@@ -71,6 +71,6 @@ int taskGetPriority(TaskDescriptor *task);
 
 /* Returns NULL on invalid task_id */
 TaskDescriptor *taskGetTDById(int task_id);
-
-
+int taskGetUnique(TaskDescriptor *task);
+int taskGetMyParentUnique(TaskDescriptor *task);
 #endif

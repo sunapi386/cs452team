@@ -35,7 +35,7 @@ volatile TaskDescriptor * schedule()
 {
     if (queueStatus == 0)
     {
-        bwprintf(COM2, "Schedule failed, queue status is 0.\n\r");
+        // bwprintf(COM2, "Schedule failed, queue status is 0.\n\r");
         return NULL;
     }
 
@@ -46,10 +46,10 @@ volatile TaskDescriptor * schedule()
     TaskQueue *q = &taskQueues[index];
     TaskDescriptor *active = q->head;
 
-    if (q->head == NULL && 
+    if (q->head == NULL &&
         queueStatus == 0)
     {
-        bwprintf(COM2, "Error: head is NULL but index is returned: %d\n\r", index);
+        // bwprintf(COM2, "Error: head is NULL but index is returned: %d\n\r", index);
         return NULL;
     }
 
@@ -69,11 +69,11 @@ volatile TaskDescriptor * schedule()
 
     if (active == NULL)
     {
-        bwprintf(COM2, "Schedule failed, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
+        // bwprintf(COM2, "Schedule failed, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
     }
     else
     {
-        bwprintf(COM2, "Schedule successful, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
+        // bwprintf(COM2, "Schedule successful, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
     }
 
     return active;
@@ -103,6 +103,6 @@ void queueTask(TaskDescriptor *task)
         q->tail = task;
     }
 
-    bwprintf(COM2, "Enqueue successful, pri: %d, head: %x, tail: %x\n\r", priority, q->head, q->tail);
+    // bwprintf(COM2, "Enqueue successful, pri: %d, head: %x, tail: %x\n\r", priority, q->head, q->tail);
 }
 

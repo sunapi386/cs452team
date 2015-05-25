@@ -16,8 +16,8 @@ void initKernel() {
     initScheduler();
 
     // setup first task, kernel_task
-    TaskDescriptor *initialTask = taskCreate(0, &userModeTask, -1);
-    if( !initialTask ) {
+    TaskDescriptor *initialTask = taskCreate(1, &userModeTask, -1);
+    if( ! initialTask ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
     }
@@ -25,30 +25,23 @@ void initKernel() {
 }
 
 void handleRequest(TaskDescriptor *td, Syscall *request) {
-    bwprintf(COM2, "Handling tid: %d\n\r", td->id);
-
     switch (request->type) {
-    case SYS_CREATE:
-    {
+    case SYS_CREATE: {
         TaskDescriptor *task = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
-        if (task)
-        {
+        if (task) {
             queueTask(task);
-            td->ret = 0;
+            td->ret = taskGetUnique(task);
         }
-        else
-        {
+        else {
             td->ret = -1;
         }
         break;
     }
     case SYS_MY_TID:
-        bwprintf(COM2, "Setting return value for mytid: %d\n\r", td->id);
-        td->ret = taskGetMyId(td);
+        td->ret = taskGetUnique(td);
         break;
     case SYS_MY_PARENT_TID:
-        bwprintf(COM2, "Setting return value parent_tid: %d\n\r", td->parent_id);
-        td->ret = taskGetMyParentId(td);
+        td->ret = taskGetMyParentUnique(td);
         break;
     case SYS_PASS:
         break;
@@ -67,12 +60,10 @@ int main()
 {
     initKernel();
 
-    for (;;)
-    {
+    volatile TaskDescriptor *task = NULL;
+    for(task = schedule(); ; task = schedule()) {
          Syscall **request = NULL;
-         volatile TaskDescriptor *task = schedule();
-         if (task == NULL)
-         {
+         if (task == NULL)  {
              bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
              break;
          }

@@ -12,7 +12,7 @@ static void childTask() {
     Exit();
 }
 
-// Creates two task of priority 0 and 2. First user task
+// Creates two task of priority 0 and 2. First user task should have priority 1
 void userModeTask() {
     for (int i = 0; i < 4; ++i) {
         bwprintf(COM2, "Created: %d\r\n", Create( (i < 2) ? 2 : 0, childTask ));
