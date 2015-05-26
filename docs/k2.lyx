@@ -1,0 +1,292 @@
+#LyX 2.1 created this file. For more info see http://www.lyx.org/
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+CS 452: Kernel 2
+\end_layout
+
+\begin_layout Author
+Jason Sun (#20387090) and Shuo Chang (#20378235)
+\end_layout
+
+\begin_layout Date
+May 28, 2015
+\end_layout
+
+\begin_layout Standard
+This document builds upon Kernel 1 documentation, and only describes the
+ changes.
+\end_layout
+
+\begin_layout Section
+Program Operation
+\end_layout
+
+\begin_layout Standard
+Full pathname of executable file: Source code for Kernel 2 is located under
+\family typewriter
+ /u1/j53sun/cs452k
+\family default
+2/.
+\end_layout
+
+\begin_layout Standard
+Compiling by running
+\family typewriter
+ make
+\family default
+, which also copies the local
+\family typewriter
+ kernel.elf
+\family default
+ to
+\family typewriter
+ /u/cs452/tftp/ARM/j53sun/k1.elf
+\family default
+.
+\end_layout
+
+\begin_layout LyX-Code
+\align block
+> load -b 0x00200000 -h 129.97.167.12 "ARM/j53sun/cs452/kernels/k2.elf"
+\end_layout
+
+\begin_layout LyX-Code
+> go
+\end_layout
+
+\begin_layout Section
+Kernel Structure
+\end_layout
+
+\begin_layout Standard
+Algorithms and data structures.
+\end_layout
+
+\begin_layout Subsection
+Task Descriptors
+\end_layout
+
+\begin_layout Standard
+Added the following:
+\end_layout
+
+\begin_layout Itemize
+Task status: Ready, {Send,Receive,Reply} Blocked, Zombie.
+\end_layout
+
+\begin_layout Itemize
+Receive queue, which has a head and tail.
+\end_layout
+
+\begin_layout Subsection
+Syscalls
+\end_layout
+
+\begin_layout Standard
+New syscalls are introduced for task communication.
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+int Send( int tid, void *msg, int msglen, void *reply, int replylen )
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+int Receive( int *tid, void *msg, int msglen )
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+int Reply( int tid, void *reply, int replylen )
+\end_layout
+
+\begin_layout Standard
+See Task Communication section.
+\end_layout
+
+\begin_layout Subsection
+Task Communication
+\end_layout
+
+\begin_layout Itemize
+When a task does a syscall for Send, Receive, Reply – it is not put on a
+ seperate queue.
+ 
+\end_layout
+
+\begin_layout Itemize
+Messages are not copied to kernel space, they are copied directly becasue
+ the tasks are blocked until the copy is finished.
+ 
+\end_layout
+
+\begin_layout Itemize
+As data must be copied around, an efficient method for memcpy is implemented.
+\end_layout
+
+\begin_layout Subsection
+Memcpy
+\end_layout
+
+\begin_layout Standard
+Coded in assembly, we copy 4 bytes at a time.
+\end_layout
+
+\begin_layout Subsection
+Name Server
+\end_layout
+
+\begin_layout Standard
+Every task needs to know the task id of the name server.
+ The name server is created during kernel initialization by the first user
+ task.
+ Therefore its task id is entirely deterministic, and can be shared as a
+ constant between tasks.
+\end_layout
+
+\begin_layout Subsection
+Rock/Paper/Scissor (RPS)
+\end_layout
+
+\begin_layout Section
+Source Code Location
+\end_layout
+
+\begin_layout Subsection
+md5 sums
+\end_layout
+
+\begin_layout LyX-Code
+8da586d949d31e239dfbe0c8356588f6  bwio.c
+\end_layout
+
+\begin_layout LyX-Code
+db0bab80ffcef52c8ce1a968c65587a9  bwio.h
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout Section
+Listing of All Files Submitted
+\end_layout
+
+\begin_layout Standard
+See md5 sum section.
+\end_layout
+
+\begin_layout Section
+Game Task Priority
+\end_layout
+
+\begin_layout Standard
+Description of what priorities we chose for game tasks and why.
+\end_layout
+
+\begin_layout Section
+Measurements 
+\end_layout
+
+\begin_layout Standard
+Where time is being spent in code.
+\end_layout
+
+\begin_layout Section
+Game Task Program Output
+\end_layout
+
+\begin_layout LyX-Code
+RedBoot> go
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+Program completed with status 0
+\end_layout
+
+\begin_layout Paragraph
+Explaination
+\end_layout
+
+\end_body
+\end_document
