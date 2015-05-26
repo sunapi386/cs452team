@@ -54,12 +54,21 @@ A good rule-of-thumb is that values accessed only by the context switch can be
 on the stack of the user task; other values should be in the task descriptor.
 */
 
+typedef enum {
+    none = 0,
+    send_block,
+    receive_block,
+    reply_block,
+} MessageStatus;
+
 typedef struct TaskDescriptor {
     int id;
     int parent_id;
     int ret;
     unsigned int *sp;
+    MessageStatus status;
     struct TaskDescriptor *next; // linked list through tasks
+    struct TaskDescriptor *send_next;
 } TaskDescriptor;
 
 TaskDescriptor *taskCreate(int priority, void (*code)(void), int parent_id);
