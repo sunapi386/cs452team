@@ -71,25 +71,25 @@ volatile TaskDescriptor * schedule()
 /**
     Add an active task to the ready queue
  */
-void queueTask(TaskDescriptor *task)
+void queueTask(volatile TaskDescriptor *task)
 {
-    int priority = taskGetPriority(task);
+    int priority = taskGetPriority((TaskDescriptor *)task);
     TaskQueue *q = &readyQueues[priority];
 
     if (q->tail == NULL)
     {
         // set up head and tail to the same task; task->next should be NULL;
         // set the bit in queue status to 1 to indicate queue not empty
-        q->head = task;
-        q->tail = task;
+        q->head = (TaskDescriptor *)task;
+        q->tail = (TaskDescriptor *)task;
         task->next = NULL;
         queueStatus |= 1 << priority;
     }
     else
     {
         // add the task to the tail
-        q->tail->next = task;
-        q->tail = task;
+        q->tail->next = (TaskDescriptor *)task;
+        q->tail = (TaskDescriptor *)task;
     }
 }
 

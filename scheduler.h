@@ -14,6 +14,6 @@ Called by the kernel; dequeue the first task in the highest priority queue
         Fail: NULL
  */
 volatile struct TaskDescriptor *schedule();
-void queueTask(struct TaskDescriptor *task);
+void queueTask(volatile struct TaskDescriptor *task);
 #endif
 
