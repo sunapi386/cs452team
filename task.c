@@ -40,20 +40,20 @@ static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
 
-TaskDescriptor* taskCreate(int priority, void (*code)(void), int parent_id) {
+int taskCreate(int priority, void (*code)(void), int parent_id) {
     if( priority < 0 || priority >= TASK_MAX_PRIORITY || code == NULL ) {
         bwprintf( COM2, "FATAL: create task bad priority %d.\n\r", priority );
-        return NULL; // invalid params
+        return -1; // invalid params
     }
     if( global_next_unique_task_id >= TASK_MAX_TASKS ) {
         bwprintf( COM2, "FATAL: too many tasks %d.\n\r", global_next_unique_task_id );
-        return NULL; // too many tasks
+        return -2; // too many tasks
     }
     unsigned int boundary = (unsigned int)
         (global_current_stack_address - TASK_STACK_SIZE - TASK_TRAP_SIZE);
     if( boundary < TASK_STACK_LOW) {
         bwprintf( COM2, "FATAL: at low stack boundary 0x%x.\n\r", boundary );
-        return NULL; // stack out of bounds
+        return -3; // stack out of bounds
     }
 
     // IMPROVE: No recycling tasks ids
@@ -72,7 +72,7 @@ TaskDescriptor* taskCreate(int priority, void (*code)(void), int parent_id) {
     *(new_task->sp) = (unsigned int)code;                       // r1: pc
     *(new_task->sp + 1) = UserMode | DisableIRQ | DisableFIQ;   // r2: cpsr_user
 
-    return new_task;
+    return new_task->id;
 }
 
 inline int taskGetMyId(TaskDescriptor *task) {

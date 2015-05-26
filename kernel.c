@@ -14,25 +14,22 @@ void initKernel() {
     initTaskSystem();
     initScheduler();
 
-    TaskDescriptor *initialTask = taskCreate(1, &userModeTask, -1);
-    if( ! initialTask ) {
+    int create_ret = taskCreate(1, &userModeTask, -1);
+    if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
     }
-    queueTask(initialTask);
+    queueTask(taskGetTDById(create_ret));
 }
 
 void handleRequest(TaskDescriptor *td, Syscall *request) {
     switch (request->type) {
         case SYS_CREATE: {
-            TaskDescriptor *task = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
-            if (task) {
-                queueTask(task);
-                td->ret = taskGetUnique(task);
+            int create_ret = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
+            if (create_ret >= 0) {
+                queueTask(taskGetTDById(create_ret));
             }
-            else {
-                td->ret = -1;
-            }
+            td->ret = create_ret;
             break;
         }
         case SYS_MY_TID:
