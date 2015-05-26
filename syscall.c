@@ -38,3 +38,33 @@ void Exit() {
     s.type = SYS_EXIT;
     swi(&s);
 }
+
+int Send(int tid, char *msg, int msglen, char *reply, int replylen)
+{
+    s.type = SYS_SEND;
+    s.arg1 = (unsigned int)tid;
+    s.arg2 = (unsigned int)msg;
+    s.arg3 = (unsigned int)msglen;
+    s.arg4 = (unsigned int)reply;
+    s.arg5 = (unsigned int)replylen;
+    return swi(&s);
+}
+
+int Receive(int *tid, char *msg, int msglen)
+{
+    s.type = SYS_RECEIVE;
+    s.arg1 = (unsigned int)tid;
+    s.arg2 = (unsigned int)msg;
+    s.arg3 = (unsigned int)msglen;
+    return swi(&s);
+}
+
+int Reply(int tid, char *reply, int replylen)
+{
+    s.type = SYS_REPLY;
+    s.arg1 = (unsigned int)tid;
+    s.arg2 = (unsigned int)reply;
+    s.arg3 = (unsigned int)replylen;
+    return swi(&s);
+}
+
