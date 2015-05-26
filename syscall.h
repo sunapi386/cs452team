@@ -70,14 +70,14 @@ Returns: The size of the message supplied by the replying task.
     -2 the task id is not an existing task.
     -3 the send-receive-reply transaction is incomplete.
  */
-int Send( int tid, char *msg, int msglen, char *reply, int replylen );
+int Send( int tid, void *msg, unsigned int msglen, void *reply, unsigned int replylen );
 
 /**
 Receive - receive a message
 
 Returns: The size of the message sent.
 */
-int Receive( int *tid, char *msg, int msglen );
+int Receive( int *tid, void *msg, unsigned int msglen );
 
 /**
 Reply - reply to a message
@@ -87,6 +87,6 @@ Returns: 0 if the reply succeeds.
     -2 the task id is not an existing task.
     -3 the task is not reply blocked.
 */
-int Reply( int tid, char *reply, int replylen );
+int Reply( int tid, void *reply, unsigned int replylen );
 
 #endif

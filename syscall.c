@@ -39,7 +39,7 @@ void Exit() {
     swi(&s);
 }
 
-int Send(int tid, char *msg, int msglen, char *reply, int replylen)
+int Send(int tid, void *msg, unsigned int msglen, void *reply, unsigned int replylen)
 {
     s.type = SYS_SEND;
     s.arg1 = (unsigned int)tid;
@@ -50,7 +50,7 @@ int Send(int tid, char *msg, int msglen, char *reply, int replylen)
     return swi(&s);
 }
 
-int Receive(int *tid, char *msg, int msglen)
+int Receive(int *tid, void *msg, unsigned int msglen)
 {
     s.type = SYS_RECEIVE;
     s.arg1 = (unsigned int)tid;
@@ -59,7 +59,7 @@ int Receive(int *tid, char *msg, int msglen)
     return swi(&s);
 }
 
-int Reply(int tid, char *reply, int replylen)
+int Reply(int tid, void *reply, unsigned int replylen)
 {
     s.type = SYS_REPLY;
     s.arg1 = (unsigned int)tid;
