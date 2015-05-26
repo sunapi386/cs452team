@@ -67,8 +67,9 @@ typedef struct TaskDescriptor {
     int ret;
     unsigned int *sp;
     MessageStatus status;
-    void *receive;
-    unsigned int receivelen;
+    int *sender_id;
+    void *send, *receive;
+    unsigned int send_len, receive_len;
     struct TaskDescriptor *next; // linked list through tasks
     struct TaskDescriptor *send_next;
 } TaskDescriptor;
