@@ -3,7 +3,7 @@
 #include <bwio.h>
 
 static volatile unsigned int queueStatus = 0;
-static TaskQueue taskQueues[32];
+static TaskQueue readyQueues[32];
 
 static inline int getQueueIndex()
 {
@@ -20,8 +20,8 @@ void initScheduler()
     int i;
     for (i = 0; i < 32; i++)
     {
-        taskQueues[i].head = NULL;
-        taskQueues[i].tail = NULL;
+        readyQueues[i].head = NULL;
+        readyQueues[i].tail = NULL;
     }
 }
 
@@ -35,7 +35,6 @@ volatile TaskDescriptor * schedule()
 {
     if (queueStatus == 0)
     {
-        // bwprintf(COM2, "Schedule failed, queue status is 0.\n\r");
         return NULL;
     }
 
@@ -43,13 +42,12 @@ volatile TaskDescriptor * schedule()
     int index = getQueueIndex();
 
     // Get the task queue with the highest priority
-    TaskQueue *q = &taskQueues[index];
+    TaskQueue *q = &readyQueues[index];
     TaskDescriptor *active = q->head;
 
     if (q->head == NULL &&
         queueStatus == 0)
     {
-        // bwprintf(COM2, "Error: head is NULL but index is returned: %d\n\r", index);
         return NULL;
     }
 
@@ -66,43 +64,32 @@ volatile TaskDescriptor * schedule()
     {
         active->next = NULL;
     }
-
-    if (active == NULL)
-    {
-        // bwprintf(COM2, "Schedule failed, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
-    }
-    else
-    {
-        // bwprintf(COM2, "Schedule successful, pri: %d, head: %x, tail: %x\n\r", index, q->head, q->tail);
-    }
-
+ 
     return active;
 }
 
 /**
     Add an active task to the ready queue
  */
-void queueTask(TaskDescriptor *task)
+void queueTask(volatile TaskDescriptor *task)
 {
-    int priority = taskGetPriority(task);
-    TaskQueue *q = &taskQueues[priority];
+    int priority = taskGetPriority((TaskDescriptor *)task);
+    TaskQueue *q = &readyQueues[priority];
 
     if (q->tail == NULL)
     {
         // set up head and tail to the same task; task->next should be NULL;
         // set the bit in queue status to 1 to indicate queue not empty
-        q->head = task;
-        q->tail = task;
+        q->head = (TaskDescriptor *)task;
+        q->tail = (TaskDescriptor *)task;
         task->next = NULL;
         queueStatus |= 1 << priority;
     }
     else
     {
         // add the task to the tail
-        q->tail->next = task;
-        q->tail = task;
+        q->tail->next = (TaskDescriptor *)task;
+        q->tail = (TaskDescriptor *)task;
     }
-
-    // bwprintf(COM2, "Enqueue successful, pri: %d, head: %x, tail: %x\n\r", priority, q->head, q->tail);
 }
 
