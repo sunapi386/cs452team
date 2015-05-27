@@ -67,11 +67,10 @@ typedef struct TaskDescriptor {
     int ret;
     unsigned int *sp;
     MessageStatus status;
-    int *sender_id;
-    void *send, *receive;
-    unsigned int send_len, receive_len;
-    struct TaskDescriptor *next; // linked list through tasks
-    struct TaskDescriptor *send_next;
+    int *send_id;
+    void *send_buf, *recv_buf;
+    unsigned int send_len, recv_len;
+    struct TaskDescriptor *next;
 } TaskDescriptor;
 
 int taskCreate(int priority, void (*code)(void), int parent_id);
@@ -82,6 +81,7 @@ int taskGetMyParentId(TaskDescriptor *task);
 int taskGetPriority(TaskDescriptor *task);
 
 /* Returns NULL on invalid task_id */
+TaskDescriptor *taskGetTDByIndex(int index);
 TaskDescriptor *taskGetTDById(int task_id);
 int taskGetIndex(TaskDescriptor *task);
 int taskGetMyParentIndex(TaskDescriptor *task);

@@ -49,13 +49,12 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
         bwprintf( COM2, "FATAL: too many tasks %d.\n\r", global_next_unique_task_id );
         return -2; // too many tasks
     }
-    unsigned int boundary = (unsigned int)
-        (global_current_stack_address - TASK_STACK_SIZE - TASK_TRAP_SIZE);
-    if( boundary < TASK_STACK_LOW) {
+    unsigned int boundary = (unsigned int)(global_current_stack_address - TASK_STACK_SIZE - TASK_TRAP_SIZE);
+
+    if( boundary < TASK_STACK_LOW ){
         bwprintf( COM2, "FATAL: at low stack boundary 0x%x.\n\r", boundary );
         return -3; // stack out of bounds
     }
-
     // IMPROVE: No recycling tasks ids
     // Once all the TASK_MAX_TASKS been given out, will fail to create new tasks
     int unique_id = global_next_unique_task_id++;
@@ -89,6 +88,13 @@ inline int taskGetMyParentId(TaskDescriptor *task) {
 
 inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
     task->ret = ret;
+}
+
+TaskDescriptor *taskGetTDByIndex(int index) {
+    if (index < 0 || index >= TASK_MAX_TASKS) {
+        return NULL;
+    }
+    return global_task_table + index;
 }
 
 TaskDescriptor *taskGetTDById(int task_id) {
