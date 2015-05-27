@@ -7,6 +7,7 @@
 #include <scheduler.h>
 #include <bwio.h>
 #include <user_task.h>
+#include <utils.h>
 
 void initKernel() {
     // Initialize swi jump table to kernel entry point
@@ -23,17 +24,6 @@ void initKernel() {
 }
 
 static TaskQueue sendQueues[128];
-
-// NOTE: Insecure (does not detect overlapping memory)
-void memcpy(void *dest, const void *src, unsigned int n)
-{
-    for (int i = 0; i < n; i++)
-    {
-        *(unsigned char *)dest = *(unsigned char *)src;
-        ++dest;
-        ++src;
-    }
-}
 
 void handleSend(TaskDescriptor *sending_task, Syscall *request)
 {
