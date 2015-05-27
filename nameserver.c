@@ -22,14 +22,13 @@ typedef struct {
 
 
 void nameserverTask() {
-    typedef struct {
+    struct {
         char name[NS_MAX_NAME];
         int tid;
     } registrations[NS_MAX_REGIST_SIZE];
 
     int num_registered = 0;
     int sender_tid;
-    int reply;
     NSRequest request;
 
     for(;;) {
@@ -41,40 +40,39 @@ void nameserverTask() {
 
         switch (request.type) {
             case REGISTER_AS:
-                // if(num_registered > NS_MAX_REGIST_SIZE) {
-                //     Reply(sender_tid, (void *)&FULL, sizeof(int));
-                //     break;
-                // }
-                // int i;
-                // for(i = 0; i < num_registered; i++) {
-                //     if( strcmp( registrations[i].name, NULL ) == 0) {
-                //         break; // and overwrite name at i
-                //     }
-                // }
-                // if(i == num_registered) { // create an entry
-                //     num_registered++;
-                //     strncpy( registrations[i].name, request.name, NS_MAX_NAME );
-                // }
-                // registrations[i].tid = sender_tid;
-                // Reply(sender_tid, (void *)&SUCCESS, sizeof(int));
+                if(num_registered > NS_MAX_REGIST_SIZE) {
+                    Reply(sender_tid, (void *)&FULL, sizeof(int));
+                    break;
+                }
+                int i;
+                for(i = 0; i < num_registered; i++) {
+                    if( strcmp( registrations[i].name, NULL ) == 0) {
+                        break; // and overwrite name at i
+                    }
+                }
+                if(i == num_registered) { // create an entry
+                    num_registered++;
+                    strncpy( registrations[i].name, request.name, NS_MAX_NAME );
+                }
+                registrations[i].tid = sender_tid;
+                Reply(sender_tid, (void *)&SUCCESS, sizeof(int));
 
-                // break; // REGISTER_AS
+                break; // REGISTER_AS
 
             case WHO_IS:
+                for(int i = 0; i < num_registered; i++) {
+                    if( strcmp(registrations[i].name, request.name) == 0) {
+                        // Reply(sender_tid, &(registrations[i].tid), sizeof(int));
+                        break; // resolved whois name to a tid
+                    }
+                    // no registered tid for that name
+                    Reply(sender_tid, (void *)&NO_TASK, sizeof(int));
+                }
 
-                // for(int i = 0; i < num_registered; i++) {
-                //     if( strcmp( registrations[i].name, request.name) == 0) {
-                //         Reply(sender_tid, (void *)&(registrations[i].tid), sizeof(int));
-                //         break; // resolved whois name to a tid
-                //     }
-                //     // no registered tid for that name
-                //     Reply(sender_tid, &(NO_TASK), sizeof(int));
-                // }
-                // break; // WHO_IS
+                break; // WHO_IS
 
-
-            // default:
-                // Reply( sender_tid, (void *)&ERROR, sizeof(int) );
+            default:
+                Reply(sender_tid, (void *)&ERROR, sizeof(int));
         } // switch
 
 
