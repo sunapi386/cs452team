@@ -30,3 +30,13 @@ char * strncpy(char *dst, const char *src, size_t n) {
     }
     return dst;
 }
+
+size_t strlen(const char *str)
+{
+    // OpenBSD strlen() implementation
+    // http://fxr.watson.org/fxr/source/lib/libsa/strlen.c?v=OPENBSD
+    const char *s;
+    for (s = str; *s; ++s);
+    return (s - str);
+}
+
