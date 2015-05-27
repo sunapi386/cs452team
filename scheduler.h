@@ -1,4 +1,5 @@
 #ifndef __SCHEDULER_H
+#define __SCHEDULER_H
 
 typedef struct TaskQueue {
     struct TaskDescriptor *head;
