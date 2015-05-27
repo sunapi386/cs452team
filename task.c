@@ -18,7 +18,7 @@ static inline int makeId(int index, int priority, int unique) {
 
 // FIXME: Implement recycling here
 static inline int taskFindFreeTaskTableIndex() {
-    return global_next_unique_task_id;
+    return global_next_unique_task_id++;
 }
 
 void initTaskSystem() {
@@ -31,6 +31,12 @@ void initTaskSystem() {
         task->parent_id = 0;
         task->ret = 0;
         task->sp = NULL;
+        task->status = none;
+        task->send_id = NULL;
+        task->send_buf = NULL;
+        task->recv_buf = NULL;
+        task->send_len = 0;
+        task->recv_len = 0;
         task->next = NULL;
     }
 }
@@ -57,7 +63,7 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
     }
     // IMPROVE: No recycling tasks ids
     // Once all the TASK_MAX_TASKS been given out, will fail to create new tasks
-    int unique_id = global_next_unique_task_id++;
+    int unique_id = global_next_unique_task_id;
     int task_table_index = taskFindFreeTaskTableIndex();
     TaskDescriptor *new_task = &global_task_table[task_table_index];
     new_task->id = makeId( task_table_index, priority, unique_id );
