@@ -25,7 +25,7 @@ void initKernel() {
 
 static TaskQueue sendQueues[128];
 
-void handleSend(TaskDescriptor *sending_task, Syscall *request)
+void handleSend(TaskDescriptor *sendingTask, Syscall *request)
 {
     int tid = (int)request->arg1;
     void *msg = (void *)request->arg2;
@@ -33,27 +33,34 @@ void handleSend(TaskDescriptor *sending_task, Syscall *request)
     void *reply = (void *)request->arg4;
     unsigned int replylen = request->arg5;
 
-    TaskDescriptor *receiving_task = taskGetTDById(tid);
+    TaskDescriptor *receivingTask = taskGetTDById(tid);
 
-    //1) receiving task is rcv_blk ( first)
+    // Since sender cannot Receive() during the transaction, we
+    // reuse the receive pointer for getting back the reply later
+    sendingTask->recv_buf = reply;
+    sendingTask->recv_len = replylen;
+
+    // 1) receiving task is rcv_blk (receive first)
     // copy msg from here to receiving task's stack
-    if (receiving_task->status == receive_block)
+    if (receivingTask->status == receive_block)
     {
-        // memcpy(dst, src, len)
-        memcpy(receiving_task->receive,
-               msg,
-               msglen < receiving_task->receive_len ? msglen : receiving_task->receive_len);
-
+        // copy message over
+        unsigned int copiedLen = msglen < receivingTask->recv_len ?
+            msglen : receivingTask->recv_len;
+        memcpy(receivingTask->recv_buf, msg, copiedLen);
 
         // set *tid of sending task
-        *(receiving_task->sender_id) = tid;
+        *(receivingTask->send_id) = tid;
+
+        // set return value of receivingTask
+        receivingTask->ret = copiedLen;
 
         // update sending_task's status to reply_block
-        sending_task->status = reply_block;
+        sendingTask->status = reply_block;
 
         // update receiving_task's status to none and requeue it
-        receiving_task->status = none;
-        queueTask(receiving_task);
+        receivingTask->status = none;
+        queueTask(receivingTask);
     }
     // 2) tid task is not receive_block (send first)
     // queue sending_task to send_queue of receiving_task
@@ -65,73 +72,119 @@ void handleSend(TaskDescriptor *sending_task, Syscall *request)
         if (q->tail == NULL)
         {
             // empty queue
-            q->head = sending_task;
-            q->tail = sending_task;
-            sending_task->send_next = NULL;
+            q->head = sendingTask;
+            q->tail = sendingTask;
+            sendingTask->next = NULL;
         }
         else
         {
             // non-empty queue
-            q->tail->send_next = sending_task;
-            q->tail = sending_task;
+            q->tail->next = sendingTask;
+            q->tail = sendingTask;
         }
 
-        sending_task->send = msg;
-        sending_task->send_len = msglen;
+        sendingTask->send_buf = msg;
+        sendingTask->send_len = msglen;
 
         // update sending_task status to send_block
-        sending_task->status = send_block;
+        sendingTask->status = send_block;
     }
 }
 
-void handleReceive(TaskDescriptor *receiving_task, Syscall *request)
+void handleReceive(TaskDescriptor *receivingTask, Syscall *request)
 {
     int *tid = (int *)request->arg1;
     void *msg = (void *)request->arg2;
     unsigned int msglen = request->arg3;
 
-    TaskQueue *q = &sendQueues[taskGetIndex(receiving_task)];
+    TaskQueue *q = &sendQueues[taskGetIndex(receivingTask)];
 
     // if send queue empty, receive block
     if (q->head == NULL)
     {
-        receiving_task->sender_id = tid;
-        receiving_task->receive = msg;
-        receiving_task->receive_len = msglen;
-        receiving_task->status = receive_block;
+        receivingTask->send_id = tid;
+        receivingTask->recv_buf = msg;
+        receivingTask->recv_len = msglen;
+        receivingTask->status = receive_block;
     }
     // if send queue not empty, dequeue first task, copy msg to msg
     else
     {
         // dequeue the first sending task
-        TaskDescriptor *sending_task = q->head;
-        q->head = sending_task->send_next;
-        sending_task->send_next = NULL;
-        if (q->tail == sending_task)
+        TaskDescriptor *sendingTask = q->head;
+        q->head = sendingTask->next;
+        sendingTask->next = NULL;
+        if (q->tail == sendingTask)
         {
             // that was the only task in the queue
             q->tail = NULL;
         }
 
         // copy data from sending_task's buffer to receiver's buffer
-        memcpy(msg,
-               sending_task->send,
-               msglen < sending_task->send_len ? msglen : sending_task->send_len);
+        unsigned int copiedLen = msglen < sendingTask->send_len ?
+            msglen : sendingTask->send_len;
+        memcpy(msg, sendingTask->send_buf, copiedLen);
 
         // set tid of sender
-        *tid = taskGetUnique(receiving_task);
+        *tid = taskGetUnique(receivingTask);
+
+        // set receive() ret val
+        receivingTask->ret = copiedLen;
 
         // sender: reply block
         // receiver: ready to run
-        sending_task->status = reply_block;
-        receiving_task->status = none;
-        queueTask(receiving_task);
+        sendingTask->status = reply_block;
+        receivingTask->status = none;
+        queueTask(receivingTask);
     }
 }
 
-void handleReply()
+void handleReply(TaskDescriptor *receivingTask, Syscall *request)
 {
+    int tid = (int)request->arg1; // the id of the original sender
+    void *reply = (void *)request->arg2; // the reply message
+    unsigned int replylen = (unsigned int)request->arg3; // the length of the message
 
+    if (tid < 0 || tid >= TASK_MAX_TASKS)
+    {
+        // -1: The task id is not a a possible task id
+        receivingTask->ret = -1;
+        return;
+    }
+
+    // get the sender task descriptor from tid
+    TaskDescriptor *sendingTask = taskGetTDByIndex(tid);
+
+    if (!sendingTask)
+    {
+        // -2: The task id is not an existing task
+        receivingTask->ret = -2;
+        return;
+    }
+
+    // FIXME: we are not checking if replyer is the
+    // actual original receiver. But theres a good way...
+    else if (sendingTask->status != reply_block)
+    {
+        // -3: The task is not reply blocked
+        receivingTask->ret = -3;
+        return;
+    }
+
+    // above in handleSend(), the sender reused the rcv_buffer and rcv_len
+    // for getting back the reply
+
+    // copy reply data
+    unsigned int copiedLen = replylen > sendingTask->recv_len ?
+        sendingTask->recv_len : replylen;
+    memcpy(sendingTask->recv_buf, reply, copiedLen);
+
+    // unblock both tasks
+    sendingTask->status = none;
+    receivingTask->status = none;
+
+    queueTask(sendingTask);
+    queueTask(receivingTask);
 }
 
 void handleRequest(TaskDescriptor *td, Syscall *request) {
@@ -154,12 +207,13 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
             break;
         case SYS_SEND:
             handleSend(td, request);
-            break;
+            return;
         case SYS_RECEIVE:
             handleReceive(td, request);
-            break;
+            return;
         case SYS_REPLY:
-            break;
+            handleReply(td, request);
+            return;
         case SYS_PASS:
             break;
         case SYS_EXIT:
