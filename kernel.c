@@ -100,7 +100,7 @@ void handleReceive(TaskDescriptor *receiving_task, Syscall *request)
     void *msg = (void *)request->arg2;
     unsigned int msglen = request->arg3;
 
-    TaskQueue *q = &sendQueues[*tid];
+    TaskQueue *q = &sendQueues[taskGetIndex(receiving_task)];
 
     // if send queue empty, receive block
     if (q->head == NULL)
@@ -123,7 +123,7 @@ void handleReceive(TaskDescriptor *receiving_task, Syscall *request)
             q->tail = NULL;
         }
 
-        // copy data from sending_task's buffer to receiver's buffer 
+        // copy data from sending_task's buffer to receiver's buffer
         memcpy(msg,
                sending_task->send,
                msglen < sending_task->send_len ? msglen : sending_task->send_len);
@@ -149,22 +149,23 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
         case SYS_CREATE: {
             int create_ret = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
             if (create_ret >= 0) {
+                td->ret = taskGetIndex(td);
                 queueTask(taskGetTDById(create_ret));
+            } else {
+                td->ret = create_ret;
             }
-            td->ret = create_ret;
             break;
         }
         case SYS_MY_TID:
-            td->ret = taskGetUnique(td);
+            td->ret = taskGetIndex(td);
             break;
         case SYS_MY_PARENT_TID:
-            td->ret = taskGetMyParentUnique(td);
+            td->ret = taskGetMyParentIndex(td);
             break;
         case SYS_SEND:
             handleSend(td, request);
             break;
         case SYS_RECEIVE:
-            // int *tid, void *msg, unsigned int msglen
             handleReceive(td, request);
             break;
         case SYS_REPLY:
@@ -191,7 +192,7 @@ int main() {
             bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
             break;
         }
-        
+
         KernelExit(task, request);
         handleRequest((TaskDescriptor *)task, *request);
     }

@@ -99,6 +99,14 @@ TaskDescriptor *taskGetTDById(int task_id) {
     return global_task_table + index;
 }
 
+int taskGetIndex(TaskDescriptor *task) {
+    return (TASK_INDEX_MASK & task->id) >> TASK_INDEX_OFFSET;
+}
+
+int taskGetMyParentIndex(TaskDescriptor *task) {
+    return (TASK_INDEX_MASK & task->parent_id) >> TASK_INDEX_OFFSET;
+}
+
 int taskGetUnique(TaskDescriptor *task) {
     return (TASK_UNIQUE_MASK & task->id) >> TASK_UNIQUE_OFFSET;
 }
