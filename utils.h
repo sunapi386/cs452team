@@ -4,7 +4,7 @@
 typedef unsigned int size_t;
 
 void memcpy(void *dest, const void *src, size_t n);
-int strcmp(char *s1, char *s2);
+int strcmp (const char * dst, const char * src);
 char * strncpy(char *dst, const char *src, size_t n);
 
 #endif
