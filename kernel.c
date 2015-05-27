@@ -217,12 +217,13 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
             break;
         case SYS_SEND:
             handleSend(td, request);
-            break;
+            return;
         case SYS_RECEIVE:
             handleReceive(td, request);
-            break;
+            return;
         case SYS_REPLY:
-            break;
+            handleReply(td, request);
+            return;
         case SYS_PASS:
             break;
         case SYS_EXIT:
