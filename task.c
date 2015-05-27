@@ -8,7 +8,7 @@ static TaskDescriptor global_task_table[TASK_MAX_TASKS];
 
 // FIXME: Implement recycling here
 static inline int taskFindFreeTaskTableIndex() {
-    return global_next_unique_task_id++;
+    return global_next_unique_task_id;
 }
 
 void initTaskSystem() {
@@ -56,6 +56,7 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
     int unique_id = global_next_unique_task_id;
     int task_table_index = taskFindFreeTaskTableIndex();
     TaskDescriptor *new_task = &global_task_table[task_table_index];
+    global_next_unique_task_id++;
     new_task->id = makeId( task_table_index, priority, unique_id );
     new_task->parent_id = parent_id;
     new_task->ret = 0;
