@@ -87,4 +87,13 @@ int taskGetIndex(TaskDescriptor *task);
 int taskGetMyParentIndex(TaskDescriptor *task);
 int taskGetUnique(TaskDescriptor *task);
 int taskGetMyParentUnique(TaskDescriptor *task);
+
+// Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
+static inline int makeId(int index, int priority, int unique) {
+    return
+        (index << TASK_INDEX_OFFSET) |
+        (priority << TASK_PRIORITY_OFFSET) |
+        (unique << TASK_UNIQUE_OFFSET);
+}
+
 #endif

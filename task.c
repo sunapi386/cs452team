@@ -6,16 +6,6 @@ static int global_next_unique_task_id;
 static unsigned int *global_current_stack_address;
 static TaskDescriptor global_task_table[TASK_MAX_TASKS];
 
-
-
-// Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
-static inline int makeId(int index, int priority, int unique) {
-    return
-        (index << TASK_INDEX_OFFSET) |
-        (priority << TASK_PRIORITY_OFFSET) |
-        (unique << TASK_UNIQUE_OFFSET);
-}
-
 // FIXME: Implement recycling here
 static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id++;
