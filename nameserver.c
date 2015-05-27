@@ -4,7 +4,7 @@
 #include <utils.h>
 #include <syscall.h>
 
-#define NS_TID  1
+#define NS_TID  makeId(1, 1, 1)
 
 #define NS_MAX_NAME 16
 #define NS_MAX_REGIST_SIZE 256
