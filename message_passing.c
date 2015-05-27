@@ -24,7 +24,22 @@ void handleSend(TaskDescriptor *sendingTask, Syscall *request)
     void *reply = (void *)request->arg4;
     unsigned int replylen = request->arg5;
 
+    if (!isValidTaskIndex(tid))
+    {
+        // -1: Task id is impossible
+        sendingTask->ret = -1;
+        queueTask(sendingTask);
+        return;
+    }
+
     TaskDescriptor *receivingTask = taskGetTDById(tid);
+    if (!receivingTask)
+    {
+        // -2: Task id is not an existing task
+        sendingTask->ret = -2;
+        queueTask(sendingTask);
+        return;
+    }
 
     // Since sender cannot Receive() during the transaction, we
     // reuse the receive pointer for getting back the reply later
@@ -41,10 +56,10 @@ void handleSend(TaskDescriptor *sendingTask, Syscall *request)
         memcpy(receivingTask->recv_buf, msg, copiedLen);
 
         // set *tid of sending task
-        *(receivingTask->send_id) = tid;
+        *(receivingTask->send_id) = taskGetIndex(sendingTask);
 
         // set return value of receivingTask
-        receivingTask->ret = copiedLen;
+        receivingTask->ret = msglen;
 
         // update sending_task's status to reply_block
         sendingTask->status = reply_block;
@@ -119,8 +134,8 @@ void handleReceive(TaskDescriptor *receivingTask, Syscall *request)
         // set tid of sender
         *tid = taskGetIndex(sendingTask);
 
-        // set receive() ret val
-        receivingTask->ret = copiedLen;
+        // set receive() ret val: the size of the message SENT
+        receivingTask->ret = sendingTask->send_len;
 
         // sender: reply block
         // receiver: ready to run
@@ -136,7 +151,7 @@ void handleReply(TaskDescriptor *receivingTask, Syscall *request)
     void *reply = (void *)request->arg2; // the reply message
     unsigned int replylen = (unsigned int)request->arg3; // the length of the message
 
-    if (tid < 0 || tid >= TASK_MAX_TASKS)
+    if (!isValidTaskIndex(tid))
     {
         // -1: The task id is not a a possible task id
         receivingTask->ret = -1;
@@ -173,7 +188,12 @@ void handleReply(TaskDescriptor *receivingTask, Syscall *request)
         sendingTask->recv_len : replylen;
     memcpy(sendingTask->recv_buf, reply, copiedLen);
 
-    // unblock both tasks
+    // -4: Insufficient space for the entire reply in the sender's reply buffer
+    receivingTask->ret = replylen > sendingTask->recv_len ? -4 : 0;
+
+    sendingTask->ret = replylen;
+
+    // set statuses and retvals
     sendingTask->status = none;
     receivingTask->status = none;
 

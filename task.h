@@ -88,6 +88,11 @@ int taskGetMyParentIndex(TaskDescriptor *task);
 int taskGetUnique(TaskDescriptor *task);
 int taskGetMyParentUnique(TaskDescriptor *task);
 
+static inline int isValidTaskIndex(int index)
+{
+    return index > 0 && index < TASK_MAX_TASKS;
+}
+
 // Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
 static inline int makeId(int index, int priority, int unique) {
     return

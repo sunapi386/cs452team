@@ -10,13 +10,77 @@
 #include <utils.h>
 #include <message_passing.h>
 
+// receiving task (receive first)
+void first()
+{
+    bwprintf(1, "Receiving task tid: %d\n\r", MyTid());
+
+    int retval = 0;
+
+    char recv_buf[50];
+    int tid = -1;
+    retval = Receive(&tid, recv_buf, sizeof(recv_buf));
+    bwprintf(1, "Receive returned: %d\n\r", retval);
+    int i;
+    for (i = 0; i < retval; i++)
+    {
+        bwputc(1, recv_buf[i]);
+    }
+
+    bwprintf(1, "\n\r");
+
+    // reply unblocks sender
+    char *reply = "k got it";
+    int len = strlen(reply) + 1;
+    bwprintf(1, "Reply len: %d\n\r", len);
+
+    retval = Reply(tid, reply, len);
+    bwprintf(1, "Reply returned: %d\n\r", retval);
+
+    Exit();
+}
+
+// sending task (send later)
+void second()
+{
+    bwprintf(1, "Sending task tid: %d\n\r", MyTid());
+
+    int retval = 0;
+
+    char reply[2];
+    char *send_buf = "Hw!";
+    int len = strlen(send_buf);
+    bwprintf(1, "Size of sending reply buffer: %d\n\r", sizeof(reply));
+    retval = Send(2, send_buf, len+1, &reply, sizeof(reply));
+
+    bwprintf(1, "Send returned: %d\n\r", retval);
+
+    // Blocked here until second() reply
+    bwprintf(1, "Got reply\n\r");
+    int i;
+    for (i = 0; i<sizeof(reply); i++)
+    {
+        bwputc(1, reply[i]);
+    }
+
+    Exit();
+}
+
+void bootstrap()
+{
+    Create(5, &first);
+    Create(6, &second);
+    Exit();
+}
+
 void initKernel() {
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
     initTaskSystem();
     initScheduler();
+    initMessagePassing();
 
-    int create_ret = taskCreate(1, &userModeTask, -1);
+    int create_ret = taskCreate(1, &bootstrap, -1);
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
