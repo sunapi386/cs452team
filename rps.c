@@ -4,14 +4,16 @@
 #include <nameserver.h>
 #include <user_task.h>
 
-#define RS_NUM_PLAYERS 4
+#define RS_NUM_PLAYERS 2
 #define RS_MAX_PLAYERS 32
 #define _LOG(...) bwprintf(COM2, "[rps] " __VA_ARGS__)
 #define _LOG_SRV(...) bwprintf(COM2, "[rps Server] " __VA_ARGS__)
 #define _LOG_CLI(msg, ...) bwprintf(COM2, "[rps Client %d] " msg, my_tid, ## __VA_ARGS__)
 
 typedef enum {
-    EMPTY_ENTRY = -1,
+    WIN = -3,
+    LOSE = -2,
+    DRAW = -1,
     PLAY_ROCK = 0,
     PLAY_PAPER = 1,
     PLAY_SCISSOR = 2,
@@ -19,10 +21,8 @@ typedef enum {
     QUIT,
     BEGIN_MATCH,
     OPPONENT_QUIT,
-    WIN,
-    LOSE,
-    DRAW,
     SERVER_FULL,
+    EMPTY_ENTRY,
 } rpsCodes;
 
 // http://stackoverflow.com/questions/1640258/need-a-fast-random-generator-for-c
@@ -76,7 +76,7 @@ static void rpsServer() {
             _LOG_SRV("received %d (expected size %d)\r\n", ret, sizeof(int));
             continue;
         }
-        _LOG_SRV("received sender_tid %d request %d\r\n", sender_tid, request);
+        _LOG_SRV("received player %d request %d\r\n", sender_tid, request);
 
         switch(request) {
             case SIGN_UP:
@@ -109,7 +109,7 @@ static void rpsServer() {
                     waiting_tid = sender_tid;
                 }
                 else { // or there is opponent to play
-                    _LOG_SRV("Match commencing: %d vs %d\r\n", sender_tid, waiting_tid);
+                    _LOG_SRV("\tMatch commencing! %d vs %d\r\n", sender_tid, waiting_tid);
                     // find opponent's entry and link them up
                     for(int op_id = 0; op_id < RS_MAX_PLAYERS; op_id++) {
                         if(players[op_id].tid == waiting_tid) {
@@ -117,6 +117,9 @@ static void rpsServer() {
                             players[op_id].opponent_tid = sender_tid;
                         }
                     }
+                    reply = BEGIN_MATCH;
+                    Reply(sender_tid, (void *)&reply, sizeof(int));
+                    Reply(waiting_tid, (void *)&reply, sizeof(int));
                     waiting_tid = 0;
                 } // else
 
@@ -153,7 +156,7 @@ static void rpsServer() {
             case PLAY_ROCK:
             case PLAY_PAPER:
             case PLAY_SCISSOR:
-                _LOG_SRV("Play request from %d\r\n");
+                _LOG_SRV("Play request from %d\r\n", sender_tid);
                 int sender_idx;
                 // find the sender_idx
                 for(sender_idx = 0; sender_idx < RS_MAX_PLAYERS; sender_idx++) {
@@ -193,6 +196,7 @@ static void rpsServer() {
                     players[sender_idx].request = EMPTY_ENTRY;
                     players[opponent_idx].request = EMPTY_ENTRY;
                     _LOG_SRV("Round complete for %d and %d\r\n", sender_tid, opponent_tid);
+                    _LOG_SRV("Press any key...\r\n", sender_tid, opponent_tid);
                     bwgetc(COM2); // pause and wait for TA to see what happened
                 }
                 else { // opponent hasn't played yet
@@ -217,9 +221,9 @@ static void rpsClient() {
     }
     int my_tid = MyTid();
     int request, response, ret;
-
+    _LOG_CLI("is created, using tid %d as server\n\r", server_tid);
     // perform requests to test the rps server: play 0 < n < 5 games of rps
-    for(int games_to_play = rand(5) ; games_to_play >= 0; ) {
+    for(int games_to_play = 3 ; games_to_play >= 0; ) {
         // we have no opponent
         request = SIGN_UP;
         ret = Send(server_tid, (void *)&request, sizeof(int), (void *)&response, sizeof(int));
@@ -243,7 +247,7 @@ static void rpsClient() {
             _LOG_CLI("has %d games left to play\r\n", games_to_play);
             // Play the game
             int move = rand(3);
-            char *g_moves[3] = {"Rock", "Paper", "Scissor"};
+            static char *g_moves[3] = {"Rock", "Paper", "Scissor"};
             _LOG_CLI("will play %s\r\n", g_moves[move]);
             ret = Send(server_tid, (void *)&move, sizeof(int), (void *)&response, sizeof(int));
             if(ret != sizeof(int)) {
@@ -258,8 +262,8 @@ static void rpsClient() {
                 _LOG_CLI("expected win/loss/draw but got %d\r\n", response);
                 Exit();
             }
-            char *g_result[3] = {"Win", "Lose", "Draw"};
-            _LOG_CLI("had a %s\r\n", g_result[response]);
+            static char *g_result[3] = {"Win", "Lose", "Draw"};
+            _LOG_CLI("got a match result: %s\r\n", g_result[response + 3]);
         } // for
     } // for
 
@@ -276,7 +280,7 @@ static void rpsClient() {
 
 static void rpsMakeClients() { // creates players
     for(int i = 0; i < RS_NUM_PLAYERS; i++) {
-        int ret = Create(4, rpsClient);
+        int ret = Create(2, rpsClient);
         if(ret < 0) {
             _LOG("Making player %d failed\r\n", i);
             break;

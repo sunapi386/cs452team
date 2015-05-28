@@ -25,6 +25,7 @@ SECTIONS
     _DataStart = . ;
     *(.data)
     *(.data.rel.ro.local)
+    *(.data.rel.local)
     _DataEnd = . ;
     } >ram
 
