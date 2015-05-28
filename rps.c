@@ -4,7 +4,7 @@
 #include <nameserver.h>
 #include <user_task.h>
 
-#define RS_NUM_PLAYERS 2
+#define RS_NUM_PLAYERS 6
 #define RS_MAX_PLAYERS 32
 #define _LOG(...) bwprintf(COM2, "[rps] " __VA_ARGS__)
 #define _LOG_SRV(msg, ...) bwprintf(COM2, "[rps Server %d] " msg, server_tid, ## __VA_ARGS__)
@@ -75,11 +75,11 @@ static void rpsServer() {
             _LOG_SRV("received %d (expected size %d)\r\n", ret, sizeof(int));
             continue;
         }
-        _LOG_SRV("received player %d request %d\r\n", sender_tid, request);
+        // _LOG_SRV("received player %d request %d\r\n", sender_tid, request);
 
         switch(request) {
             case SIGN_UP:
-                _LOG_SRV("signup request by %d\r\n", sender_tid);
+                // _LOG_SRV("signup request by %d\r\n", sender_tid);
 
                 // check if we have space to register player
                 if(num_players == RS_MAX_PLAYERS) {
@@ -90,7 +90,7 @@ static void rpsServer() {
                 }
                 num_players++;
 
-                _LOG_SRV("adding player %d to players table\r\n", sender_tid);
+                // _LOG_SRV("adding player %d to players table\r\n", sender_tid);
                 // find free entry
                 int new_entry;
                 for(new_entry = 0; new_entry < RS_MAX_PLAYERS; new_entry++) {
@@ -216,8 +216,8 @@ static void rpsServer() {
 
                     players[sender_idx].request = EMPTY_ENTRY;
                     players[opponent_idx].request = EMPTY_ENTRY;
-                    _LOG_SRV("round complete for task %d and task %d\r\n", sender_tid, opponent_tid);
-                    _LOG_SRV("press any key...\r\n", sender_tid, opponent_tid);
+                    _LOG_SRV("round complete for players %d and %d, press a key...\r\n",
+                        sender_tid, opponent_tid);
                     bwgetc(COM2); // pause and wait for TA to see what happened
                 }
                 else { // opponent hasn't played yet
@@ -242,7 +242,7 @@ static void rpsClient() {
     }
     int my_tid = MyTid();
     int request, response, ret;
-    _LOG_CLI("is created, using tid %d as server\n\r", server_tid);
+    // _LOG_CLI("is created, using tid %d as server\n\r", server_tid);
     // perform requests to test the rps server: play 0 < n < 5 games of rps
     for(int games_to_play = 3 ; games_to_play > 0; ) {
         // we have no opponent
