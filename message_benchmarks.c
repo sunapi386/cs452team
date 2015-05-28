@@ -30,7 +30,6 @@ void sender()
     for (i=0; i<BENCH_ITER; i++)
     {
         Send(3, &msg, msglen, &msg, msglen);
-        //bwprintf(1, "send returned: %d\n\r", retval);
     }
 
     // Get timer difference

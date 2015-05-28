@@ -11,8 +11,30 @@
 #include <message_passing.h>
 #include <message_benchmarks.h>
 
+void enableCache()
+{
+    asm volatile(
+        "mrc p15, 0, r0, c1, c0, 0\n\t"
+        "ldr r1, =0x1004\n\t"
+        "orr r0, r0, r1\n\t"
+        "mcr p15, 0, r0, c1, c0, 0\n\t"
+    );
+}
+
+void disableCache()
+{
+    asm volatile(
+        "mrc p15, 0, r0, c1, c0, 0\n\t"
+        "ldr r1, =0xffffeffb\n\t"
+        "and r0, r0, r1\n\t"
+        "mcr p15, 0, r0, c1, c0, 0\n\t"
+    );
+}
 
 void initKernel() {
+#if ENABLE_CACHE
+    enableCache();
+#endif
     // Initialize swi jump table to kernel entry point
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
 
@@ -21,7 +43,8 @@ void initKernel() {
     initMessagePassing();
 
     // int create_ret = taskCreate(1, &userModeTask, 0);
-    int create_ret = taskCreate(2, &rpsUserTask, 0);
+    //int create_ret = taskCreate(2, &rpsUserTask, 0);
+    int create_ret = taskCreate(1, &runBenchmark, 0);
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
@@ -82,6 +105,8 @@ int main() {
         KernelExit(task, request);
         handleRequest((TaskDescriptor *)task, *request);
     }
-
+#if ENABLE_CACHE
+    disableCache();
+#endif
     return 0;
 }
