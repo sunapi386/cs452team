@@ -56,6 +56,7 @@ on the stack of the user task; other values should be in the task descriptor.
 
 typedef enum {
     none = 0,
+    send_block,
     receive_block,
     reply_block,
 } MessageStatus;
@@ -70,8 +71,6 @@ typedef struct TaskDescriptor {
     void *send_buf, *recv_buf;
     unsigned int send_len, recv_len;
     struct TaskDescriptor *next;
-    // TODO: Remove
-    int index;
 } TaskDescriptor;
 
 int taskCreate(int priority, void (*code)(void), int parent_id);

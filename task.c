@@ -63,7 +63,6 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
     new_task->sp = global_current_stack_address - TASK_TRAP_SIZE;
     new_task->next = NULL;
     global_current_stack_address -= (TASK_TRAP_SIZE + TASK_STACK_SIZE);
-    new_task->index = task_table_index;
 
     // init trap frame on stack for c-switch
     *(new_task->sp) = (unsigned int)code;                       // r1: pc
