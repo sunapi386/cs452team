@@ -2,7 +2,7 @@
 #include <task.h>
 #include <bwio.h>
 
-static volatile unsigned int queueStatus = 0;
+static unsigned int queueStatus = 0;
 static TaskQueue readyQueues[32];
 
 static inline int getQueueIndex()
@@ -17,10 +17,10 @@ static inline int getQueueIndex()
 
 void initScheduler()
 {
+    queueStatus = 0;
     int i;
     for (i = 0; i < 32; i++)
     {
-        readyQueues[i].head = NULL;
         readyQueues[i].tail = NULL;
     }
 }
@@ -31,7 +31,7 @@ void initScheduler()
         Success: Pointer to the TD of the next active task
         Fail: NULL
  */
-volatile TaskDescriptor * schedule()
+TaskDescriptor * schedule()
 {
     if (queueStatus == 0)
     {
@@ -43,17 +43,10 @@ volatile TaskDescriptor * schedule()
 
     // Get the task queue with the highest priority
     TaskQueue *q = &readyQueues[index];
-    TaskDescriptor *active = q->head;
 
-    if (q->head == NULL &&
-        queueStatus == 0)
-    {
-        return NULL;
-    }
+    TaskDescriptor *active = q->tail->next;
 
-    q->head = active->next;
-
-    if (q->head == NULL)
+    if (active == q->tail)
     {
         // if queue becomes empty, set the tail to NULL and
         // clear the status bit
@@ -62,16 +55,16 @@ volatile TaskDescriptor * schedule()
     }
     else
     {
-        active->next = NULL;
+        q->tail->next = active->next;
     }
- 
+
     return active;
 }
 
 /**
     Add an active task to the ready queue
  */
-void queueTask(volatile TaskDescriptor *task)
+void queueTask(TaskDescriptor *task)
 {
     int priority = taskGetPriority((TaskDescriptor *)task);
     TaskQueue *q = &readyQueues[priority];
@@ -80,15 +73,14 @@ void queueTask(volatile TaskDescriptor *task)
     {
         // set up head and tail to the same task; task->next should be NULL;
         // set the bit in queue status to 1 to indicate queue not empty
-        q->head = (TaskDescriptor *)task;
         q->tail = (TaskDescriptor *)task;
-        task->next = NULL;
-        queueStatus |= 1 << priority;
+        task->next = (TaskDescriptor *)task;
+        queueStatus |= (1 << priority);
     }
     else
     {
         // add the task to the tail
-        q->tail->next = (TaskDescriptor *)task;
+        task->next = q->tail->next;
         q->tail = (TaskDescriptor *)task;
     }
 }

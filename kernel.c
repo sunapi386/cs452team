@@ -69,7 +69,7 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
 
 int main() {
     initKernel();
-    volatile TaskDescriptor *task = NULL;
+    TaskDescriptor *task = NULL;
 
     for(task = schedule() ; ; task = schedule()) {
         Syscall **request = NULL;

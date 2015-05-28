@@ -18,7 +18,6 @@ void sender()
 
     Message msg;
     unsigned int msglen = sizeof(msg);
-    int retval = 0;
 
     // Start 32bit timer
     unsigned int prevTimerVal = 0xffffffff;
@@ -48,8 +47,6 @@ void receiver()
     Message msg;
     unsigned int msglen = sizeof(msg);
     int *tid = 0;
-
-    int retval = 0;
 
     int i;
     for (i=0; i<BENCH_ITER; i++)

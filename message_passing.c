@@ -11,7 +11,7 @@ void initMessagePassing()
     int i;
     for (i = 0; i < TASK_MAX_TASKS; i++)
     {
-        sendQueues[i].head = NULL;
+        //sendQueues[i].head = NULL;
         sendQueues[i].tail = NULL;
     }
 }
@@ -57,7 +57,7 @@ void handleSend(TaskDescriptor *sendingTask, Syscall *request)
         memcpy(receivingTask->recv_buf, msg, copiedLen);
 
         // set *tid of sending task
-        *(receivingTask->send_id) = taskGetIndex(sendingTask);
+        *(receivingTask->send_id) = sendingTask->index;
 
         // set return value of receivingTask
         receivingTask->ret = msglen;
@@ -80,14 +80,14 @@ void handleSend(TaskDescriptor *sendingTask, Syscall *request)
         if (q->tail == NULL)
         {
             // empty queue
-            q->head = sendingTask;
+            //q->head = sendingTask;
             q->tail = sendingTask;
-            sendingTask->next = NULL;
+            sendingTask->next = sendingTask;
         }
         else
         {
             // non-empty queue
-            q->tail->next = sendingTask;
+            sendingTask->next = q->tail->next;
             q->tail = sendingTask;
         }
 
@@ -95,7 +95,7 @@ void handleSend(TaskDescriptor *sendingTask, Syscall *request)
         sendingTask->send_len = msglen;
 
         // update sending_task status to send_block
-        sendingTask->status = send_block;
+        //sendingTask->status = send_block;
     }
 }
 
@@ -105,10 +105,10 @@ void handleReceive(TaskDescriptor *receivingTask, Syscall *request)
     void *msg = (void *)request->arg2;
     unsigned int msglen = request->arg3;
 
-    TaskQueue *q = &sendQueues[taskGetIndex(receivingTask)];
+    TaskQueue *q = &sendQueues[receivingTask->index];
 
     // if send queue empty, receive block
-    if (q->head == NULL)
+    if (q->tail == NULL)
     {
         receivingTask->send_id = tid;
         receivingTask->recv_buf = msg;
@@ -119,13 +119,14 @@ void handleReceive(TaskDescriptor *receivingTask, Syscall *request)
     else
     {
         // dequeue the first sending task
-        TaskDescriptor *sendingTask = q->head;
-        q->head = sendingTask->next;
-        sendingTask->next = NULL;
-        if (q->tail == sendingTask)
+        TaskDescriptor *sendingTask = q->tail->next;
+        if (sendingTask == q->tail)
         {
-            // that was the only task in the queue
             q->tail = NULL;
+        }
+        else
+        {
+            q->tail->next = sendingTask->next;
         }
 
         // copy data from sending_task's buffer to receiver's buffer
@@ -134,7 +135,7 @@ void handleReceive(TaskDescriptor *receivingTask, Syscall *request)
         memcpy(msg, sendingTask->send_buf, copiedLen);
 
         // set tid of sender
-        *tid = taskGetIndex(sendingTask);
+        *tid = sendingTask->index;
 
         // set receive() ret val: the size of the message SENT
         receivingTask->ret = sendingTask->send_len;
@@ -197,7 +198,6 @@ void handleReply(TaskDescriptor *receivingTask, Syscall *request)
 
     // set statuses and retvals
     sendingTask->status = none;
-    receivingTask->status = none;
 
     queueTask(sendingTask);
     queueTask(receivingTask);
