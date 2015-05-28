@@ -139,11 +139,25 @@ Added the following:
 \end_layout
 
 \begin_layout Itemize
-Task status: Ready, {Send,Receive,Reply} Blocked, Zombie.
+MessageStatus status: Task statuses for message passing: none, send_block,
+ receive_block, reply_block.
 \end_layout
 
 \begin_layout Itemize
-Receive queue, which has a head and tail.
+int *send_id: the pointer to sender's task id from the Receive() call.
+\end_layout
+
+\begin_layout Itemize
+void *send_buf: the pointer to sender's message from the Send() call.
+\end_layout
+
+\begin_layout Itemize
+void *recv_buf: the pointer to receiver's buffer, set when Receive() is
+ called first.
+\end_layout
+
+\begin_layout Itemize
+unsigned int send_len, recv_len: the length of send_buf and recv_buf.
 \end_layout
 
 \begin_layout Subsection
@@ -173,7 +187,8 @@ int Reply( int tid, void *reply, int replylen )
 \end_layout
 
 \begin_layout Standard
-See Task Communication section.
+Added arg3, arg4, arg5 to Syscall data structure to support a maximum of
+ 5 system call arguments.
 \end_layout
 
 \begin_layout Subsection
@@ -181,19 +196,70 @@ Task Communication
 \end_layout
 
 \begin_layout Itemize
-When a task does a syscall for Send, Receive, Reply – it is not put on a
- seperate queue.
- 
+handleSend(), handleReceive(), and handleReply() are the kernel's system
+ call handlers
 \end_layout
 
 \begin_layout Itemize
-Messages are not copied to kernel space, they are copied directly becasue
- the tasks are blocked until the copy is finished.
+handleSend() checks whether the intended receiver is currently receive blocked.
+ If receiver's status is 
+\begin_inset Quotes eld
+\end_inset
+
+receive_block
+\begin_inset Quotes erd
+\end_inset
+
+, copy the buffer from sender to receiver directly, and set it's status
+ to 
+\begin_inset Quotes eld
+\end_inset
+
+reply_block
+\begin_inset Quotes erd
+\end_inset
+
+; else, enqueue to the receiver's send queue then update it's status to
  
+\begin_inset Quotes eld
+\end_inset
+
+send_block
+\begin_inset Quotes erd
+\end_inset
+
+.
+ It also copies sender's reply buffer and reply buffer length into recv_buf,
+ recv_len in sender's task descriptor for later use in handleReply().
 \end_layout
 
 \begin_layout Itemize
-As data must be copied around, an efficient method for memcpy is implemented.
+handleReceive() checks whether there are senders in receiver's send queue.
+ If there is one, or more than one senders, dequeue the sender, copy the
+ message found in sender's task descriptor, update sender's status to reply_bloc
+k, and add receiver to the ready queue.
+ If there are no queued senders, set receiver's status to 
+\begin_inset Quotes eld
+\end_inset
+
+receive_block
+\begin_inset Quotes erd
+\end_inset
+
+ and store the pointer to the buffer and length to the receiver's task descripto
+r.
+\end_layout
+
+\begin_layout Itemize
+handleReply() copies the message from the receiver to the sender.
+ The sender's reply buffer is stored in recv_buffer in it's task descriptor,
+ by handleSend().
+\end_layout
+
+\begin_layout Itemize
+All three functions checks for error conditions specified in the Kernel
+ Description, and sets the return values for Send(), Receive(), and Reply()
+ system calls.
 \end_layout
 
 \begin_layout Subsection
