@@ -32,7 +32,7 @@ void handleSend(TaskDescriptor *sendingTask, Syscall *request)
         return;
     }
 
-    TaskDescriptor *receivingTask = taskGetTDById(tid);
+    TaskDescriptor *receivingTask = taskGetTDByIndex(tid);
     if (!receivingTask)
     {
         // -2: Task id is not an existing task
@@ -50,6 +50,7 @@ void handleSend(TaskDescriptor *sendingTask, Syscall *request)
     // copy msg from here to receiving task's stack
     if (receivingTask->status == receive_block)
     {
+        //bwprintf(1, "send() case 1: receiver receive_block\n\r");
         // copy message over
         unsigned int copiedLen = msglen < receivingTask->recv_len ?
             msglen : receivingTask->recv_len;
@@ -72,6 +73,7 @@ void handleSend(TaskDescriptor *sendingTask, Syscall *request)
     // queue sending_task to send_queue of receiving_task
     else
     {
+        //bwprintf(1, "send() case 2: sender becomes send_block\n\r");
         // get receiving_task's send queue
         TaskQueue *q = &sendQueues[tid];
 
