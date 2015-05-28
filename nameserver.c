@@ -63,7 +63,7 @@ void nameserverTask() {
             case WHO_IS:
                 for(int i = 0; i < num_registered; i++) {
                     if( strcmp(registrations[i].name, request.name) == 0) {
-                        // Reply(sender_tid, &(registrations[i].tid), sizeof(int));
+                        Reply(sender_tid, &(registrations[i].tid), sizeof(int));
                         break; // resolved whois name to a tid
                     }
                     // no registered tid for that name
@@ -87,10 +87,6 @@ int RegisterAs(char *name) {
     strncpy(request.name, name, NS_MAX_NAME);
     int reply;
     int ret = Send( NS_TID, &request, sizeof(NSRequest), &reply, sizeof(int));
-    bwprintf(COM2, "[RegisterAs] ret %d\r\n", ret);
-    if(ret == sizeof(int)) {
-        return reply;
-    }
     // if -2 then task id is not an existing task
     return ret == sizeof(int) ? reply : (ret == -2 ? NO_NAMESERVER : ERROR);
 }

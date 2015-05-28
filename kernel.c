@@ -20,8 +20,8 @@ void initKernel() {
     initScheduler();
     initMessagePassing();
 
-    int create_ret = taskCreate(1, &userModeTask, 0);
-    // int create_ret = taskCreate(2, &rpsUserTask, -1);
+    // int create_ret = taskCreate(1, &userModeTask, 0);
+    int create_ret = taskCreate(2, &rpsUserTask, 0);
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;

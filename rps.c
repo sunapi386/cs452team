@@ -214,6 +214,7 @@ static void rpsClient() {
         Exit();
     }
     int my_tid = MyTid();
+    _LOG("\trpsClient %d, WhoIs %d\r\n", my_tid, server_tid);
     int request, response, ret;
 
     // perform requests to test the rps server: play 0 < n < 5 games of rps
@@ -225,6 +226,7 @@ static void rpsClient() {
             _LOG("Client %d got bad response for signup\r\n", my_tid);
             Exit();
         }
+        // _LOG("\trpsClient %d server tid %d\r\n", my_tid, server_tid);
         if(response == SERVER_FULL) {
             _LOG("Client %d got SERVER_FULL, trying later\r\n", my_tid);
             games_to_play++;
@@ -287,12 +289,8 @@ void rpsUserTask() {
     seed_x = 34589034;  // keyboard mashed seed
     seed_y = 98745372;
     seed_z = 32894984;
-    _LOG("rpsUserTask\r\n");
     Create(1, nameserverTask);
-    _LOG("nameserverTask\r\n");
     Create(2, rpsServer);
-    _LOG("rpsServer\r\n");
     Create(3, rpsMakeClients);
-    _LOG("rpsMakeClients\r\n");
     Exit();
 }
