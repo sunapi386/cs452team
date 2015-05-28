@@ -22,7 +22,7 @@ typedef struct {
 
 
 void nameserverTask() {
-    bwprintf(COM2, "[nameserverTask] started, myTID %d\r\n", MyTid());
+    bwprintf(COM2, "nameserverTask started, myTID %d\r\n", MyTid());
     struct {
         char name[NS_MAX_NAME];
         int tid;

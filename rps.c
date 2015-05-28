@@ -7,6 +7,8 @@
 #define RS_NUM_PLAYERS 4
 #define RS_MAX_PLAYERS 32
 #define _LOG(...) bwprintf(COM2, "[rps] " __VA_ARGS__)
+#define _LOG_SRV(...) bwprintf(COM2, "[rps Server] " __VA_ARGS__)
+#define _LOG_CLI(msg, ...) bwprintf(COM2, "[rps Client %d] " msg, my_tid, ## __VA_ARGS__)
 
 typedef enum {
     EMPTY_ENTRY = -1,
@@ -55,15 +57,15 @@ static void rpsServer() {
         players[i].request = EMPTY_ENTRY;
     }
 
-    _LOG("Server: registering with nameserver\r\n");
+    _LOG_SRV("registering with nameserver\r\n");
     // register to handle client requests: signup, play, quit
     int ret = RegisterAs("rpsServer");
     if(ret < 0) {
-        _LOG("Server: Failed to register with nameserver\r\n");
+        _LOG_SRV("Failed to register with nameserver\r\n");
         Exit();
     }
     int server_tid = MyTid();
-    _LOG("Server %d registered\r\n", server_tid);
+    _LOG_SRV("registered rpsServer = %d \r\n", server_tid);
     int sender_tid, request, reply;
     int waiting_tid = 0;
     int num_players = 0;
@@ -71,25 +73,25 @@ static void rpsServer() {
     for(;;) {
         ret = Receive(&sender_tid, &request, sizeof(int));
         if(ret != sizeof(int)) {
-            _LOG("Server: received %d (expected size %d)\r\n", ret, sizeof(int));
+            _LOG_SRV("received %d (expected size %d)\r\n", ret, sizeof(int));
             continue;
         }
-        _LOG("Server received %d %d\r\n", sender_tid, request);
+        _LOG_SRV("received sender_tid %d request %d\r\n", sender_tid, request);
 
         switch(request) {
             case SIGN_UP:
-                _LOG("Server: Signup request by %d\r\n", sender_tid);
+                _LOG_SRV("Signup request by %d\r\n", sender_tid);
 
                 // check if we have space to register player
                 if(num_players == RS_MAX_PLAYERS) {
-                    _LOG("Server: Too many players, rejecting %d\r\n", sender_tid);
+                    _LOG_SRV("Too many players, rejecting %d\r\n", sender_tid);
                     reply = SERVER_FULL;
                     Reply(sender_tid, (void *)&reply, sizeof(int));
                     break;
                 }
                 num_players++;
 
-                _LOG("Server: Adding player %d to players table\r\n", sender_tid);
+                _LOG_SRV("Adding player %d to players table\r\n", sender_tid);
                 // find free entry
                 int new_entry;
                 for(new_entry = 0; new_entry < RS_MAX_PLAYERS; new_entry++) {
@@ -103,11 +105,11 @@ static void rpsServer() {
                 players[new_entry].request = SIGN_UP;
 
                 if(! waiting_tid) { // there is no opponent
-                    _LOG("Server: No opponent, wait...\r\n");
+                    _LOG_SRV("No opponent, wait...\r\n");
                     waiting_tid = sender_tid;
                 }
                 else { // or there is opponent to play
-                    _LOG("Server: Match commencing: %d vs %d\r\n");
+                    _LOG_SRV("Match commencing: %d vs %d\r\n", sender_tid, waiting_tid);
                     // find opponent's entry and link them up
                     for(int op_id = 0; op_id < RS_MAX_PLAYERS; op_id++) {
                         if(players[op_id].tid == waiting_tid) {
@@ -122,7 +124,7 @@ static void rpsServer() {
                 break; // SIGN_UP
 
             case QUIT:
-                _LOG("Server: Quit request from %d\r\n", sender_tid);
+                _LOG_SRV("Quit request from %d\r\n", sender_tid);
                 // find the player id
                 int game_id;
                 for(game_id = 0; game_id < RS_MAX_PLAYERS; game_id++) {
@@ -131,12 +133,12 @@ static void rpsServer() {
                     }
                 }
                 if(game_id == RS_MAX_PLAYERS) { // didn't find player
-                    _LOG("Server: Got QUIT from player %d but is not in match\r\n", sender_tid);
+                    _LOG_SRV("Got QUIT from player %d but is not in match\r\n", sender_tid);
                     break;
                 }
                 players[game_id].request = QUIT; // set his status to quit
                 int opponent = players[game_id].opponent_tid;
-                _LOG("Server: notifying %d's opponent %d that he quit\r\n", sender_tid, opponent);
+                _LOG_SRV("notifying %d's opponent %d that he quit\r\n", sender_tid, opponent);
                 reply = QUIT;
                 Reply(sender_tid, (void *)&reply, sizeof(int)); // ack
                 reply = OPPONENT_QUIT;
@@ -151,7 +153,7 @@ static void rpsServer() {
             case PLAY_ROCK:
             case PLAY_PAPER:
             case PLAY_SCISSOR:
-                _LOG("Server: Play request from %d\r\n");
+                _LOG_SRV("Play request from %d\r\n");
                 int sender_idx;
                 // find the sender_idx
                 for(sender_idx = 0; sender_idx < RS_MAX_PLAYERS; sender_idx++) {
@@ -161,7 +163,7 @@ static void rpsServer() {
                 }
                 // check if valid sender_idx
                 if(sender_idx == RS_MAX_PLAYERS) {
-                    _LOG("Server: Player %d requests play, but not in any match\r\n", sender_tid);
+                    _LOG_SRV("Player %d requests play, but not in any match\r\n", sender_tid);
                     break;
                 }
                 // get opponent_idx
@@ -174,7 +176,7 @@ static void rpsServer() {
                 }
                 // check if valid opponent_idx
                 if(opponent_idx >= RS_MAX_PLAYERS || opponent_idx < 0) {
-                    _LOG("Server: Player %d has a bad opponent %d!\r\n", sender_tid, opponent_idx);
+                    _LOG_SRV("Player %d has a bad opponent %d!\r\n", sender_tid, opponent_idx);
                     break;
                 }
                 players[sender_idx].request = request;
@@ -190,16 +192,16 @@ static void rpsServer() {
                     Reply(opponent_tid, (void *)&reply, sizeof(int));
                     players[sender_idx].request = EMPTY_ENTRY;
                     players[opponent_idx].request = EMPTY_ENTRY;
-                    _LOG("Server: Round complete for %d and %d\r\n", sender_tid, opponent_tid);
+                    _LOG_SRV("Round complete for %d and %d\r\n", sender_tid, opponent_tid);
                     bwgetc(COM2); // pause and wait for TA to see what happened
                 }
                 else { // opponent hasn't played yet
-                    _LOG("Server: Player %d's opponent %d has not played yet\r\n", sender_tid, opponent_tid);
+                    _LOG_SRV("Player %d's opponent %d has not played yet\r\n", sender_tid, opponent_tid);
                 }
 
             break;
             default:
-                _LOG("Server: Bad request (%d) from %d\r\n", request, sender_tid);
+                _LOG_SRV("Bad request (%d) from %d\r\n", request, sender_tid);
         } // switch
     } // for
 
@@ -214,7 +216,6 @@ static void rpsClient() {
         Exit();
     }
     int my_tid = MyTid();
-    _LOG("\trpsClient %d, WhoIs %d\r\n", my_tid, server_tid);
     int request, response, ret;
 
     // perform requests to test the rps server: play 0 < n < 5 games of rps
@@ -223,51 +224,51 @@ static void rpsClient() {
         request = SIGN_UP;
         ret = Send(server_tid, (void *)&request, sizeof(int), (void *)&response, sizeof(int));
         if(ret != sizeof(int)) {
-            _LOG("Client %d got bad response for signup\r\n", my_tid);
+            _LOG_CLI("got bad response for signup\r\n");
             Exit();
         }
-        // _LOG("\trpsClient %d server tid %d\r\n", my_tid, server_tid);
+        // _LOG("\trpsClient %d server tid %d\r\n", server_tid);
         if(response == SERVER_FULL) {
-            _LOG("Client %d got SERVER_FULL, trying later\r\n", my_tid);
+            _LOG_CLI("got SERVER_FULL, trying later\r\n");
             games_to_play++;
             continue;
         }
         if(response != BEGIN_MATCH) {
-            _LOG("Client %d expected BEGIN_MATCH, got %d\r\n", my_tid, response);
+            _LOG_CLI("expected BEGIN_MATCH, got %d\r\n", response);
             Exit();
         }
 
         for(;games_to_play >= 0; games_to_play--) {
         // plays until we end are done or opponent leaves
-            _LOG("Client %d has %d games left to play\r\n", my_tid, games_to_play);
+            _LOG_CLI("has %d games left to play\r\n", games_to_play);
             // Play the game
             int move = rand(3);
             char *g_moves[3] = {"Rock", "Paper", "Scissor"};
-            _LOG("Client %d will play %s\r\n", my_tid, g_moves[move]);
+            _LOG_CLI("will play %s\r\n", g_moves[move]);
             ret = Send(server_tid, (void *)&move, sizeof(int), (void *)&response, sizeof(int));
             if(ret != sizeof(int)) {
-                _LOG("Client %d got bad response %d from play\r\n", my_tid, ret);
+                _LOG_CLI("got bad response %d from play\r\n", ret);
                 Exit();
             }
             if(response == OPPONENT_QUIT) {
-                _LOG("Client %d's opponent quit, will sign up again\r\n", my_tid);
+                _LOG_CLI("s opponent quit, will sign up again\r\n");
                 break;
             }
             if(response != WIN && response != LOSE && response != DRAW) {
-                _LOG("Client %d expected win/loss/draw but got %d\r\n", my_tid, response);
+                _LOG_CLI("expected win/loss/draw but got %d\r\n", response);
                 Exit();
             }
             char *g_result[3] = {"Win", "Lose", "Draw"};
-            _LOG("Client %d had a %s\r\n", my_tid, g_result[response]);
+            _LOG_CLI("had a %s\r\n", g_result[response]);
         } // for
     } // for
 
     // send quit request when finished playing
     request = QUIT;
-    _LOG("Client %d quitting.\r\n", my_tid);
+    _LOG_CLI("quitting.\r\n");
     ret = Send(server_tid, (void *)&request, sizeof(int), &response, sizeof(int));
     if(ret != sizeof(int)) {
-        _LOG("Client %d got a bad response when quitting\r\n", my_tid);
+        _LOG_CLI("got a bad response when quitting\r\n");
     }
     // exit gracefully
     Exit();
@@ -280,7 +281,6 @@ static void rpsMakeClients() { // creates players
             _LOG("Making player %d failed\r\n", i);
             break;
         }
-        _LOG("Created player %d tid %d\r\n", i, ret);
     }
     Exit();
 }
