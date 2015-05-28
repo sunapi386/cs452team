@@ -117,3 +117,7 @@ int taskGetUnique(TaskDescriptor *task) {
 int taskGetMyParentUnique(TaskDescriptor *task) {
     return (TASK_UNIQUE_MASK & task->parent_id) >> TASK_UNIQUE_OFFSET;
 }
+
+int taskGetIndexById(int task_id) {
+    return (TASK_INDEX_MASK & task_id) >> TASK_INDEX_OFFSET;
+}

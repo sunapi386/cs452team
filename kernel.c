@@ -20,20 +20,23 @@ void initKernel() {
     initScheduler();
     initMessagePassing();
 
-    int create_ret = taskCreate(1, &runBenchmark, -1);
+    int create_ret = taskCreate(1, &userModeTask, 0);
+    // int create_ret = taskCreate(2, &rpsUserTask, -1);
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
     }
+    bwprintf( COM2, "Creating first task %d\n\r", create_ret );
     queueTask(taskGetTDById(create_ret));
 }
 
 void handleRequest(TaskDescriptor *td, Syscall *request) {
     switch (request->type) {
         case SYS_CREATE: {
-            int create_ret = taskCreate(request->arg1, (void*)request->arg2, td->parent_id);
+            int create_ret = taskCreate(request->arg1, (void*)request->arg2, taskGetIndex(td));
             if (create_ret >= 0) {
-                td->ret = taskGetIndex(td);
+                td->ret = taskGetIndexById(create_ret);
+                bwprintf(COM2, "Creating task %d\n\r", td->ret);
                 queueTask(taskGetTDById(create_ret));
             } else {
                 td->ret = create_ret;

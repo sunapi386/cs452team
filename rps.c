@@ -2,6 +2,7 @@
 #include <utils.h>
 #include <syscall.h>
 #include <nameserver.h>
+#include <user_task.h>
 
 #define RS_NUM_PLAYERS 4
 #define RS_MAX_PLAYERS 32
@@ -73,6 +74,7 @@ static void rpsServer() {
             _LOG("Server: received %d (expected size %d)\r\n", ret, sizeof(int));
             continue;
         }
+        _LOG("Server received %d %d\r\n", sender_tid, request);
 
         switch(request) {
             case SIGN_UP:
@@ -285,8 +287,12 @@ void rpsUserTask() {
     seed_x = 34589034;  // keyboard mashed seed
     seed_y = 98745372;
     seed_z = 32894984;
+    _LOG("rpsUserTask\r\n");
     Create(1, nameserverTask);
+    _LOG("nameserverTask\r\n");
     Create(2, rpsServer);
+    _LOG("rpsServer\r\n");
     Create(3, rpsMakeClients);
+    _LOG("rpsMakeClients\r\n");
     Exit();
 }

@@ -4,7 +4,7 @@
 #include <utils.h>
 #include <syscall.h>
 
-#define NS_TID  makeId(1, 1, 1)
+#define NS_TID  2
 
 #define NS_MAX_NAME 16
 #define NS_MAX_REGIST_SIZE 256
@@ -22,6 +22,7 @@ typedef struct {
 
 
 void nameserverTask() {
+    bwprintf(COM2, "[nameserverTask] started, myTID %d\r\n", MyTid());
     struct {
         char name[NS_MAX_NAME];
         int tid;
@@ -86,6 +87,7 @@ int RegisterAs(char *name) {
     strncpy(request.name, name, NS_MAX_NAME);
     int reply;
     int ret = Send( NS_TID, &request, sizeof(NSRequest), &reply, sizeof(int));
+    bwprintf(COM2, "[RegisterAs] ret %d\r\n", ret);
     if(ret == sizeof(int)) {
         return reply;
     }
