@@ -2,11 +2,18 @@
 
 // NOTE: Insecure (does not detect overlapping memory)
 void memcpy(void *dest, const void *src, size_t n) {
-    size_t i;
-    for (i = 0; i < n; i++) {
-        *(unsigned char *)dest = *(unsigned char *)src;
-        ++dest;
-        ++src;
+    register unsigned int i = 0;
+    register unsigned int j = 0;
+    for (;;)
+    {
+        if (i == (n>>2)) break;
+        *((int *)dest + i) = *((int *)src + i);
+        ++i;
+    }
+    while ((n-j) % 4)
+    {
+        *((char *)dest + i + j) = *((char *)src + i + j);
+        ++j;
     }
 }
 
