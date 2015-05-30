@@ -1,21 +1,22 @@
+#define KERNEL_MAIN
+#include <scheduler.h>
+#include <message_passing.h>
+#undef  KERNEL_MAIN
 #include <ts7200.h>
 #include <stdbool.h>
 #include <cpsr.h>
-#include <task.h>
 #include <syscall.h>
 #include <context_switch.h>
-#include <scheduler.h>
 #include <bwio.h>
 #include <user_task.h>
 #include <utils.h>
-#include <message_passing.h>
 #include <message_benchmarks.h>
 
 void enableCache()
 {
     asm volatile(
         "mrc p15, 0, r0, c1, c0, 0\n\t"
-        "ldr r1, =0x1004\n\t"
+        "ldr r1, =0xc0001004\n\t"
         "orr r0, r0, r1\n\t"
         "mcr p15, 0, r0, c1, c0, 0\n\t"
     );
@@ -25,13 +26,13 @@ void disableCache()
 {
     asm volatile(
         "mrc p15, 0, r0, c1, c0, 0\n\t"
-        "ldr r1, =0xffffeffb\n\t"
+        "ldr r1, =0x1fffeffb\n\t"
         "and r0, r0, r1\n\t"
         "mcr p15, 0, r0, c1, c0, 0\n\t"
     );
 }
 
-void initKernel() {
+static void initKernel() {
 #if ENABLE_CACHE
     enableCache();
 #endif
@@ -42,7 +43,7 @@ void initKernel() {
     initScheduler();
     initMessagePassing();
 
-    // int create_ret = taskCreate(1, &userModeTask, 0);
+    //int create_ret = taskCreate(1, &userModeTask, 0);
     //int create_ret = taskCreate(2, &rpsUserTask, 0);
     int create_ret = taskCreate(1, &runBenchmark, 0);
     if( create_ret < 0 ) {
@@ -52,7 +53,7 @@ void initKernel() {
     queueTask(taskGetTDById(create_ret));
 }
 
-void handleRequest(TaskDescriptor *td, Syscall *request) {
+static inline void handleRequest(TaskDescriptor *td, Syscall *request) {
     switch (request->type) {
         case SYS_CREATE: {
             int create_ret = taskCreate(request->arg1, (void*)request->arg2, taskGetIndex(td));
@@ -95,7 +96,8 @@ int main() {
     initKernel();
     TaskDescriptor *task = NULL;
 
-    for(task = schedule() ; ; task = schedule()) {
+    for(;;) {
+        task = schedule();
         Syscall **request = NULL;
         if (task == NULL) {
             bwprintf(COM2, "No tasks scheduled; exiting...\n\r");

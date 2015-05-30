@@ -75,10 +75,6 @@ inline int taskGetMyId(TaskDescriptor *task) {
     return task->id;
 }
 
-inline int taskGetPriority(TaskDescriptor *task) {
-    return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
-}
-
 inline int taskGetMyParentId(TaskDescriptor *task) {
     return task->parent_id;
 }
@@ -102,10 +98,6 @@ TaskDescriptor *taskGetTDById(int task_id) {
     return global_task_table + index;
 }
 
-int taskGetIndex(TaskDescriptor *task) {
-    return (TASK_INDEX_MASK & task->id) >> TASK_INDEX_OFFSET;
-}
-
 int taskGetMyParentIndex(TaskDescriptor *task) {
     return (TASK_INDEX_MASK & task->parent_id) >> TASK_INDEX_OFFSET;
 }
@@ -118,6 +110,3 @@ int taskGetMyParentUnique(TaskDescriptor *task) {
     return (TASK_UNIQUE_MASK & task->parent_id) >> TASK_UNIQUE_OFFSET;
 }
 
-int taskGetIndexById(int task_id) {
-    return (TASK_INDEX_MASK & task_id) >> TASK_INDEX_OFFSET;
-}
