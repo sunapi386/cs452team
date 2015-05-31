@@ -66,7 +66,7 @@ static inline TaskDescriptor * schedule()
 /**
     Add an active task to the ready queue
  */
-void queueTask(volatile TaskDescriptor *task)
+void queueTask(TaskDescriptor *task)
 {
     int priority = taskGetPriority((TaskDescriptor *)task);
     TaskQueue *q = &readyQueues[priority];

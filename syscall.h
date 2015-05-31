@@ -13,9 +13,11 @@
 typedef
 struct Syscall {
     unsigned int type, arg1, arg2, arg3, arg4, arg5;
-    int ret;
 } Syscall;
 
+#if (defined KERNEL_MAIN || defined SYSCALL_DENFS)
+Syscall * initSyscall();
+#else
 /**
 Name. Create - instantiate a task.
 Synopsis. int Create( int priority, void (*code) ( ) )
@@ -88,5 +90,5 @@ Returns: 0 if the reply succeeds.
     -3 the task is not reply blocked.
 */
 int Reply( int tid, void *reply, unsigned int replylen );
-
-#endif
+#endif // KERNEL_MAIN | SYSCALL_DEFN
+#endif // __SYSCALL_H

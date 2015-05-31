@@ -1,16 +1,18 @@
 #define KERNEL_MAIN
 #include <scheduler.h>
 #include <message_passing.h>
-#undef  KERNEL_MAIN
+#include <syscall.h>
+#undef KERNEL_MAIN
 #include <ts7200.h>
 #include <stdbool.h>
 #include <cpsr.h>
-#include <syscall.h>
 #include <context_switch.h>
 #include <bwio.h>
 #include <user_task.h>
 #include <utils.h>
 #include <message_benchmarks.h>
+
+static Syscall *request = NULL;
 
 void enableCache()
 {
@@ -42,6 +44,7 @@ static void initKernel() {
     initTaskSystem();
     initScheduler();
     initMessagePassing();
+    request = initSyscall();
 
     //int create_ret = taskCreate(1, &userModeTask, 0);
     //int create_ret = taskCreate(2, &rpsUserTask, 0);
@@ -53,10 +56,10 @@ static void initKernel() {
     queueTask(taskGetTDById(create_ret));
 }
 
-static inline void handleRequest(TaskDescriptor *td, Syscall *request) {
+static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
         case SYS_CREATE: {
-            int create_ret = taskCreate(request->arg1, (void*)request->arg2, taskGetIndex(td));
+            int create_ret = taskCreate(request->arg1, (void*)(request->arg2), taskGetIndex(td));
             if (create_ret >= 0) {
                 td->ret = taskGetIndexById(create_ret);
                 queueTask(taskGetTDById(create_ret));
@@ -95,20 +98,17 @@ static inline void handleRequest(TaskDescriptor *td, Syscall *request) {
 int main() {
     initKernel();
     TaskDescriptor *task = NULL;
-
     for(;;) {
         task = schedule();
-        Syscall **request = NULL;
         if (task == NULL) {
-            bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
             break;
         }
-
-        KernelExit(task, request);
-        handleRequest((TaskDescriptor *)task, *request);
+        KernelExit(task);
+        handleRequest(task);
     }
 #if ENABLE_CACHE
     disableCache();
 #endif
+    bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
     return 0;
 }

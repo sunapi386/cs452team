@@ -5,7 +5,7 @@
 #include <syscall.h>
 #include <utils.h>
 
-extern void queueTask(volatile TaskDescriptor *task);
+extern void queueTask(TaskDescriptor *task);
 
 static TaskQueue sendQueues[TASK_MAX_TASKS];
 
