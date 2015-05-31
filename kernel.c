@@ -38,9 +38,7 @@ static void initKernel() {
 #if ENABLE_CACHE
     enableCache();
 #endif
-    // Initialize swi jump table to kernel entry point
-    *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
-
+    initInterrupt();
     initTaskSystem();
     initScheduler();
     initMessagePassing();
@@ -58,6 +56,9 @@ static void initKernel() {
 
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
+        case HWI_REQ:
+            // TODO: do what?
+            break;
         case SYS_CREATE: {
             int create_ret = taskCreate(request->arg1, (void*)(request->arg2), taskGetIndex(td));
             if (create_ret >= 0) {
