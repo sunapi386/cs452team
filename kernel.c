@@ -3,13 +3,10 @@
 #include <message_passing.h>
 #include <syscall.h>
 #undef KERNEL_MAIN
-#include <ts7200.h>
-#include <stdbool.h>
-#include <cpsr.h>
+#include <interrupt.h>
 #include <context_switch.h>
 #include <bwio.h>
 #include <user_task.h>
-#include <utils.h>
 #include <message_benchmarks.h>
 
 static Syscall *request = NULL;
@@ -77,21 +74,26 @@ static inline void handleRequest(TaskDescriptor *td) {
             break;
         case SYS_SEND:
             handleSend(td, request);
+            request->type = HWI_REQ;
             return;
         case SYS_RECEIVE:
             handleReceive(td, request);
+            request->type = HWI_REQ;
             return;
         case SYS_REPLY:
             handleReply(td, request);
+            request->type = HWI_REQ;
             return;
         case SYS_PASS:
             break;
         case SYS_EXIT:
+            request->type = HWI_REQ;
             return;
         default:
             bwprintf(COM2, "Invalid syscall %u!", request->type);
             break;
     }
+    request->type = HWI_REQ;
     // requeue the task if we haven't returned (from SYS_EXIT)
     queueTask(td);
 }

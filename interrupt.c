@@ -1,4 +1,5 @@
 #include <interrupt.h>
+#include <context_switch.h>
 
 void initInterrupt()
 {
@@ -6,7 +7,7 @@ void initInterrupt()
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
 
     // hardware interrupt
-    *(unsigned int *)(0x38) = (unsigned int)(&IRQHandler);
+    //*(unsigned int *)(0x38) = (unsigned int)(&IRQHandler);
 
     // enable pl190
 

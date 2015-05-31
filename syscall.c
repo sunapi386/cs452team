@@ -6,6 +6,7 @@ static Syscall s;
 
 Syscall *initSyscall()
 {
+    s.type = 0;
     return &s;
 }
 
