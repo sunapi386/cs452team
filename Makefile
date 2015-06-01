@@ -28,8 +28,8 @@ vpath %.c $(src_dirs)
 sources := $(foreach sdir,$(src_dirs),$(wildcard $(sdir)/*.c))
 assembled_sources := $(patsubst %c,%s,$(sources))
 # hand_assemblies := $(filter-out $(assembled_sources),$(wildcard *.s))
-# hand_assemblies := kernel/context_switch.s
-objects := $(patsubst %.c,%.o,$(sources)) # $(patsubst %.s,%.o,$(hand_assemblies))
+hand_assemblies := kernel/context_switch.s
+objects := $(patsubst %.s,%.o,$(hand_assemblies)) $(patsubst %.c,%.o,$(sources))
 
 deploy: kernel.elf
 	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sunchang/${USER}.elf
