@@ -1,8 +1,8 @@
 #include <bwio.h>
 #include <utils.h>
-#include <syscall.h>
-#include <nameserver.h>
-#include <user_task.h>
+#include <user/syscall.h>
+#include <user/nameserver.h>
+#include <user/user_task.h>
 
 #define RS_NUM_PLAYERS 6
 #define RS_MAX_PLAYERS 32

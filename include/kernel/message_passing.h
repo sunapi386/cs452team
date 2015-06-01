@@ -1,8 +1,8 @@
 #ifdef KERNEL_MAIN
 
-#include <task_queue.h>
-#include <task.h>
-#include <syscall.h>
+#include <kernel/task_queue.h>
+#include <kernel/task.h>
+#include <user/syscall.h>
 #include <utils.h>
 
 extern void queueTask(TaskDescriptor *task);

@@ -1,6 +1,6 @@
-#include <pl190.h>
-#include <interrupt.h>
-#include <context_switch.h>
+#include <kernel/pl190.h>
+#include <kernel/interrupt.h>
+#include <kernel/context_switch.h>
 #include <bwio.h>
 
 void initInterrupt()

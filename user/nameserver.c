@@ -1,8 +1,8 @@
-#include <nameserver.h>
-#include <task.h>
+#include <user/nameserver.h>
+#include <kernel/task.h>
 #include <bwio.h>
 #include <utils.h>
-#include <syscall.h>
+#include <user/syscall.h>
 
 #define NS_TID  2
 

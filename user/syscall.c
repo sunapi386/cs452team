@@ -1,5 +1,5 @@
 #define SYSCALL_DEFNS
-#include <syscall.h>
+#include <user/syscall.h>
 #undef SYSCALL_DEFNS
 
 static Syscall s;

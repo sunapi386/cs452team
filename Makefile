@@ -22,10 +22,13 @@ LDFLAGS = -init main -Map kernel.map -N -T linker.ld -L/u/wbcowan/gnuarm-4.0.2/l
 
 # .PHONY: make will run its recipe unconditionally
 .PHONY: clean
-
-sources := $(wildcard *.c)
+src_dirs = kernel user
+vpath %.h include include/kernel include/user
+vpath %.c $(src_dirs)
+sources := $(foreach sdir,$(src_dirs),$(wildcard $(sdir)/*.c))
 assembled_sources := $(patsubst %c,%s,$(sources))
-hand_assemblies := $(filter-out $(assembled_sources),$(wildcard *.s))
+# hand_assemblies := $(filter-out $(assembled_sources),$(wildcard *.s))
+hand_assemblies := kernel/context_switch.s
 objects := $(patsubst %.c,%.o,$(sources)) $(patsubst %.s,%.o,$(hand_assemblies))
 
 deploy: kernel.elf
@@ -35,7 +38,7 @@ kernel.elf: $(objects) linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lgcc
 
 %.s: %.c
-	$(CC) -S $(CFLAGS) $<
+	$(CC) -o $@ -S $(CFLAGS) $<
 
 %.o: %.s
 	$(AS) $(ASFLAGS) -o $@ $<

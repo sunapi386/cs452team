@@ -1,13 +1,13 @@
 #define KERNEL_MAIN
-#include <scheduler.h>
-#include <message_passing.h>
-#include <syscall.h>
+#include <kernel/scheduler.h>
+#include <kernel/message_passing.h>
+#include <user/syscall.h>
 #undef KERNEL_MAIN
-#include <interrupt.h>
-#include <context_switch.h>
+#include <kernel/interrupt.h>
+#include <kernel/context_switch.h>
 #include <bwio.h>
-#include <user_task.h>
-#include <message_benchmarks.h>
+#include <user/user_task.h>
+#include <user/message_benchmarks.h>
 
 static Syscall *request = NULL;
 
@@ -31,7 +31,7 @@ void disableCache()
     );
 }
 
-#include <pl190.h>
+#include <kernel/pl190.h>
 void interruptRaiser()
 {
     bwprintf(COM2, "About to raise hardware interrupt...\n\r");
