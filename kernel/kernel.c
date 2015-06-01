@@ -62,6 +62,7 @@ static void initKernel() {
 }
 
 void handleIRQ(TaskDescriptor *task) {
+    (void) (task);
     bwprintf(COM2, "In IRQ handler... clearing..\n\r");
     *(unsigned int *)(VIC1_BASE + SOFT_INT_CLEAR) = 1;
 
