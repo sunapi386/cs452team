@@ -2,20 +2,39 @@
 
 // NOTE: Insecure (does not detect overlapping memory)
 void memcpy(void *dest, const void *src, size_t n) {
+    if(n == 4) {
+        *((unsigned int *)dest) = *((unsigned int *)src);
+        return;
+    }
+
+    switch(n % 4) {
+        case 3:
+            n--;
+            *(((char *)dest + n)) = *(((char *)src + n));
+        case 2:
+            n--;
+            *(((char *)dest + n)) = *(((char *)src + n));
+        case 1:
+            n--;
+            *(((char *)dest + n)) = *(((char *)src + n));
+    }
+
     if(n == 0) { return; }
-    register unsigned int i = 0;
-    register unsigned int j = 0;
-    for (;;)
-    {
-        if (i == (n>>2)) break;
-        *((int *)dest + i) = *((int *)src + i);
-        ++i;
-    }
-    while ((n-j) % 4)
-    {
-        *((char *)dest + i + j) = *((char *)src + i + j);
-        ++j;
-    }
+
+    register void  *r_d asm("r0") = dest;
+    register const void  *r_s asm("r1") = src;
+    register size_t r_n asm("r2") = n;
+
+    asm volatile(
+        "memcpy_:\n\t"
+        "ldmia %1!, {r3-r6}\n\t"
+        "stmia %0!, {r3-r6}\n\t"
+        "subs %2, %2, #16\n\t"
+        "bgt memcpy_\n\t"
+        : // no output
+        : "r"(r_d), "r"(r_s), "r"(r_n) // input regs
+        : "r3", "r4", "r5", "r6" // scratch
+    );
 }
 
 int strcmp (const char * dst, const char * src) {
