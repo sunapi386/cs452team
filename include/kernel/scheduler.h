@@ -1,7 +1,7 @@
 #ifdef KERNEL_MAIN
 
-#include <task.h>
-#include <task_queue.h>
+#include <kernel/task.h>
+#include <kernel/task_queue.h>
 
 static unsigned int queueStatus = 0;
 static TaskQueue readyQueues[32];

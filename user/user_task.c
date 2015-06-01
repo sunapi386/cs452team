@@ -1,6 +1,6 @@
-#include <user_task.h>
 #include <bwio.h>
-#include <syscall.h>
+#include <user/syscall.h>
+#include <user/user_task.h>
 
 static void childTask() {
     int tid = MyTid();

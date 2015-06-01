@@ -2,6 +2,7 @@
 
 // NOTE: Insecure (does not detect overlapping memory)
 void memcpy(void *dest, const void *src, size_t n) {
+    if(n == 0) { return; }
     register unsigned int i = 0;
     register unsigned int j = 0;
     for (;;)
