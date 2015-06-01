@@ -59,7 +59,11 @@ IRQEnter:
     stmfd r0, {r1, r2}
 
     # go to supervisor mode
-    # msr cpsr_c, #0xd3
+    msr cpsr_c, #0xd3
+
+    # set spsr to IRQ mode
+    mov r2, #0xd2
+    msr spsr_c, r2
 
     bl KernelEnter
     # returned from KernelExit
@@ -70,10 +74,14 @@ IRQEnter:
     # restore pc_usr, cpsr_usr
     ldmfd sp!, {r1, r2}
 
+    #mov r0, #1
+    #mov r1, r2
+    #bl bwputr(PLT)
+
     # go back to IRQ mode
     msr cpsr_c, #0xd2
 
-    # restore lr, spsr_svc
+    # restore lr (user pc), spsr (user cpsr)
     mov lr, r1
     msr spsr, r2
 
