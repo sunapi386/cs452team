@@ -18,31 +18,6 @@ void memcpy(void *dest, const void *src, size_t n) {
     }
 }
 
-// http://www.embedded.com/design/configurable-systems/4024961/Optimizing-Memcpy-improves-speed
-// Listing 2: The modified-GNU algorithm
-// If the source and destination pointers are both aligned on 4-byte boundaries,
-// my modified-GNU algorithm copies 32 bits at a time rather than 8 bits.
-static void memcpy_2(void * dst, void const * src, size_t len) {
-    if(n == 0) { return; }
-    long * plDst = (long *) dst;
-    long const * plSrc = (long const *) src;
-
-    if (!(src & 0xFFFFFFFC) && !(dst & 0xFFFFFFFC)) {
-        while (len >= 4)  {
-            *plDst++ = *plSrc++;
-            len -= 4;
-        }
-    }
-
-    char * pcDst = (char *) plDst;
-    char const * pcDst = (char const *) plSrc;
-
-    while (len--)  {
-        *pcDst++ = *pcSrc++;
-    }
-}
-
-
 int strcmp (const char * dst, const char * src) {
     // http://en.wikibooks.org/wiki/C_Programming/C_Reference/string.h/strcmp
     for(; *dst == *src; ++dst, ++src)
