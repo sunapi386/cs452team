@@ -49,14 +49,17 @@ IRQEnter:
     # make room for user pc and cpsr
     sub sp, sp, #8
 
-    # go to supervisor mode
-    msr cpsr_c, #0xd3
+    # go back to IRQ mode
+    msr cpsr_c, #0x52
 
     # Put lr (pc_usr) to r1, spsr (cpsr_usr) to
     # r2 and push them onto the user stack
     mov r1, lr
     mrs r2, spsr
     stmfd r0, {r1, r2}
+
+    # go to supervisor mode
+    msr cpsr_c, #0xd3
 
     bl KernelEnter
 
