@@ -31,6 +31,15 @@ void disableCache()
     );
 }
 
+#include <pl190.h>
+void interruptRaiser()
+{
+    bwprintf(COM2, "About to raise hardware interrupt...\n\r");
+    *(unsigned int *)(VIC1_BASE + SOFT_INT) = 1;
+    bwprintf(COM2, "Back! Interrupt status: %x\n\r", *(unsigned int *)(VIC1_BASE & IRQ_STATUS));
+    Exit();
+}
+
 static void initKernel() {
 #if ENABLE_CACHE
     enableCache();
@@ -43,7 +52,8 @@ static void initKernel() {
 
     //int create_ret = taskCreate(1, &userModeTask, 0);
     //int create_ret = taskCreate(2, &rpsUserTask, 0);
-    int create_ret = taskCreate(1, &runBenchmark, 0);
+    //int create_ret = taskCreate(1, &runBenchmark, 0);
+    int create_ret = taskCreate(1, &interruptRaiser, 0);
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
@@ -51,10 +61,17 @@ static void initKernel() {
     queueTask(taskGetTDById(create_ret));
 }
 
+void handleIRQ(TaskDescriptor *task) {
+    bwprintf(COM2, "In IRQ handler... clearing..\n\r");
+    *(unsigned int *)(VIC1_BASE + SOFT_INT_CLEAR) = 1;
+
+    bwprintf(COM2, "ICU 1 status: %x\n\r", *(unsigned int *)(VIC1_BASE + IRQ_STATUS));
+}
+
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
-        case HWI_REQ:
-            // TODO: do what?
+        case IRQ:
+            handleIRQ(td);
             break;
         case SYS_CREATE: {
             int create_ret = taskCreate(request->arg1, (void*)(request->arg2), taskGetIndex(td));
@@ -74,26 +91,22 @@ static inline void handleRequest(TaskDescriptor *td) {
             break;
         case SYS_SEND:
             handleSend(td, request);
-            request->type = HWI_REQ;
             return;
         case SYS_RECEIVE:
             handleReceive(td, request);
-            request->type = HWI_REQ;
             return;
         case SYS_REPLY:
             handleReply(td, request);
-            request->type = HWI_REQ;
             return;
         case SYS_PASS:
             break;
         case SYS_EXIT:
-            request->type = HWI_REQ;
             return;
         default:
             bwprintf(COM2, "Invalid syscall %u!", request->type);
             break;
     }
-    request->type = HWI_REQ;
+
     // requeue the task if we haven't returned (from SYS_EXIT)
     queueTask(td);
 }
@@ -102,16 +115,19 @@ int main() {
     initKernel();
     TaskDescriptor *task = NULL;
     for(;;) {
+        bwprintf(COM2, "[main] trying to schedule task %x\n\r", task);
         task = schedule();
         if (task == NULL) {
             break;
         }
         KernelExit(task);
         handleRequest(task);
+        request->type = IRQ;
     }
 #if ENABLE_CACHE
     disableCache();
 #endif
+    cleanUp();
     bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
     return 0;
 }

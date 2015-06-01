@@ -8,7 +8,7 @@ KernelExit:
 	@ frame_needed = 1, uses_anonymous_args = 0
 
     # store all kernel registers onto kernel stack
-    stmfd   sp!, {r0-r12, lr}
+    stmfd sp!, {r0-r12, lr}
 
     # change to system mode
     msr cpsr_c, #0xdf
@@ -26,14 +26,17 @@ KernelExit:
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
-    # Put r3 (cpsr_usr) it to spsr_svc
+    # Put r2 (cpsr_usr) it to spsr_svc
     msr spsr, r2
 
     # execute user code
     movs pc, r1
     .size	KernelExit, .-KernelExit
-
+    .align	2
+	.global	IRQEnter
+	.type	IRQEnter, %function
 IRQEnter:
+
     # go to system mode
     msr cpsr_c, #0xdf
 
@@ -81,9 +84,13 @@ IRQEnter:
     # back to supervisor mode
     msr cpsr_c, #0xd3
 
+    #mov r0, #1
+    #mov r1, lr
+    #bl bwputr(PLT)
+
     # go back to user task
     subs pc, lr, #4
-
+    .size	IRQEnter, .-IRQEnter
 	.align	2
 	.global	KernelEnter
 	.type	KernelEnter, %function
@@ -91,7 +98,7 @@ KernelEnter:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 1, uses_anonymous_args = 0
 
-    # Put lr_svc (pc_usr OR next instruction in IRQHandler) in r1
+    # Put lr_svc in r1
     mov r1, lr
 
     # Put spsr (cpsr_usr) in r2
