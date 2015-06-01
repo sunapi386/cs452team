@@ -65,18 +65,14 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
     global_current_stack_address -= (TASK_TRAP_SIZE + TASK_STACK_SIZE);
 
     // init trap frame on stack for c-switch
-    *(new_task->sp) = (unsigned int)code;                       // r1: pc
-    *(new_task->sp + 1) = UserMode | DisableIRQ | DisableFIQ;   // r2: cpsr_user
+    *(new_task->sp) = (unsigned int)code;        // r1: pc
+    *(new_task->sp + 1) = UserMode | DisableFIQ; // r2: cpsr_user
 
     return new_task->id;
 }
 
 inline int taskGetMyId(TaskDescriptor *task) {
     return task->id;
-}
-
-inline int taskGetPriority(TaskDescriptor *task) {
-    return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
 }
 
 inline int taskGetMyParentId(TaskDescriptor *task) {
@@ -102,10 +98,6 @@ TaskDescriptor *taskGetTDById(int task_id) {
     return global_task_table + index;
 }
 
-int taskGetIndex(TaskDescriptor *task) {
-    return (TASK_INDEX_MASK & task->id) >> TASK_INDEX_OFFSET;
-}
-
 int taskGetMyParentIndex(TaskDescriptor *task) {
     return (TASK_INDEX_MASK & task->parent_id) >> TASK_INDEX_OFFSET;
 }
@@ -118,6 +110,3 @@ int taskGetMyParentUnique(TaskDescriptor *task) {
     return (TASK_UNIQUE_MASK & task->parent_id) >> TASK_UNIQUE_OFFSET;
 }
 
-int taskGetIndexById(int task_id) {
-    return (TASK_INDEX_MASK & task_id) >> TASK_INDEX_OFFSET;
-}

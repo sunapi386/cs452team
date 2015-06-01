@@ -6,12 +6,9 @@
 KernelExit:
 	@ args = 0, pretend = 0, frame = 12
 	@ frame_needed = 1, uses_anonymous_args = 0
-	
-    # right now:
-    # r0 - task, r1 - *request
 
-    # 1) store all kernel registers onto kernel stack
-    stmfd   sp!, {r0-r12, lr}
+    # store all kernel registers onto kernel stack
+    stmfd sp!, {r0-r12, lr}
 
     # change to system mode
     msr cpsr_c, #0xdf
@@ -29,23 +26,79 @@ KernelExit:
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
-    # Put r3 (cpsr_usr) it to spsr_svc 
+    # Put r2 (cpsr_usr) it to spsr_svc
     msr spsr, r2
-    
+
     # execute user code
     movs pc, r1
+    .size	KernelExit, .-KernelExit
+    .align	2
+	.global	IRQEnter
+	.type	IRQEnter, %function
+IRQEnter:
 
-	.size	KernelExit, .-KernelExit
+    # go to system mode
+    msr cpsr_c, #0xdf
+
+    # store scratch register on user stack
+    stmfd sp!, {r0-r3}
+
+    # store user sp to r0
+    mov r0, sp
+
+    # make room for user pc and cpsr
+    sub sp, sp, #8
+
+    # go to supervisor mode
+    msr cpsr_c, #0xd3
+
+    # Put lr (pc_usr) to r1, spsr (cpsr_usr) to
+    # r2 and push them onto the user stack
+    mov r1, lr
+    mrs r2, spsr
+    stmfd r0, {r1, r2}
+
+    bl KernelEnter
+
+    # returned from KernelExit
+
+    # go to system mode
+    msr cpsr_c, #0xdf
+
+    # restore pc_usr, cpsr_usr
+    ldmfd sp!, {r1, r2}
+
+    # go back to supervisor mode
+    msr cpsr_c, #0xd3
+
+    # restore lr, spsr_svc
+    mov lr, r1
+    msr spsr, r2
+
+    # go to system mode
+    msr cpsr_c, #0xdf
+
+    # restore user scratch registers
+	ldmfd sp!, {r0-r3}
+
+    # back to supervisor mode
+    msr cpsr_c, #0xd3
+
+    #mov r0, #1
+    #mov r1, lr
+    #bl bwputr(PLT)
+
+    # go back to user task
+    subs pc, lr, #4
+    .size	IRQEnter, .-IRQEnter
 	.align	2
 	.global	KernelEnter
 	.type	KernelEnter, %function
 KernelEnter:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 1, uses_anonymous_args = 0
- 
-    # r0: request address
 
-    # Put lr_svc (pc_usr) in r1
+    # Put lr_svc in r1
     mov r1, lr
 
     # Put spsr (cpsr_usr) in r2
@@ -56,27 +109,24 @@ KernelEnter:
 
     # 2) store all user registers to user stack
     stmfd   sp!, {r1-r12, lr}
-    
-    # put sp_usr in r2, &request in r3
-    mov r2, sp
-    mov r3, r0
+
+    # put sp_usr in r2
+    mov r1, sp
 
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
     # now:
-    # r2: sp_usr
-    # r3: &request
+    # r1: sp_usr
 
-    # load r0 (*task) and r1 (kernel's **request)
-    ldmfd sp!, {r0, r1}
+    # load r0 (*task)
+    ldmfd sp!, {r0}
 
-    # hand sp_usr, user request to task->sp, kernel request
-    str r2, [r0, #12]
-    str r3, [r1]
+    # store sp in task->sp
+    str r1, [r0, #12]
 
     # 1) load the rest of the kernel registers from stack
-    ldmfd sp!, {r2-r12, pc}
+    ldmfd sp!, {r1-r12, pc}
 
 	.size	KernelEnter, .-KernelEnter
 	.ident	"GCC: (GNU) 4.0.2"

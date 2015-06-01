@@ -1,21 +1,21 @@
-#include <ts7200.h>
-#include <stdbool.h>
-#include <cpsr.h>
-#include <task.h>
-#include <syscall.h>
-#include <context_switch.h>
+#define KERNEL_MAIN
 #include <scheduler.h>
+#include <message_passing.h>
+#include <syscall.h>
+#undef KERNEL_MAIN
+#include <interrupt.h>
+#include <context_switch.h>
 #include <bwio.h>
 #include <user_task.h>
-#include <utils.h>
-#include <message_passing.h>
 #include <message_benchmarks.h>
+
+static Syscall *request = NULL;
 
 void enableCache()
 {
     asm volatile(
         "mrc p15, 0, r0, c1, c0, 0\n\t"
-        "ldr r1, =0x1004\n\t"
+        "ldr r1, =0xc0001004\n\t"
         "orr r0, r0, r1\n\t"
         "mcr p15, 0, r0, c1, c0, 0\n\t"
     );
@@ -25,26 +25,35 @@ void disableCache()
 {
     asm volatile(
         "mrc p15, 0, r0, c1, c0, 0\n\t"
-        "ldr r1, =0xffffeffb\n\t"
+        "ldr r1, =0x1fffeffb\n\t"
         "and r0, r0, r1\n\t"
         "mcr p15, 0, r0, c1, c0, 0\n\t"
     );
 }
 
-void initKernel() {
+#include <pl190.h>
+void interruptRaiser()
+{
+    bwprintf(COM2, "About to raise hardware interrupt...\n\r");
+    *(unsigned int *)(VIC1_BASE + SOFT_INT) = 1;
+    bwprintf(COM2, "Back! Interrupt status: %x\n\r", *(unsigned int *)(VIC1_BASE & IRQ_STATUS));
+    Exit();
+}
+
+static void initKernel() {
 #if ENABLE_CACHE
     enableCache();
 #endif
-    // Initialize swi jump table to kernel entry point
-    *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);
-
+    initInterrupt();
     initTaskSystem();
     initScheduler();
     initMessagePassing();
+    request = initSyscall();
 
-    // int create_ret = taskCreate(1, &userModeTask, 0);
+    //int create_ret = taskCreate(1, &userModeTask, 0);
     //int create_ret = taskCreate(2, &rpsUserTask, 0);
-    int create_ret = taskCreate(1, &runBenchmark, 0);
+    //int create_ret = taskCreate(1, &runBenchmark, 0);
+    int create_ret = taskCreate(1, &interruptRaiser, 0);
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
@@ -52,10 +61,20 @@ void initKernel() {
     queueTask(taskGetTDById(create_ret));
 }
 
-void handleRequest(TaskDescriptor *td, Syscall *request) {
+void handleIRQ(TaskDescriptor *task) {
+    bwprintf(COM2, "In IRQ handler... clearing..\n\r");
+    *(unsigned int *)(VIC1_BASE + SOFT_INT_CLEAR) = 1;
+
+    bwprintf(COM2, "ICU 1 status: %x\n\r", *(unsigned int *)(VIC1_BASE + IRQ_STATUS));
+}
+
+static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
+        case IRQ:
+            handleIRQ(td);
+            break;
         case SYS_CREATE: {
-            int create_ret = taskCreate(request->arg1, (void*)request->arg2, taskGetIndex(td));
+            int create_ret = taskCreate(request->arg1, (void*)(request->arg2), taskGetIndex(td));
             if (create_ret >= 0) {
                 td->ret = taskGetIndexById(create_ret);
                 queueTask(taskGetTDById(create_ret));
@@ -87,6 +106,7 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
             bwprintf(COM2, "Invalid syscall %u!", request->type);
             break;
     }
+
     // requeue the task if we haven't returned (from SYS_EXIT)
     queueTask(td);
 }
@@ -94,19 +114,20 @@ void handleRequest(TaskDescriptor *td, Syscall *request) {
 int main() {
     initKernel();
     TaskDescriptor *task = NULL;
-
-    for(task = schedule() ; ; task = schedule()) {
-        Syscall **request = NULL;
+    for(;;) {
+        bwprintf(COM2, "[main] trying to schedule task %x\n\r", task);
+        task = schedule();
         if (task == NULL) {
-            bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
             break;
         }
-
-        KernelExit(task, request);
-        handleRequest((TaskDescriptor *)task, *request);
+        KernelExit(task);
+        handleRequest(task);
+        request->type = IRQ;
     }
 #if ENABLE_CACHE
     disableCache();
 #endif
+    cleanUp();
+    bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
     return 0;
 }

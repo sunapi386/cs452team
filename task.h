@@ -56,7 +56,6 @@ on the stack of the user task; other values should be in the task descriptor.
 
 typedef enum {
     none = 0,
-    send_block,
     receive_block,
     reply_block,
 } MessageStatus;
@@ -78,16 +77,13 @@ void initTaskSystem();
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 int taskGetMyId(TaskDescriptor *task);
 int taskGetMyParentId(TaskDescriptor *task);
-int taskGetPriority(TaskDescriptor *task);
 
 /* Returns NULL on invalid task_id */
 TaskDescriptor *taskGetTDByIndex(int index);
 TaskDescriptor *taskGetTDById(int task_id);
-int taskGetIndex(TaskDescriptor *task);
 int taskGetMyParentIndex(TaskDescriptor *task);
 int taskGetUnique(TaskDescriptor *task);
 int taskGetMyParentUnique(TaskDescriptor *task);
-int taskGetIndexById(int task_id);
 
 static inline int isValidTaskIndex(int index)
 {
@@ -101,5 +97,18 @@ static inline int makeId(int index, int priority, int unique) {
         (priority << TASK_PRIORITY_OFFSET) |
         (unique << TASK_UNIQUE_OFFSET);
 }
+
+static inline int taskGetIndexById(int task_id) {
+    return (TASK_INDEX_MASK & task_id) >> TASK_INDEX_OFFSET;
+}
+
+static inline int taskGetIndex(TaskDescriptor *task) {
+    return (TASK_INDEX_MASK & task->id) >> TASK_INDEX_OFFSET;
+}
+
+static inline int taskGetPriority(TaskDescriptor *task) {
+    return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
+}
+
 
 #endif

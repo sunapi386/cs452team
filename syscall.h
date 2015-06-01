@@ -1,20 +1,23 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
 
-#define SYS_CREATE          0
-#define SYS_MY_TID          1
-#define SYS_MY_PARENT_TID   2
-#define SYS_PASS            3
-#define SYS_SEND            4
-#define SYS_RECEIVE         5
-#define SYS_REPLY           6
-#define SYS_EXIT            7
+#define SYS_CREATE          1
+#define SYS_MY_TID          2
+#define SYS_MY_PARENT_TID   3
+#define SYS_PASS            4
+#define SYS_SEND            5
+#define SYS_RECEIVE         6
+#define SYS_REPLY           7
+#define SYS_EXIT            8
 
 typedef
 struct Syscall {
     unsigned int type, arg1, arg2, arg3, arg4, arg5;
-    int ret;
 } Syscall;
+
+#if (defined KERNEL_MAIN || defined SYSCALL_DENFS)
+Syscall * initSyscall();
+#endif
 
 /**
 Name. Create - instantiate a task.
@@ -88,5 +91,4 @@ Returns: 0 if the reply succeeds.
     -3 the task is not reply blocked.
 */
 int Reply( int tid, void *reply, unsigned int replylen );
-
-#endif
+#endif // __SYSCALL_H

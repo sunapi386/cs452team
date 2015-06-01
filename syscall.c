@@ -1,6 +1,14 @@
+#define SYSCALL_DEFNS
 #include <syscall.h>
+#undef SYSCALL_DEFNS
 
 static Syscall s;
+
+Syscall *initSyscall()
+{
+    s.type = 0;
+    return &s;
+}
 
 // Don't modify this! I know there isn't are return statement!
 // It's magic! (It needs the request parameter too)
