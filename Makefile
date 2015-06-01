@@ -21,20 +21,18 @@ LDFLAGS = -init main -Map kernel.map -N -T linker.ld -L/u/wbcowan/gnuarm-4.0.2/l
 .PRECIOUS: %.s
 
 # .PHONY: make will run its recipe unconditionally
-.PHONY: all clean
-
-
-all = kernel.elf
+.PHONY: clean
 
 sources := $(wildcard *.c)
 assembled_sources := $(patsubst %c,%s,$(sources))
 hand_assemblies := $(filter-out $(assembled_sources),$(wildcard *.s))
 objects := $(patsubst %.c,%.o,$(sources)) $(patsubst %.s,%.o,$(hand_assemblies))
 
+deploy: kernel.elf
+	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sunchang/${USER}.elf
+
 kernel.elf: $(objects) linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lgcc
-	cp kernel.elf /u/cs452/tftp/ARM/${USER}/k2.elf
-	chmod 755 /u/cs452/tftp/ARM/${USER}/k2.elf
 
 %.s: %.c
 	$(CC) -S $(CFLAGS) $<
@@ -48,5 +46,8 @@ kernel.elf: $(objects) linker.ld
 
 clean:
 	-rm -f kernel.elf $(objects) $(assembled_sources) $(sources:.c=.d) kernel.map
+
+prod: clean
+	make CFLAGS="$(CFLAGS) -DPRODUCTION"
 
 -include $(sources:.c=.d)
