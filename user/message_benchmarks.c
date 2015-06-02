@@ -1,7 +1,7 @@
 #include <user/message_benchmarks.h>
 #include <bwio.h>
 #include <user/syscall.h>
-#include <user/timer.h>
+#include <kernel/timer.h>
 
 typedef struct Message {
 #if USE_4_BYTE_MESSAGE

@@ -1,4 +1,4 @@
-#include <user/timer.h>
+#include <kernel/timer.h>
 #include <ts7200.h>
 
 void InitTimer(volatile unsigned int **count)

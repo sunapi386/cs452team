@@ -6,8 +6,7 @@
 #include <kernel/interrupt.h>
 #include <kernel/context_switch.h>
 #include <bwio.h>
-#include <user/user_task.h>
-#include <user/message_benchmarks.h>
+#include <user/all_user_tasks.h>
 
 static Syscall *request = NULL;
 
@@ -31,15 +30,6 @@ void disableCache()
     );
 }
 
-#include <kernel/pl190.h>
-void interruptRaiser()
-{
-    bwprintf(COM2, "About to raise hardware interrupt...\n\r");
-    *(unsigned int *)(VIC1_BASE + SOFT_INT) = 1;
-    bwprintf(COM2, "Back! Interrupt status: %x\n\r", *(unsigned int *)(VIC1_BASE & IRQ_STATUS));
-    Exit();
-}
-
 static void initKernel() {
 #if ENABLE_CACHE
     enableCache();
@@ -53,7 +43,7 @@ static void initKernel() {
     //int create_ret = taskCreate(1, &userModeTask, 0);
     //int create_ret = taskCreate(2, &rpsUserTask, 0);
     //int create_ret = taskCreate(1, &runBenchmark, 0);
-    int create_ret = taskCreate(1, &interruptRaiser, 0);
+    int create_ret = taskCreate(1, &hwiTester, 0);
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
@@ -61,12 +51,12 @@ static void initKernel() {
     queueTask(taskGetTDById(create_ret));
 }
 
+#include <kernel/pl190.h>
 void handleIRQ(TaskDescriptor *task) {
     (void) (task);
-    bwprintf(COM2, "In IRQ handler... clearing..\n\r");
+    bwprintf(COM2, "[handleIRQ] clearing..\n\r");
     *(unsigned int *)(VIC1_BASE + SOFT_INT_CLEAR) = 1;
-
-    bwprintf(COM2, "ICU 1 status: %x\n\r", *(unsigned int *)(VIC1_BASE + IRQ_STATUS));
+    bwprintf(COM2, "[handleIRQ] status: %x\n\r", *(unsigned int *)(VIC1_BASE + IRQ_STATUS));
 }
 
 static inline void handleRequest(TaskDescriptor *td) {
@@ -116,7 +106,6 @@ int main() {
     initKernel();
     TaskDescriptor *task = NULL;
     for(;;) {
-        bwprintf(COM2, "[main] trying to schedule task %x\n\r", task);
         task = schedule();
         if (task == NULL) {
             break;
