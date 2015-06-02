@@ -1,3 +1,6 @@
+#ifndef __SCHEDULER_H
+#define __SCHEDULER_H
+
 #ifdef KERNEL_MAIN
 
 #include <kernel/task.h>
@@ -89,3 +92,4 @@ void queueTask(TaskDescriptor *task)
 }
 #endif // KERNEL_MAIN
 
+#endif

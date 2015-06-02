@@ -15,6 +15,7 @@ int Time()
 {
     ClockReq req;
     req.type = TIME;
+    return 0; // FIXME
 }
 
 int Delay(int ticks)
@@ -22,6 +23,7 @@ int Delay(int ticks)
     ClockReq req;
     req.type = DELAY;
     req.ticks = ticks;
+    return 0; // FIXME
 }
 
 int DelayUntil(int ticks)
@@ -30,7 +32,7 @@ int DelayUntil(int ticks)
     req.type = DELAY_UNTIL;
     req.ticks = ticks;
 
-
+    return 0; // FIXME
 }
 
 void clockServer()
