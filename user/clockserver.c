@@ -82,51 +82,28 @@ static void clockNotifier()
     }
 }
 
-
-void insertDelayedTask(DelayedQueue *q, int tid)
-{
-
-}
-
-void clockServer()
-{
-    // Initialize variables
-    int tid = 0, i = 0;
-    int delayCount = 0;
-    req.type = DELAY_UNTIL;
-    req.data = ticks;
-    Send(clockServerTid, &req, reqSize, &(req.data), sizeof(req.data));
-    return req.data;
-}
-
-static void clockNotifier()
-{
-    // Initialize variabels
-    int pid = MyParentTid();
-
-    // Initialize timer
-
-    for (;;)
-    {
-        // AwaitEvent()
-        // Send(pid,
-    }
-}
-
 void initDelayedTasks(DelayedQueue *q, DelayedTask tasks[])
 {
-    // Init delayed queue
+    // Initialize delayed queue
     q->tail = 0;
 
-    // Init delayed task pool
+    // Initialize delayed task pool
+    int i;
     for (i = 0; i < MAX_DELAYED_TASKS; i++)
     {
         tasks[i].tid = i;
-        tassk[i].next = 0;
+        tasks[i].next = 0;
     }
 }
 
-void insertDelayedTask(DelayedQueue *q, int tid)
+void insertDelayedTask(DelayedQueue *q,
+                       DelayedTask tasks[],
+                       unsigned int finalTick)
+{
+
+}
+
+void unblockDelayedTasks(DelayedQueue *q, int currTick)
 {
 
 }
@@ -136,15 +113,16 @@ void clockServer()
     // Initialize variables
     int tid = 0, i = 0;
     int delayCount = 0;
-    DelayedTask tasks[128];
-    DelayedQueue q;
     unsigned int currTick = 0;
-    // Delayed
-
+    DelayedTask tasks[MAX_DELAYED_TASKS];
+    DelayedQueue q;
     ClockReq req;
 
-    // TODO: Initialize delayed queue data structures
-    initDelayedTasks
+    // Initialize data structures to store delayed tasks
+    initDelayedTasks(&q, tasks);
+
+    // Register with name server
+    RegisterAs("clockServer");
 
     // Spawn notifier
     Create(1, &clockNotifier);
@@ -161,13 +139,10 @@ void clockServer()
             Reply(tid, 0, 0);
 
             // Increment tick
-            ++ticks;
+            ++currTick;
 
             // Unblock expired tasks
-            for (i = 0; i < delayCount; i++)
-            {
-               // if (delay
-            }
+            unblockDelayedTasks(&q, currTick);
             break;
         }
         case TIME:
@@ -176,30 +151,19 @@ void clockServer()
             break;
         case DELAY:
         {
-            DelayedTask *task = ;
-            task.tid = tid;
-            task.finalTick = req.data + currTick;
-
             // add to delayed queue
-            insertDelayedTask(&q, task);
-
+            insertDelayedTask(&q, tasks, req.data + currTick);
             break;
         }
         case DELAY_UNTIL:
         {
-
-        }
-            // do some calculation
-            // add to delayed task queue
+            // add to delayed queue
+            insertDelayedTask(&q, tasks, req.data);
             break;
+        }
         default:
             break;
         }
     }
 }
-
-
-
-
-
 

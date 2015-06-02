@@ -1,7 +1,8 @@
-#ifndef _USER_TASK_H
-#define _USER_TASK_H
+#ifndef __USER_TASK_H
+#define __USER_TASK_H
 
 void userModeTask();
 void rpsUserTask();
+void k3userTask();
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef __clockserver_h
-#define __clockserver_h
+#ifndef __CLOCKSERVER_H
+#define __CLOCKSERVER_H
 
 int Time();
 int Delay(int ticks);

@@ -1,8 +1,7 @@
-#include <kernel/timer.h>
 #include <ts7200.h>
+#include <kernel/timer.h>
 
-void InitTimer(volatile unsigned int **count)
-{
+void InitTimer(volatile unsigned int **count) {
 	volatile unsigned int *ctrl = (unsigned int *)(TIMER3_BASE + CRTL_OFFSET);
 	volatile unsigned int *load = (unsigned int *)(TIMER3_BASE + LDR_OFFSET);
 	*count = (unsigned int *)(TIMER3_BASE + VAL_OFFSET);
@@ -10,8 +9,7 @@ void InitTimer(volatile unsigned int **count)
 	*ctrl = CLKSEL_MASK | ENABLE_MASK;
 }
 
-void UpdateTimer(unsigned int *minutes, unsigned int *seconds, unsigned int *ticks)
-{
+void UpdateTimer(unsigned int *minutes, unsigned int *seconds, unsigned int *ticks) {
 	if (*ticks + 1 < 10)
 	{
 		++*ticks;
