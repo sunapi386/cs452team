@@ -61,8 +61,21 @@ void handleIRQ(TaskDescriptor *task) {
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
         case IRQ:
-            handleIRQ(td);
+            handleIRQ(td); // this works with awaitEvent; liberates a particular event queue
             break;
+        case SYS_AWAIT_EVENT:
+            // puts an event in the queue into the queue that correspondes with the event
+
+            break;
+        case SYS_SEND:
+            handleSend(td, request);
+            return;
+        case SYS_RECEIVE:
+            handleReceive(td, request);
+            return;
+        case SYS_REPLY:
+            handleReply(td, request);
+            return;
         case SYS_CREATE: {
             int create_ret = taskCreate(request->arg1, (void*)(request->arg2), taskGetIndex(td));
             if (create_ret >= 0) {
@@ -79,15 +92,6 @@ static inline void handleRequest(TaskDescriptor *td) {
         case SYS_MY_PARENT_TID:
             td->ret = taskGetMyParentIndex(td);
             break;
-        case SYS_SEND:
-            handleSend(td, request);
-            return;
-        case SYS_RECEIVE:
-            handleReceive(td, request);
-            return;
-        case SYS_REPLY:
-            handleReply(td, request);
-            return;
         case SYS_PASS:
             break;
         case SYS_EXIT:
