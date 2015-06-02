@@ -40,13 +40,18 @@ void userTaskK3() {
     int delay_times[4] = {20, 9, 6, 3};
     int delay_durations[4] = {10, 23, 33, 71};
 
+    ret = Create(1, &nameserverTask);
+    if(ret < 1) {
+        debug("Expected create nameserverTask >= 1, got %d", ret);
+        Exit();
+    }
     ret = Create(31, &userTaskIdle);
     if(ret < 1) {
         debug("Expected create userTaskIdle >= 1, got %d", ret);
         Exit();
     }
     // create clock server
-    ret = Create(31, &clockServerTask);
+    ret = Create(2, &clockServerTask);
     if(ret < 1) {
         debug("Expected create clockServerTask >= 1, got %d", ret);
         Exit();
