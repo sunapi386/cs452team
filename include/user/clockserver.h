@@ -5,6 +5,6 @@ int Time();
 int Delay(int ticks);
 int DelayUntil(int ticks);
 
-void clockServer();
+void clockServerTask();
 
 #endif

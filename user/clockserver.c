@@ -82,7 +82,8 @@ static void clockNotifier()
     }
 }
 
-void initDelayedTasks(DelayedQueue *q, DelayedTask tasks[])
+static void initDelayedTasks(DelayedQueue *q,
+                             DelayedTask tasks[])
 {
     // Initialize delayed queue
     q->tail = 0;
@@ -96,19 +97,45 @@ void initDelayedTasks(DelayedQueue *q, DelayedTask tasks[])
     }
 }
 
-void insertDelayedTask(DelayedQueue *q,
-                       DelayedTask tasks[],
-                       unsigned int finalTick)
+static inline void insertDelayedTask(DelayedQueue *q,
+                                     DelayedTask tasks[],
+                                     int tid,
+                                     unsigned int finalTick)
+{
+    // Setup delayed task struct
+    DelayedTask *task = &tasks[tid];
+    task->finalTick = finalTick;
+
+    if (q->tail == 0)
+    {
+        q->tail = task;
+        task->next = task;
+    }
+    else
+    {
+        DelayedTask *curr = q->tail;
+        do
+        {
+            if (curr->next->finalTick >= finalTick)
+            {
+                // insert node here
+                task->next = curr->next;
+                curr->next = task;
+                break;
+            }
+            curr = curr->next;
+        }
+        while (curr != q->tail);
+    }
+}
+
+static inline void removeExpiredTasks(DelayedQueue *q,
+                                      int currTick)
 {
 
 }
 
-void unblockDelayedTasks(DelayedQueue *q, int currTick)
-{
-
-}
-
-void clockServer()
+void clockServerTask()
 {
     // Initialize variables
     int tid = 0, i = 0;
@@ -142,7 +169,7 @@ void clockServer()
             ++currTick;
 
             // Unblock expired tasks
-            unblockDelayedTasks(&q, currTick);
+            removeExpiredTasks(&q, currTick);
             break;
         }
         case TIME:
@@ -152,13 +179,13 @@ void clockServer()
         case DELAY:
         {
             // add to delayed queue
-            insertDelayedTask(&q, tasks, req.data + currTick);
+            insertDelayedTask(&q, tasks, tid, req.data + currTick);
             break;
         }
         case DELAY_UNTIL:
         {
             // add to delayed queue
-            insertDelayedTask(&q, tasks, req.data);
+            insertDelayedTask(&q, tasks, tid, req.data);
             break;
         }
         default:
