@@ -6,6 +6,5 @@ int Delay(int ticks);
 int DelayUntil(int ticks);
 
 void clockServer();
-void clockNotifier();
 
 #endif
