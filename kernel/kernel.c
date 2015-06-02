@@ -34,11 +34,11 @@ static void initKernel() {
 #if ENABLE_CACHE
     enableCache();
 #endif
-    initInterrupt();
     initTaskSystem();
     initScheduler();
     initMessagePassing();
     request = initSyscall();
+    initInterrupts();
 
     //int create_ret = taskCreate(1, &userModeTask, 0);
     //int create_ret = taskCreate(2, &rpsUserTask, 0);
@@ -51,12 +51,11 @@ static void initKernel() {
     queueTask(taskGetTDById(create_ret));
 }
 
-#include <kernel/pl190.h>
 void handleIRQ(TaskDescriptor *task) {
     (void) (task);
     bwprintf(COM2, "[handleIRQ] clearing..\n\r");
-    *(unsigned int *)(VIC1_BASE + SOFT_INT_CLEAR) = 1;
-    bwprintf(COM2, "[handleIRQ] status: %x\n\r", *(unsigned int *)(VIC1_BASE + IRQ_STATUS));
+    *(unsigned int *)(VIC1 + SOFT_INT_CLEAR) = 1;
+    bwprintf(COM2, "[handleIRQ] status: %x\n\r", *(unsigned int *)(VIC1 + IRQ_STATUS));
 }
 
 static inline void handleRequest(TaskDescriptor *td) {
@@ -117,7 +116,7 @@ int main() {
 #if ENABLE_CACHE
     disableCache();
 #endif
-    cleanUp();
+    resetInterrupts();
     bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
     return 0;
 }

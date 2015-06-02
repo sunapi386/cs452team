@@ -6,7 +6,7 @@
 static void grunt()
 {
     bwprintf(COM2, "[grunt %d] triggering interrupt!\n\r", MyTid());
-    *(unsigned int *)(VIC1_BASE + SOFT_INT) = 1;
+    *(unsigned int *)(VIC1 + SOFT_INT) = 1;
     bwprintf(COM2, "[grunt %d] back from interrupt!\n\r", MyTid());
     Exit();
 }
