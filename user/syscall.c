@@ -36,7 +36,6 @@ int MyParentTid() {
     return swi(&s);
 }
 
-
 void Pass() {
     s.type = SYS_PASS;
     swi(&s);
@@ -76,3 +75,9 @@ int Reply(int tid, void *reply, unsigned int replylen)
     return swi(&s);
 }
 
+int AwaitEvent(int eventType)
+{
+    s.type = SYS_AWAIT_EVENT;
+    s.arg1 = (unsigned int)eventType;
+    return swi(&s);
+}

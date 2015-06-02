@@ -1,14 +1,15 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
 
-#define SYS_CREATE          1
-#define SYS_MY_TID          2
-#define SYS_MY_PARENT_TID   3
-#define SYS_PASS            4
-#define SYS_SEND            5
-#define SYS_RECEIVE         6
-#define SYS_REPLY           7
-#define SYS_EXIT            8
+#define SYS_AWAIT_EVENT     1
+#define SYS_SEND            2
+#define SYS_RECEIVE         3
+#define SYS_REPLY           4
+#define SYS_CREATE          5
+#define SYS_EXIT            6
+#define SYS_MY_TID          7
+#define SYS_MY_PARENT_TID   8
+#define SYS_PASS            9
 
 typedef
 struct Syscall {
@@ -91,4 +92,10 @@ Returns: 0 if the reply succeeds.
     -3 the task is not reply blocked.
 */
 int Reply( int tid, void *reply, unsigned int replylen );
+
+/**
+AwaitEvent - block until event with eventType
+*/
+int AwaitEvent(int eventType);
+
 #endif // __SYSCALL_H
