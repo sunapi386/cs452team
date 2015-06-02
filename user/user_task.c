@@ -34,3 +34,8 @@ void userModeTask() {
     bwputstr(COM2, "First: exiting\r\n");
     Exit();
 }
+
+
+void k3userTask() {
+
+}

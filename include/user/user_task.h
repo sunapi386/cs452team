@@ -3,5 +3,6 @@
 
 void userModeTask();
 void rpsUserTask();
+void k3userTask();
 
 #endif
