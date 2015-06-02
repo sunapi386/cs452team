@@ -5,11 +5,11 @@
 
 #ifdef PRODUCTION
 
-#define error(fmt, ...)     (void)(0)
+#define debug(fmt, ...)     (void)(0)
 
 #else // ! PRODUCTION
 
-#define error(fmt, ...)     bwprintf(COM2, \
+#define debug(fmt, ...)     bwprintf(COM2, \
     "%s @ %s - %d: " fmt "\r\n",
     __FUNCTION__,
     __FILE__,
