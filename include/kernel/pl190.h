@@ -1,8 +1,8 @@
 #ifndef __PL190_H
 #define __PL190_H
 
-#define VIC1_BASE 0x800B0000
-#define VIC2_BASE 0x800C0000
+#define VIC1 0x800B0000
+#define VIC2 0x800C0000
 
 #define IRQ_STATUS     0x00
 #define RAW_INTR       0x08

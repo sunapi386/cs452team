@@ -6,8 +6,7 @@
 #include <kernel/interrupt.h>
 #include <kernel/context_switch.h>
 #include <bwio.h>
-#include <user/user_task.h>
-#include <user/message_benchmarks.h>
+#include <user/all_user_tasks.h>
 
 static Syscall *request = NULL;
 
@@ -31,29 +30,20 @@ void disableCache()
     );
 }
 
-#include <kernel/pl190.h>
-void interruptRaiser()
-{
-    bwprintf(COM2, "About to raise hardware interrupt...\n\r");
-    *(unsigned int *)(VIC1_BASE + SOFT_INT) = 1;
-    bwprintf(COM2, "Back! Interrupt status: %x\n\r", *(unsigned int *)(VIC1_BASE & IRQ_STATUS));
-    Exit();
-}
-
 static void initKernel() {
 #if ENABLE_CACHE
     enableCache();
 #endif
-    initInterrupt();
     initTaskSystem();
     initScheduler();
     initMessagePassing();
     request = initSyscall();
+    initInterrupts();
 
     //int create_ret = taskCreate(1, &userModeTask, 0);
     //int create_ret = taskCreate(2, &rpsUserTask, 0);
     //int create_ret = taskCreate(1, &runBenchmark, 0);
-    int create_ret = taskCreate(1, &interruptRaiser, 0);
+    int create_ret = taskCreate(1, &hwiTester, 0);
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
         return;
@@ -63,17 +53,29 @@ static void initKernel() {
 
 void handleIRQ(TaskDescriptor *task) {
     (void) (task);
-    bwprintf(COM2, "In IRQ handler... clearing..\n\r");
-    *(unsigned int *)(VIC1_BASE + SOFT_INT_CLEAR) = 1;
-
-    bwprintf(COM2, "ICU 1 status: %x\n\r", *(unsigned int *)(VIC1_BASE + IRQ_STATUS));
+    bwprintf(COM2, "[handleIRQ] clearing..\n\r");
+    *(unsigned int *)(VIC1 + SOFT_INT_CLEAR) = 1;
+    bwprintf(COM2, "[handleIRQ] status: %x\n\r", *(unsigned int *)(VIC1 + IRQ_STATUS));
 }
 
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
         case IRQ:
-            handleIRQ(td);
+            handleIRQ(td); // this works with awaitEvent; liberates a particular event queue
             break;
+        case SYS_AWAIT_EVENT:
+            // puts an event in the queue into the queue that correspondes with the event
+
+            break;
+        case SYS_SEND:
+            handleSend(td, request);
+            return;
+        case SYS_RECEIVE:
+            handleReceive(td, request);
+            return;
+        case SYS_REPLY:
+            handleReply(td, request);
+            return;
         case SYS_CREATE: {
             int create_ret = taskCreate(request->arg1, (void*)(request->arg2), taskGetIndex(td));
             if (create_ret >= 0) {
@@ -90,15 +92,6 @@ static inline void handleRequest(TaskDescriptor *td) {
         case SYS_MY_PARENT_TID:
             td->ret = taskGetMyParentIndex(td);
             break;
-        case SYS_SEND:
-            handleSend(td, request);
-            return;
-        case SYS_RECEIVE:
-            handleReceive(td, request);
-            return;
-        case SYS_REPLY:
-            handleReply(td, request);
-            return;
         case SYS_PASS:
             break;
         case SYS_EXIT:
@@ -116,7 +109,6 @@ int main() {
     initKernel();
     TaskDescriptor *task = NULL;
     for(;;) {
-        bwprintf(COM2, "[main] trying to schedule task %x\n\r", task);
         task = schedule();
         if (task == NULL) {
             break;
@@ -128,7 +120,7 @@ int main() {
 #if ENABLE_CACHE
     disableCache();
 #endif
-    cleanUp();
+    resetInterrupts();
     bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
     return 0;
 }

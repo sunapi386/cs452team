@@ -36,12 +36,11 @@ KernelExit:
     .global IRQEnter
     .type   IRQEnter, %function
 IRQEnter:
-
     # go to system mode
     msr cpsr_c, #0xdf
 
     # store scratch register on user stack
-    stmfd sp!, {r0-r3}
+    stmfd sp!, {r0-r2}
 
     # store user sp to r0
     mov r0, sp
@@ -59,7 +58,11 @@ IRQEnter:
     stmfd r0, {r1, r2}
 
     # go to supervisor mode
-    # msr cpsr_c, #0xd3
+    msr cpsr_c, #0xd3
+
+    # set spsr to IRQ mode
+    mov r2, #0xd2
+    msr spsr_c, r2
 
     bl KernelEnter
     # returned from KernelExit
@@ -73,7 +76,7 @@ IRQEnter:
     # go back to IRQ mode
     msr cpsr_c, #0xd2
 
-    # restore lr, spsr_svc
+    # restore lr (user pc), spsr (user cpsr)
     mov lr, r1
     msr spsr, r2
 
@@ -81,7 +84,7 @@ IRQEnter:
     msr cpsr_c, #0xdf
 
     # restore user scratch registers
-    ldmfd sp!, {r0-r3}
+    ldmfd sp!, {r0-r2}
 
     # back to IRQ mode
     msr cpsr_c, #0xd2
@@ -96,7 +99,7 @@ KernelEnter:
     @ args = 0, pretend = 0, frame = 0
     @ frame_needed = 1, uses_anonymous_args = 0
 
-    # Put lr_svc in r1
+    # put lr_svc in r1
     mov r1, lr
 
     # Put spsr (cpsr_usr) in r2
@@ -105,7 +108,7 @@ KernelEnter:
     # change to system mode
     msr cpsr_c, #0xdf
 
-    # 2) store all user registers to user stack
+    # store all user registers to user stack
     stmfd   sp!, {r1-r12, lr}
 
     # put sp_usr in r2
