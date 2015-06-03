@@ -41,7 +41,7 @@ int Time()
     }
     ClockReq req;
     req.type = TIME;
-    Send(clockServerTid, &req, reqSize, 0, 0);
+    Send(clockServerTid, &req, reqSize, &(req.data), sizeof(int));
     return req.data;
 }
 
@@ -54,8 +54,11 @@ int Delay(int ticks)
     ClockReq req;
     req.type = DELAY;
     req.data = ticks;
+    debug("sending to clksrv %d", clockServerTid);
+
     Send(clockServerTid, &req, reqSize, 0, 0);
-    return req.data;
+    debug("returned haha");
+    return 0;
 }
 
 int DelayUntil(int ticks)
@@ -68,7 +71,7 @@ int DelayUntil(int ticks)
     req.type = DELAY_UNTIL;
     req.data = ticks;
     Send(clockServerTid, &req, reqSize, 0, 0);
-    return req.data;
+    return 0;
 }
 
 static void clockNotifier()
@@ -142,10 +145,11 @@ static inline void insertDelayedTask(DelayedQueue *q,
     }
 }
 
-static inline void removeExpiredTasks(DelayedQueue *q,
+static inline int removeExpiredTasks(DelayedQueue *q,
                                       unsigned int currTick)
 {
-    if (q->tail == 0) return;
+    if (q->tail == 0) return 0;
+    int tasks_removed = 0;
     DelayedTask *curr = q->tail->next;
     for (;;)
     {
@@ -155,28 +159,31 @@ static inline void removeExpiredTasks(DelayedQueue *q,
             // that we are done. Set the head to
             // curr.
             q->tail->next = curr;
-            return;
+            break;
         }
 
         // Unblock task
         Reply(curr->tid, 0, 0);
+        tasks_removed++;
 
         if (curr == q->tail)
         {
             // Queue is empty; set tail to NULL
             q->tail = 0;
-            return;
+            break;
         }
 
         curr = curr->next;
     }
+    return tasks_removed;
 }
 
+static volatile unsigned int ticks = 0;
 void clockServerTask()
 {
+    debug("clockServerTask");
     // Initialize variables
     int tid = 0;
-    unsigned int currTick = 0;
     DelayedTask tasks[MAX_DELAYED_TASKS];
     DelayedQueue q;
     ClockReq req;
@@ -189,12 +196,14 @@ void clockServerTask()
     RegisterAs("clockServer");
 
     // Spawn notifier
-    Create(1, &clockNotifier);
+    Create(4, &clockNotifier);
 
     // Main loop for serving requests
     for (;;)
     {
         Receive(&tid, &req, reqSize);
+        // debug("Received from tid %d request type %d, ticks %d", tid, req.type, ticks);
+
         switch (req.type)
         {
         case NOTIFICATION:
@@ -203,29 +212,35 @@ void clockServerTask()
             Reply(tid, 0, 0);
 
             // Increment tick
-            ++currTick;
-
+            ++ticks;
+            // debug("ticks %d", ticks);
             // Unblock expired tasks
-            removeExpiredTasks(&q, currTick);
+            int removd = removeExpiredTasks(&q, ticks);
+            if(removd) debug("removed %d, ticks %d", removd, ticks);
+
             break;
         }
         case TIME:
+            debug("got request TIME");
             // Reply with current tick
-            Reply(tid, &currTick, sizeof(int));
+            Reply(tid, &ticks, sizeof(int));
             break;
         case DELAY:
         {
+            debug("got request DELAY ticks %d", ticks);
             // add to delayed queue
-            insertDelayedTask(&q, tasks, tid, req.data + currTick);
+            insertDelayedTask(&q, tasks, tid, req.data + ticks);
             break;
         }
         case DELAY_UNTIL:
         {
+            debug("got request DELAY_UNTIL");
             // add to delayed queue
             insertDelayedTask(&q, tasks, tid, req.data);
             break;
         }
         default:
+            assert(0);
             break;
         }
     }
