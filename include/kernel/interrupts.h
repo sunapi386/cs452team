@@ -1,6 +1,8 @@
 #ifndef __INTERRUPTS_H
 #define __INTERRUPTS_H
 
+#include <kernel/pl190.h>
+
 #define IRQ 0
 
 void initInterrupts();
