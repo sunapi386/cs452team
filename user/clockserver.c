@@ -114,7 +114,7 @@ static inline void insertDelayedTask(DelayedQueue *q,
     else
     {
         DelayedTask *curr = q->tail;
-        do
+        for (;;)
         {
             if (curr->next->finalTick >= finalTick)
             {
@@ -123,16 +123,27 @@ static inline void insertDelayedTask(DelayedQueue *q,
                 curr->next = task;
                 break;
             }
+            else if (curr->next == q->tail)
+            {
+                // insert node and update tail here
+                task->next = curr->next;
+                curr->next = task;
+                q->tail = task;
+                break;
+            }
             curr = curr->next;
         }
-        while (curr != q->tail);
     }
 }
 
 static inline void removeExpiredTasks(DelayedQueue *q,
                                       int currTick)
 {
+    DelayedTask *curr = q->tail;
+    for (;;)
+    {
 
+    }
 }
 
 void clockServerTask()
