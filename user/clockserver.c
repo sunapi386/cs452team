@@ -72,7 +72,7 @@ int DelayUntil(int ticks)
 static void clockNotifier()
 {
     // Initialize variabels
-    int pid = MyParentTid();
+    //int pid = MyParentTid();
 
     // Setup and start timer
     initTimer();
@@ -141,7 +141,7 @@ static inline void insertDelayedTask(DelayedQueue *q,
 }
 
 static inline void removeExpiredTasks(DelayedQueue *q,
-                                      int currTick)
+                                      unsigned int currTick)
 {
     if (q->tail == 0) return;
     DelayedTask *curr = q->tail->next;
@@ -173,8 +173,7 @@ static inline void removeExpiredTasks(DelayedQueue *q,
 void clockServerTask()
 {
     // Initialize variables
-    int tid = 0, i = 0;
-    int delayCount = 0;
+    int tid = 0;
     unsigned int currTick = 0;
     DelayedTask tasks[MAX_DELAYED_TASKS];
     DelayedQueue q;
