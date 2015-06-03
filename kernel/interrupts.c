@@ -1,9 +1,11 @@
 #include <utils.h>
 #include <debug.h>
+#include <kernel/task.h>
 #include <kernel/pl190.h>
-#include <kernel/scheduler.h>
 #include <kernel/interrupts.h>
 #include <kernel/context_switch.h>
+
+extern void queueTask(struct TaskDescriptor *td);
 
 static int vic[2];  // for iterating
 static TaskDescriptor *interruptTable[64]; // 64 interrupt types
