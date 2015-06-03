@@ -1,6 +1,7 @@
 #include <user/clockserver.h>
 #include <user/nameserver.h>
 #include <user/syscall.h>
+#include <kernel/timer.h>
 
 #define NOTIFICATION 0
 #define TIME         1
@@ -73,13 +74,15 @@ static void clockNotifier()
     // Initialize variabels
     int pid = MyParentTid();
 
-    // Initialize timer
+    // Setup and start timer
+    initTimer();
 
     for (;;)
     {
-        // AwaitEvent()
-        // Send(pid,
+        // TODO: await event
+        break;
     }
+    Exit();
 }
 
 static void initDelayedTasks(DelayedQueue *q,
@@ -153,7 +156,7 @@ static inline void removeExpiredTasks(DelayedQueue *q,
             break;
         }
 
-        // Unblock curr
+        // Unblock task
         Reply(curr->tid, 0, 0);
 
         if (curr == q->tail)
