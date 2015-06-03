@@ -1,8 +1,9 @@
 #ifndef __USER_TASK_H
 #define __USER_TASK_H
 
-void userModeTask();
-void rpsUserTask();
-void k3userTask();
+void userTaskMessage();
+void userTaskRip();
+void userTaskK3();
+void userTaskIdle();
 
 #endif

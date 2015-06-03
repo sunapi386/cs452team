@@ -9,12 +9,12 @@
 
 #else // ! PRODUCTION
 
-#define debug(fmt, ...)     bwprintf(COM2, \
-    "%s @ %s - %d: " fmt "\r\n",
-    __FUNCTION__,
-    __FILE__,
-    __LINE,
-    ## __VA_ARGS__
+#define debug(fmt, ...)     bwprintf(COM2,  \
+    "%s @ %s - %d: " fmt "\r\n",            \
+    __FUNCTION__,                           \
+    __FILE__,                               \
+    __LINE__,                               \
+    ## __VA_ARGS__                          \
 )
 
 #endif // PRODUCTION

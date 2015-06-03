@@ -40,11 +40,11 @@ static void initKernel() {
     request = initSyscall();
     initInterrupts();
 
-    // int create_ret = taskCreate(1, &userModeTask, 0);
+    // int create_ret = taskCreate(1, &userTaskMessage, 0);
     // int create_ret = taskCreate(1, &hwiTester, 0);
     // int create_ret = taskCreate(1, &runBenchmark, 0);
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
-    int create_ret = taskCreate(1, &k3userTask, 0);
+    int create_ret = taskCreate(1, &userTaskK3, 0);
 
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );

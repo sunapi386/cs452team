@@ -15,7 +15,7 @@ static void childTask() {
 }
 
 // Creates two task of priority 0 and 2. First user task should have priority 1
-void userModeTask() {
+void userMessageTask() {
     bwprintf(COM2, "userModeTask tid: %d\r\n", MyTid());
 
     for (int i = 0; i < 4; ++i) {
@@ -33,9 +33,4 @@ void userModeTask() {
 
     bwputstr(COM2, "First: exiting\r\n");
     Exit();
-}
-
-
-void k3userTask() {
-
 }
