@@ -21,7 +21,7 @@ void initTaskSystem() {
         task->parent_id = 0;
         task->ret = 0;
         task->sp = NULL;
-        task->status = none;
+        task->status = ready;
         task->send_id = NULL;
         task->send_buf = NULL;
         task->recv_buf = NULL;

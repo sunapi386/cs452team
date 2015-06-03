@@ -3,7 +3,7 @@
 #include <kernel/message_passing.h>
 #include <user/syscall.h>
 #undef KERNEL_MAIN
-#include <kernel/interrupt.h>
+#include <kernel/interrupts.h>
 #include <kernel/context_switch.h>
 #include <bwio.h>
 #include <user/all_user_tasks.h>
@@ -67,7 +67,10 @@ static inline void handleRequest(TaskDescriptor *td) {
             break;
         case SYS_AWAIT_EVENT:
             // puts an event in the queue into the queue that correspondes with the event
-
+            unsigned int eventType = request->arg1;
+            int ret = awaitInterrupt(td, eventType);
+            if(ret == eventType) {  } // FIXME: conditionally requeue active task
+            else { } //
             break;
         case SYS_SEND:
             handleSend(td, request);

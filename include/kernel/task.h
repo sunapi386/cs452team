@@ -55,17 +55,21 @@ on the stack of the user task; other values should be in the task descriptor.
 */
 
 typedef enum {
-    none = 0,
-    receive_block,
-    reply_block,
-} MessageStatus;
+    ready, // ready to be activated
+    active, // task that has just run / is running / about to run
+    zombie, // task that has exited
+    send_blocked, // task executed Receive, waiting for message sent to it
+    receive_block, // task executed Send, waiting for message to receive
+    reply_block, // task executed Send, its message received, but no reply
+    event_blocked, // task executed AwaitEvent, but event has not occured
+} Status;
 
 typedef struct TaskDescriptor {
     int id;
     int parent_id;
     int ret;
     unsigned int *sp;
-    MessageStatus status;
+    Status status;
     int *send_id;
     void *send_buf, *recv_buf;
     unsigned int send_len, recv_len;
