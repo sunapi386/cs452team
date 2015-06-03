@@ -7,8 +7,8 @@
 
 void initInterrupts();
 // puts a task onto interrupt table to wait for interruptID
-int awaitInterrupt(int interruptID);
+int awaitInterrupt(TaskDescriptor *active, int interruptID);
 // reschedules tasks that were waiting on interrupts
-void handleInterrupt(TaskDescriptor *active);
+void handleInterrupt();
 
 #endif

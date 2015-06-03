@@ -3,7 +3,7 @@
 
 #ifdef KERNEL_MAIN
 
-#include <util.h>
+#include <utils.h>
 #include <kernel/task.h>
 #include <kernel/task_queue.h>
 

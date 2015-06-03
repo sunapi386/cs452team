@@ -43,13 +43,14 @@ int awaitInterrupt(TaskDescriptor *active, int interruptID) {
     active->status = event_blocked;
     // set mask
     enable(interruptID / 32, 1 << (interruptID % 32));
+    return 0; // FIXME
 }
 
-void handleInterrupt(TaskDescriptor *active) { // kernel calls into here
+void handleInterrupt() { // kernel calls into here
     debug("got an interrupt");
     for(int i = 0; i < 2; i++) {
         int statusMask;
-        while(statusMask = getICU(vic[i], VIC_IRQ_STATUS)) {
+        while((statusMask = getICU(vic[i], VIC_IRQ_STATUS))) {
             int interruptOffset = countLeadingZeroes(statusMask);
             queueTask(interruptTable[interruptOffset + 32 * i]);
             clear(i, interruptOffset);

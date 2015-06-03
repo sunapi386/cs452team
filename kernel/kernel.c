@@ -57,15 +57,12 @@ static void initKernel() {
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
         case IRQ:
-            handleInterrupt(td); // see AwaitEvent and event queue
+            handleInterrupt(); // see AwaitEvent and event queue
             break;
-        case SYS_AWAIT_EVENT:
-            // puts an event in the queue into the queue that correspondes with the event
-            unsigned int eventType = request->arg1;
-            int ret = awaitInterrupt(td, eventType);
-            if(ret == eventType) {  } // FIXME: conditionally requeue active task
-            else { } //
+        case SYS_AWAIT_EVENT: {
+            int ret = awaitInterrupt(td, request->arg1);
             break;
+        }
         case SYS_SEND:
             handleSend(td, request);
             return;
