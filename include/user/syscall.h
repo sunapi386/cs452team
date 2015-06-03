@@ -106,6 +106,18 @@ int Reply( int tid, void *reply, unsigned int replylen );
 
 /**
 AwaitEvent - block until event with eventType
+Description. AwaitEvent blocks until the event identified by eventid occurs then returns.
+The following details are implementation-dependent.
+• the kernel does not collects volatile data, and does not re-enables the interrupt.
+• interrupts are enabled when AwaitEvent returns.
+• at most one task to block on a single event.
+Returns.
+• volatile data – in the form of a positive integer.
+• 0 – volatile data is in the event buffer.
+• -1 – invalid event.
+• -2 – corrupted volatile data. Error indication in the event buffer.
+• -3 – volatile data must be collected and interrupts re-enabled in the
+caller.
 */
 int AwaitEvent(int eventType);
 

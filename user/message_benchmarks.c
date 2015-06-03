@@ -22,7 +22,7 @@ void sender()
     // Start 32bit timer
     unsigned int prevTimerVal = 0xffffffff;
     volatile unsigned int *timerVal = (unsigned int *)0;
-    InitTimer(&timerVal);
+    initTimer(&timerVal);
 
     // Start the benchmark
 

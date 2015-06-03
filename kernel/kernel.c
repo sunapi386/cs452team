@@ -54,25 +54,15 @@ static void initKernel() {
     queueTask(taskGetTDById(create_ret));
 }
 
-void handleIRQ(TaskDescriptor *task) {
-    (void) (task);
-    bwprintf(COM2, "[handleIRQ] clearing..\n\r");
-    *(unsigned int *)(VIC1 + SOFT_INT_CLEAR) = 1;
-    bwprintf(COM2, "[handleIRQ] status: %x\n\r", *(unsigned int *)(VIC1 + IRQ_STATUS));
-}
-
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
         case IRQ:
-            handleIRQ(td); // this works with awaitEvent; liberates a particular event queue
+            handleInterrupt(); // see AwaitEvent and event queue
             break;
-        case SYS_AWAIT_EVENT:
-            // puts an event in the queue into the queue that correspondes with the event
-            unsigned int eventType = request->arg1;
-            int ret = awaitInterrupt(td, eventType);
-            if(ret == eventType) {  } // FIXME: conditionally requeue active task
-            else { } //
+        case SYS_AWAIT_EVENT: {
+            int ret = awaitInterrupt(td, request->arg1);
             break;
+        }
         case SYS_SEND:
             handleSend(td, request);
             return;
@@ -127,7 +117,6 @@ int main() {
 #if ENABLE_CACHE
     disableCache();
 #endif
-    resetInterrupts();
     bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
     return 0;
 }
