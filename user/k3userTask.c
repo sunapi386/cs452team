@@ -15,11 +15,9 @@ static void clientTask() {
     int tid = MyTid();
     int pid = MyParentTid();
     DelayMsg delay;
-    debug("clientTasks %d, parent %d.. Sending to parent", tid, pid);
 
     // Get delay info from parent
     int ret = Send(pid, 0, 0, &delay, sizeof(DelayMsg));
-    debug("clientTasks %d came back from Send", tid);
 
     if(ret != sizeof(DelayMsg)) {
         debug("Expected clientTask ret %d got %d", sizeof(DelayMsg), ret);
@@ -27,14 +25,12 @@ static void clientTask() {
     }
 
     int server = WhoIs("clockServer");
-    debug("Task %d clockServer is %d", tid, server);
+    debug("clockserver %d", server);
 
     // DelayMsg timing
-    debug("Task %d got delay duration %d, %d times", tid, delay.duration, delay.times);
     int i;
     for(i = 1; i <= delay.times; i++) {
         ret = Delay(delay.duration);
-        debug("Task %d interval %d delays completed %d", tid, delay.duration, i);
     }
     int end_time = Time();
     bwprintf(COM2, "clientTask %d interval %d delays completed %d total time %d, exiting..\n\r",
@@ -83,14 +79,11 @@ void userTaskK3() {
     // Execute receive 4 times
     for(int i = 0; i < 4; i ++) {
         int child_tid;
-        debug("receive #%d", i);
         ret = Receive(&child_tid, 0, 0);
-        debug("receive got child_tid %d", child_tid);
         if(ret != 0) {
             debug("Expected Receive to return 0, got %d", ret);
             Exit();
         }
-
         DelayMsg delay;
         delay.times = delay_times[i];
         delay.duration = delay_durations[i];

@@ -60,7 +60,7 @@ static inline void handleRequest(TaskDescriptor *td) {
             handleInterrupt(); // see AwaitEvent and event queue
             break;
         case SYS_AWAIT_EVENT: {
-            int ret = awaitInterrupt(td, request->arg1);
+            td->ret = awaitInterrupt(td, request->arg1);
             break;
         }
         case SYS_SEND:
