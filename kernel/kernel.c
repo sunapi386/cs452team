@@ -40,7 +40,6 @@ static void initKernel() {
     initMessagePassing();
     request = initSyscall();
     initInterrupts();
-    initTimer();
 
     // int create_ret = taskCreate(1, &userTaskMessage, 0);
     // int create_ret = taskCreate(1, &hwiTester, 0);
