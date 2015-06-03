@@ -2,6 +2,7 @@
 #include <user/nameserver.h>
 #include <user/syscall.h>
 #include <kernel/timer.h>
+#include <debug.h>
 
 #define NOTIFICATION 0
 #define TIME         1
@@ -40,7 +41,7 @@ int Time()
     }
     ClockReq req;
     req.type = TIME;
-    Send(clockServerTid, &req, reqSize, &(req.data), sizeof(req.data));
+    Send(clockServerTid, &req, reqSize, 0, 0);
     return req.data;
 }
 
@@ -53,7 +54,7 @@ int Delay(int ticks)
     ClockReq req;
     req.type = DELAY;
     req.data = ticks;
-    Send(clockServerTid, &req, reqSize, &(req.data), sizeof(req.data));
+    Send(clockServerTid, &req, reqSize, 0, 0);
     return req.data;
 }
 
@@ -66,7 +67,7 @@ int DelayUntil(int ticks)
     ClockReq req;
     req.type = DELAY_UNTIL;
     req.data = ticks;
-    Send(clockServerTid, &req, reqSize, &(req.data), sizeof(req.data));
+    Send(clockServerTid, &req, reqSize, 0, 0);
     return req.data;
 }
 
@@ -75,6 +76,7 @@ static void clockNotifier()
     // Initialize variabels
     int pid = MyParentTid();
     ClockReq req;
+    req.type = NOTIFICATION;
 
     for (;;)
     {
@@ -94,6 +96,7 @@ static void initDelayedTasks(DelayedQueue *q,
     for (i = 0; i < MAX_DELAYED_TASKS; i++)
     {
         tasks[i].tid = i;
+        tasks[i].finalTick = 0;
         tasks[i].next = 0;
     }
 }
@@ -122,16 +125,17 @@ static inline void insertDelayedTask(DelayedQueue *q,
                 // Insert node here
                 task->next = curr->next;
                 curr->next = task;
-                break;
+                return;
             }
-            else if (curr->next == q->tail)
+
+            if (curr->next == q->tail)
             {
                 // Reached the end of the list;
                 // insert node and update tail here
                 task->next = curr->next;
                 curr->next = task;
                 q->tail = task;
-                break;
+                return;
             }
             curr = curr->next;
         }
@@ -151,7 +155,7 @@ static inline void removeExpiredTasks(DelayedQueue *q,
             // that we are done. Set the head to
             // curr.
             q->tail->next = curr;
-            break;
+            return;
         }
 
         // Unblock task
@@ -161,7 +165,7 @@ static inline void removeExpiredTasks(DelayedQueue *q,
         {
             // Queue is empty; set tail to NULL
             q->tail = 0;
-            break;
+            return;
         }
 
         curr = curr->next;
