@@ -7,6 +7,7 @@
 #include <kernel/context_switch.h>
 #include <bwio.h>
 #include <user/all_user_tasks.h>
+#include <kernel/timer.h>
 
 static Syscall *request = NULL;
 
@@ -39,6 +40,7 @@ static void initKernel() {
     initMessagePassing();
     request = initSyscall();
     initInterrupts();
+    initTimer();
 
     // int create_ret = taskCreate(1, &userTaskMessage, 0);
     // int create_ret = taskCreate(1, &hwiTester, 0);
