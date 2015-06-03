@@ -164,6 +164,42 @@ Description of int
 AwaitEvent(int eventType)
 \family default
 .
+ A table of 64 task descriptor pointers keeps track which task is registered
+ to await a given interrupt.
+
+\end_layout
+
+\begin_layout Itemize
+When AwaitEvent is called, it adds the calling task into the table and sets
+ the enable bit for that interrupt code.
+
+\end_layout
+
+\begin_layout Itemize
+The kernel doesn’t handle volatile data itself or clear the cause of the
+ interrupt, it leaves that to the caller.
+\end_layout
+
+\begin_layout Itemize
+Interrupts are enabled when AwaitEvent returns.
+
+\end_layout
+
+\begin_layout Itemize
+At most one task to block on a single event.
+ Although if needed, multiple tasks can be changed up through the next field
+ in the task descriptor if needed.
+
+\end_layout
+
+\begin_layout Standard
+Two issues worth mentioning are (1) tasks has different priorities and (2)
+ multiple interrupts can occur at the same time.
+ To deal with this, De Brujin sequences are used on the registers, adding
+ the task to the ready queue.
+ Then it clears the bit for that interrupt and process repeats until the
+ interrupt status is completely cleared.
+
 \end_layout
 
 \begin_layout Subsection
@@ -185,20 +221,44 @@ Notifier wait on events from a timer and Send notifications that the timer
 Game Clients Tasks
 \end_layout
 
+\begin_layout Standard
+A client task is created by the first user task.
+ It immediately sends to its parent, the first user task, requesting a delay
+ time,
+\begin_inset Formula $t$
+\end_inset
+
+, and a number,
+\begin_inset Formula $n$
+\end_inset
+
+, of delays.
+ It then uses WhoIs to discover the tid of the clock server.
+ It then delays
+\begin_inset Formula $n$
+\end_inset
+
+ times, each time for the time interval,
+\begin_inset Formula $t$
+\end_inset
+
+.
+ After each delay it prints its tid, its delay interval, and the number
+ of delays currently completed on the RedBoot terminal.
+ Finally it exits.
+
+\end_layout
+
 \begin_layout Subsection
 First User Task
 \end_layout
 
-\begin_layout Itemize
-creates the name server
-\end_layout
-
-\begin_layout Itemize
-creates the clock server, and
-\end_layout
-
-\begin_layout Itemize
-creates the clock server’s clients
+\begin_layout Standard
+The first user task creates the name server, the clock server, and four
+ client tasks.
+ It then executes Receive four times, and Replies to each client task in
+ turn.
+ It then exits.
 \end_layout
 
 \begin_layout Section
