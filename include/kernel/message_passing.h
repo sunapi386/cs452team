@@ -68,8 +68,8 @@ static inline void handleSend(TaskDescriptor *sendingTask, Syscall *request)
         // update sending_task's status to reply_block
         sendingTask->status = reply_block;
 
-        // update receiving_task's status to none and requeue it
-        receivingTask->status = none;
+        // update receiving_task's status to ready and requeue it
+        receivingTask->status = ready;
         queueTask(receivingTask);
     }
     // 2) tid task is not receive_block (send first)
@@ -142,7 +142,7 @@ static inline void handleReceive(TaskDescriptor *receivingTask, Syscall *request
         // sender: reply block
         // receiver: ready to run
         sendingTask->status = reply_block;
-        receivingTask->status = none;
+        receivingTask->status = ready;
         queueTask(receivingTask);
     }
 }
@@ -196,7 +196,7 @@ static inline void handleReply(TaskDescriptor *receivingTask, Syscall *request)
     sendingTask->ret = replylen;
 
     // set statuses and retvals
-    sendingTask->status = none;
+    sendingTask->status = ready;
 
     queueTask(sendingTask);
     queueTask(receivingTask);
