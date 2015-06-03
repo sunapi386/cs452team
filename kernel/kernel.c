@@ -105,7 +105,6 @@ int main() {
     initKernel();
     TaskDescriptor *task = NULL;
     for(;;) {
-        // bwprintf(COM2, "[main] trying to schedule task %x\n\r", task);
         task = schedule();
         if (task == NULL) {
             break;

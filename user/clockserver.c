@@ -9,6 +9,7 @@
 #define DELAY_UNTIL  3
 
 #define MAX_DELAYED_TASKS 128
+#define TIMER_EVENT 51
 
 typedef
 struct ClockReq {
@@ -72,17 +73,14 @@ int DelayUntil(int ticks)
 static void clockNotifier()
 {
     // Initialize variabels
-    //int pid = MyParentTid();
-
-    // Setup and start timer
-    initTimer();
+    int pid = MyParentTid();
+    ClockReq req;
 
     for (;;)
     {
-        // TODO: await event
-        break;
+        AwaitEvent(TIMER_EVENT);
+        Send(pid, &req, reqSize, 0, 0);
     }
-    Exit();
 }
 
 static void initDelayedTasks(DelayedQueue *q,
@@ -178,6 +176,7 @@ void clockServerTask()
     DelayedTask tasks[MAX_DELAYED_TASKS];
     DelayedQueue q;
     ClockReq req;
+    clockServerTid = MyTid();
 
     // Initialize data structures to store delayed tasks
     initDelayedTasks(&q, tasks);
