@@ -27,7 +27,7 @@ void initInterrupts() {
     *(unsigned int *)(0x38) = (unsigned int)(&IRQEnter);    // hard
     vic[0] = VIC1;
     vic[1] = VIC2;
-    for(int i = 0; i < TASK_MAX_TASKS; i++) {
+    for(int i = 0; i < 64; i++) {
         interruptTable[i] = 0;
     }
     for(int i = 0; i < 2; i++) {

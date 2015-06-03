@@ -15,7 +15,7 @@ static void childTask() {
 }
 
 // Creates two task of priority 0 and 2. First user task should have priority 1
-void userMessageTask() {
+void userTaskMessage() {
     bwprintf(COM2, "userModeTask tid: %d\r\n", MyTid());
 
     for (int i = 0; i < 4; ++i) {
