@@ -118,13 +118,14 @@ static inline void insertDelayedTask(DelayedQueue *q,
         {
             if (curr->next->finalTick >= finalTick)
             {
-                // insert node here
+                // Insert node here
                 task->next = curr->next;
                 curr->next = task;
                 break;
             }
             else if (curr->next == q->tail)
             {
+                // Reached the end of the list;
                 // insert node and update tail here
                 task->next = curr->next;
                 curr->next = task;
@@ -139,10 +140,30 @@ static inline void insertDelayedTask(DelayedQueue *q,
 static inline void removeExpiredTasks(DelayedQueue *q,
                                       int currTick)
 {
-    DelayedTask *curr = q->tail;
+    if (q->tail == 0) return;
+    DelayedTask *curr = q->tail->next;
     for (;;)
     {
+        if (curr->finalTick > currTick)
+        {
+            // Tick is after current tick; means
+            // that we are done. Set the head to
+            // curr.
+            q->tail->next = curr;
+            break;
+        }
 
+        // Unblock curr
+        Reply(curr->tid, 0, 0);
+
+        if (curr == q->tail)
+        {
+            // Queue is empty; set tail to NULL
+            q->tail = 0;
+            break;
+        }
+
+        curr = curr->next;
     }
 }
 
