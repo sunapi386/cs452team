@@ -7,4 +7,7 @@
 // hwi_tester.c
 void hwiTester();
 
+// clockserver_tester.c
+void clockServerTester();
+
 #endif
