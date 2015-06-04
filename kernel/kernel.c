@@ -46,7 +46,8 @@ static void initKernel() {
     // int create_ret = taskCreate(1, &hwiTester, 0);
     // int create_ret = taskCreate(1, &runBenchmark, 0);
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
-    int create_ret = taskCreate(1, &userTaskK3, 0);
+    // int create_ret = taskCreate(1, &userTaskK3, 0);
+    int create_ret = taskCreate(1, &userTaskIdle, 31);
 
     if( create_ret < 0 ) {
         bwprintf( COM2, "FATAL: fail creating first task.\n\r" );

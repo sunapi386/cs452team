@@ -113,7 +113,11 @@ void userTaskK3() {
 // Create this with lowest priority of 31
 void userTaskIdle() {
     debug("idling");
-    for(int i = 0; i < 10000; i++);
+    for(int i = 0; i < 1000; i++) {
+        Delay(500000);
+        bwprintf(COM2, ".%d",i);
+    }
+    bwprintf(COM2, "\r\n");
     debug("exit");
     Exit();
 }
