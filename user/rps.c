@@ -2,7 +2,7 @@
 #include <utils.h>
 #include <user/syscall.h>
 #include <user/nameserver.h>
-#include <user/user_task.h>
+#include <user/user_tasks.h>
 
 #define RS_NUM_PLAYERS 6
 #define RS_MAX_PLAYERS 32

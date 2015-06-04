@@ -1,6 +1,6 @@
 #include <debug.h>
 #include <user/syscall.h>
-#include <user/user_task.h>
+#include <user/user_tasks.h>
 
 static void childTask() {
     int tid = MyTid();

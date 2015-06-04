@@ -5,9 +5,8 @@
 #undef KERNEL_MAIN
 #include <kernel/interrupts.h>
 #include <kernel/context_switch.h>
-#include <bwio.h>
-#include <user/all_user_tasks.h>
 #include <kernel/timer.h>
+#include <user/user_tasks.h>
 #include <debug.h>
 
 static Syscall *request = NULL;
