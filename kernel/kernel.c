@@ -100,6 +100,7 @@ static inline void handleRequest(TaskDescriptor *td) {
 }
 
 int main() {
+    bwsetfifo(COM2, false);
     initKernel();
     TaskDescriptor *task = NULL;
     for(;;) {
