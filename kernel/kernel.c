@@ -33,7 +33,7 @@ void disableCache()
 }
 
 static void initKernel() {
-#if ENABLE_CACHE
+#if MB_ENABLE_CACHE
     enableCache();
 #endif
     initTaskSystem();
@@ -44,15 +44,12 @@ static void initKernel() {
 
     // int create_ret = taskCreate(1, &userTaskMessage, 0);
     // int create_ret = taskCreate(1, &hwiTester, 0);
-    // int create_ret = taskCreate(1, &runBenchmark, 0);
+    // int create_ret = taskCreate(1, &runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);
     int create_ret = taskCreate(1, &userTaskIdle, 31);
 
-    if( create_ret < 0 ) {
-        bwprintf( COM2, "FATAL: fail creating first task.\n\r" );
-        return;
-    }
+    assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
 }
 
@@ -115,7 +112,7 @@ int main() {
         handleRequest(task);
         request->type = IRQ;
     }
-#if ENABLE_CACHE
+#if MB_ENABLE_CACHE
     disableCache();
 #endif
     debug("No tasks scheduled; exiting...");

@@ -4,7 +4,7 @@
 #include <kernel/timer.h>
 
 typedef struct Message {
-#if USE_4_BYTE_MESSAGE
+#if MB_USE_4_BYTE_MESSAGE
     int n;
 #else
     int n[16];
@@ -27,7 +27,7 @@ void sender()
     // Start the benchmark
 
     int i;
-    for (i=0; i<BENCH_ITER; i++)
+    for (i=0; i<MB_BENCH_ITER; i++)
     {
         Send(3, &msg, msglen, &msg, msglen);
     }
@@ -48,7 +48,7 @@ void receiver()
     int *tid = 0;
 
     int i;
-    for (i=0; i<BENCH_ITER; i++)
+    for (i=0; i<MB_BENCH_ITER; i++)
     {
         Receive(tid, &msg, msglen);
         //bwprintf(1, "receive returned: %d\n\r", retval);
@@ -59,9 +59,9 @@ void receiver()
     Exit();
 }
 
-void runBenchmark()
+void runBenchmarkTask()
 {
-#if SEND_FIRST
+#if MB_SEND_FIRST
     Create(2, sender);
     Create(3, receiver);
 #else
