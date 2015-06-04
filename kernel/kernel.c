@@ -43,7 +43,7 @@ static void initKernel() {
     initInterrupts();
 
     // int create_ret = taskCreate(1, &userTaskMessage, 0);
-    // int create_ret = taskCreate(1, &hwiTester, 0);
+    // int create_ret = taskCreate(1, &userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, &runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);

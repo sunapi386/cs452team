@@ -6,4 +6,7 @@ void userTaskRip();
 void userTaskK3();
 void userTaskIdle();
 
+void hwiTesterTask();
+void clockServerTesterTask();
+
 #endif
