@@ -24,18 +24,23 @@ static void clientTask() {
         Exit();
     }
 
-    int server = WhoIs("clockServer");
-    debug("clockserver %d", server);
-
     // DelayMsg timing
     int i;
     for(i = 1; i <= delay.times; i++) {
         ret = Delay(delay.duration);
     }
     int end_time = Time();
-    bwprintf(COM2, "clientTask %d interval %d delays completed %d total time %d, exiting..\n\r",
+    bwprintf(COM2, "clientTask %d interval %d delays completed %d total time %d\r\n",
         tid, delay.duration, i - 1, end_time - start_time);
 
+    // Reply to parent
+    int receive;
+    debug("receive");
+    Receive(&receive, 0, 0);
+    assert(receive == pid);
+    debug("reply");
+    Reply(receive, 0, 0);
+    bwprintf(COM2, "clientTask %d exiting...\r\n",tid);
     Exit();
 }
 
@@ -80,6 +85,7 @@ void userTaskK3() {
     for(int i = 0; i < 4; i ++) {
         int child_tid;
         ret = Receive(&child_tid, 0, 0);
+        debug("Receive returned %d and child_tid %d", ret, child_tid);
         if(ret != 0) {
             debug("Expected Receive to return 0, got %d", ret);
             Exit();
@@ -89,17 +95,18 @@ void userTaskK3() {
         delay.duration = delay_durations[i];
 
         ret = Reply(child_tid, &delay, sizeof(DelayMsg));
+        debug("Reply returned %d", ret);
         if(ret != 0) {
             debug("Expected Reply to return 0, got %d", ret);
         }
     }
 
     // Replies to each client in turn (blocks for children to end)
-    debug("replying to childs");
     for(int i = 0; i < 4; i++) {
+        debug("Sending to child %d tid %d", i, childs[i]);
         Send(childs[i], 0, 0, 0, 0);
     }
-
+    bwprintf(COM2, "userTaskK3 is done, exiting...\r\n");
     Exit();
 }
 
