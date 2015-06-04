@@ -8,6 +8,7 @@
 #include <bwio.h>
 #include <user/all_user_tasks.h>
 #include <kernel/timer.h>
+#include <debug.h>
 
 static Syscall *request = NULL;
 
@@ -93,7 +94,7 @@ static inline void handleRequest(TaskDescriptor *td) {
         case SYS_EXIT:
             return;
         default:
-            bwprintf(COM2, "Invalid syscall %u!", request->type);
+            debug("Invalid syscall %u!", request->type);
             break;
     }
 
@@ -116,6 +117,6 @@ int main() {
 #if ENABLE_CACHE
     disableCache();
 #endif
-    bwprintf(COM2, "No tasks scheduled; exiting...\n\r");
+    debug("No tasks scheduled; exiting...");
     return 0;
 }
