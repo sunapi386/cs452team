@@ -2,12 +2,13 @@
 # Makefile for kernel-side
 #
 CC     = gcc
-CFLAGS  = -O2 -c -fPIC -fno-builtin -Wall -Wextra -mcpu=arm920t -msoft-float -std=gnu99 -I. -Iinclude
+CFLAGS  = -O2 -c -fPIC -fno-builtin -Wall -Wextra -mcpu=arm920t -msoft-float -mpoke-function-name -std=gnu99 -I. -Iinclude
 # -c: only compile
 # -mcpu=arm920t: generate code for the 920t architecture
 # -fpic: emit position-independent code
 # -Wall: report all warnings
 # -msoft-float: use software for floating point
+# -mpoke-function-name: https://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/ARM-Options.html
 
 AS	= as
 ASFLAGS	= -mcpu=arm920t -mapcs-32
