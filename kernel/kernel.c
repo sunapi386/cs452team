@@ -47,7 +47,8 @@ static void initKernel() {
     // int create_ret = taskCreate(1, &runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);
-    int create_ret = taskCreate(1, &userTaskIdle, 31);
+    // int create_ret = taskCreate(1, &userTaskIdle, 31);
+    int create_ret = taskCreate(1, &undefinedInstructionTesterTask, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
