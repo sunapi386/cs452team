@@ -36,14 +36,14 @@ static inline void save() {
 static inline void dump() {
     bwprintf(COM2, "\r\nREGISTERS\r\n");
     for(int i = 13; i >= 0; i--) {
-        // bwprintf(COM2, "r%d:\t", i);
-        // asm volatile(
-        //     "mov r0, #1\n\t"
-        //     "ldmfd sp!, {r1}\n\t"
-        //     "bl bwputr\n\t"
-        //     : : : "r0", "r1"
-        // );
-        // bwprintf(COM2, "\r\n");
+        bwprintf(COM2, "r%d:\t", i);
+        asm volatile(
+            "mov r0, #1\n\t"
+            "ldmfd sp!, {r1}\n\t"
+            "bl bwputr\n\t"
+            : : : "r0", "r1"
+        );
+        bwprintf(COM2, "\r\n");
         // register volatile unsigned int reg asm("r3");
         // asm volatile("ldmfd sp!, {r3}");
         // bwprintf(COM2, "->r%d:\t%d\r\n", i, reg);
@@ -53,40 +53,46 @@ static inline void dump() {
 
 // stacktrace takes a memory address and then decreases this address
 // until it detects the bit-pattern of a function name and we’re done.
-static inline void stacktrace() {
+static void stacktrace() {
     bwprintf(COM2, "STACKTRACE\n\r");
-    // save();
-    // unsigned int *lr;
-    // asm volatile("mov %0, lr\n\t" : "=r"(lr));
-    // bwprintf(COM2, "STACKTRACE FROM 0x%8x\n\r", lr);
-    // dump();
-    // unsigned int *pc = lr;
-    // // for( /* */ ; (pc[0] & INT_POKE_MASK) != INT_POKE_MASK ; pc-- );
-    // while((pc[0] & INT_POKE_MASK) != INT_POKE_MASK) {
-    //     pc--;
-    // }
+    save();
+    unsigned int *lr;
+    asm volatile("mov %0, lr\n\t" : "=r"(lr));
+    bwprintf(COM2, "STACKTRACE FROM 0x%8x\n\r", lr);
+    dump();
+    unsigned int *pc = lr;
+    // for( /* */ ; (pc[0] & INT_POKE_MASK) != INT_POKE_MASK ; pc-- );
+    while((pc[0] & INT_POKE_MASK) != INT_POKE_MASK) {
+        pc--;
+    }
 
-    // char *fn_name = (char *) pc - (pc[0] & (~INT_POKE_MASK));
-    // bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s()\n\r", fn_name);
+    char *fn_name = (char *) pc - (pc[0] & (~INT_POKE_MASK));
+    bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s() %x\n\r", fn_name, lr);
     for(;;); // forever
 }
 
-static void undefined_instr() {
+void undefined_instr() {
     bwprintf(COM2, "\n\r UNDEFINED INSTRUCTION \n\r");
     stacktrace();
 }
 
-static void abort_data() {
+void abort_data() {
     bwprintf(COM2, "\n\rABORT DATA\n\r");
     stacktrace();
 }
 
-static void abort_prefetch() {
+void abort_prefetch() {
     bwprintf(COM2, "\n\rABORT PREFETCH\n\r");
     stacktrace();
 }
 
 void initInterrupts() {
+    // ldr  pc, [pc, #0x18] ; 0xe590f018 is the binary encoding
+    *((unsigned int *) 0x4) = 0xe59ff018;
+    *((unsigned int *) 0x8) = 0xe59ff018;
+    *((unsigned int *) 0xc) = 0xe59ff018;
+    *((unsigned int *) 0x10) = 0xe59ff018;
+    *((unsigned int *) 0x18) = 0xe59ff018;
     *(unsigned int *)(0x24) = (unsigned int)(&undefined_instr);  // undef_instr
     *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);      // soft int
     *(unsigned int *)(0x2c) = (unsigned int)(&abort_prefetch);   // abort_prefetch

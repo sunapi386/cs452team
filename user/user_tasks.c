@@ -52,7 +52,6 @@ void userTaskIdle() {
 
 void undefinedInstructionTesterTask() {
     debug("before");
-    // asm volatile( "#0xffffffff\n\t" );
-    debug("after");
-    Exit();
+    asm volatile( "#0xffffffff\n\t" );
+    // debug("after");
 }
