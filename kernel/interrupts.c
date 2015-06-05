@@ -64,12 +64,12 @@ static inline void stacktrace() {
     }
     char *fn_name = (char *) pc - (pc[0] & (~INT_POKE_MASK));
     bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s() %x\n\r", fn_name, lr);
+    for(;;); // busy wait do not let kernel go
 }
 
 void undefined_instr() {
     stacktrace();
     bwprintf(COM2, "*\n\r* UNDEFINED INSTRUCTION\n\r*\n\r");
-    Exit();
 }
 
 void abort_data() {
