@@ -50,8 +50,12 @@ void userTaskIdle() {
     Exit();
 }
 
+int return0() {
+    return 0;
+}
+
 void undefinedInstructionTesterTask() {
-    debug("before");
+    volatile int a = return0();
     asm volatile( "#0xffffffff\n\t" );
     // debug("after");
 }

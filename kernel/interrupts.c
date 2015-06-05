@@ -53,37 +53,33 @@ static inline void dump() {
 
 // stacktrace takes a memory address and then decreases this address
 // until it detects the bit-pattern of a function name and we’re done.
-static void stacktrace() {
-    bwprintf(COM2, "STACKTRACE\n\r");
+static inline void stacktrace() {
     save();
     unsigned int *lr;
     asm volatile("mov %0, lr\n\t" : "=r"(lr));
-    bwprintf(COM2, "STACKTRACE FROM 0x%8x\n\r", lr);
     dump();
     unsigned int *pc = lr;
-    // for( /* */ ; (pc[0] & INT_POKE_MASK) != INT_POKE_MASK ; pc-- );
     while((pc[0] & INT_POKE_MASK) != INT_POKE_MASK) {
         pc--;
     }
-
     char *fn_name = (char *) pc - (pc[0] & (~INT_POKE_MASK));
     bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s() %x\n\r", fn_name, lr);
-    for(;;); // forever
 }
 
 void undefined_instr() {
-    bwprintf(COM2, "\n\r UNDEFINED INSTRUCTION \n\r");
     stacktrace();
+    bwprintf(COM2, "*\n\r* UNDEFINED INSTRUCTION\n\r*\n\r");
+    Exit();
 }
 
 void abort_data() {
-    bwprintf(COM2, "\n\rABORT DATA\n\r");
     stacktrace();
+    bwprintf(COM2, "*\n\r* ABORT DATA\n\r*\n\r");
 }
 
 void abort_prefetch() {
-    bwprintf(COM2, "\n\rABORT PREFETCH\n\r");
     stacktrace();
+    bwprintf(COM2, "*\n\r* ABORT PREFETCH\n\r*\n\r");
 }
 
 void initInterrupts() {
