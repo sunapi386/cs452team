@@ -23,39 +23,75 @@ static inline void clear(int vicID, unsigned int offset) {
     setICU(vic[vicID], VIC_INT_CLEAR, offset);
 }
 
+static inline void save() {
+    asm volatile(
+        "stmfd sp!, {r0-r12}\n\t"   // store r0-r12 to stack
+        "msr cpsr_c, #0xd0\n\t"
+        "mov r0, sp\n\t"            // r0 <- sp
+        "msr cpsr_c, #0xd3\n\t"
+        "stmfd sp!, {r0}\n\t"       // store sp to stack
+    );
+}
+
+static inline void dump() {
+    bwprintf(COM2, "\r\nREGISTERS\r\n");
+    for(int i = 13; i >= 0; i--) {
+        // bwprintf(COM2, "r%d:\t", i);
+        // asm volatile(
+        //     "mov r0, #1\n\t"
+        //     "ldmfd sp!, {r1}\n\t"
+        //     "bl bwputr\n\t"
+        //     : : : "r0", "r1"
+        // );
+        // bwprintf(COM2, "\r\n");
+        // register volatile unsigned int reg asm("r3");
+        // asm volatile("ldmfd sp!, {r3}");
+        // bwprintf(COM2, "->r%d:\t%d\r\n", i, reg);
+    }
+    bwprintf(COM2, "\r\n");
+}
 
 // stacktrace takes a memory address and then decreases this address
 // until it detects the bit-pattern of a function name and we’re done.
-static void stacktrace() {
-    unsigned int *lr;
-    asm volatile("mov %0, lr\n\t" : "=r"(lr));
-    bwprintf(COM2, "stacktrace from 0x%8x\n\r", lr);
-    unsigned int *pc = lr;
-    for( /* */ ; (pc[0] & INT_POKE_MASK) != INT_POKE_MASK ; pc-- );
-    char *fn_name = (char *) pc - (pc[0] & (~INT_POKE_MASK));
-    bwprintf(COM2, "stacktrace function name: %s() 0x%8x\n\r", fn_name, pc);
+static inline void stacktrace() {
+    bwprintf(COM2, "STACKTRACE\n\r");
+    // save();
+    // unsigned int *lr;
+    // asm volatile("mov %0, lr\n\t" : "=r"(lr));
+    // bwprintf(COM2, "STACKTRACE FROM 0x%8x\n\r", lr);
+    // dump();
+    // unsigned int *pc = lr;
+    // // for( /* */ ; (pc[0] & INT_POKE_MASK) != INT_POKE_MASK ; pc-- );
+    // while((pc[0] & INT_POKE_MASK) != INT_POKE_MASK) {
+    //     pc--;
+    // }
+
+    // char *fn_name = (char *) pc - (pc[0] & (~INT_POKE_MASK));
+    // bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s()\n\r", fn_name);
+    for(;;); // forever
 }
 
-static void undef_instr() {
-    bwprintf(COM2, "undef_instr\n\r");
+static void undefined_instr() {
+    bwprintf(COM2, "\n\r UNDEFINED INSTRUCTION \n\r");
     stacktrace();
 }
+
 static void abort_data() {
-    bwprintf(COM2, "abort_data\n\r");
+    bwprintf(COM2, "\n\rABORT DATA\n\r");
     stacktrace();
 }
 
 static void abort_prefetch() {
-    bwprintf(COM2, "abort_prefetch\n\r");
+    bwprintf(COM2, "\n\rABORT PREFETCH\n\r");
     stacktrace();
 }
 
 void initInterrupts() {
-    *(unsigned int *)(0x24) = (unsigned int) &undef_instr;      // undef_instr
-    *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);     // soft int
-    *(unsigned int *)(0x2c) = (unsigned int) &abort_prefetch;   // abort_prefetch
-    *(unsigned int *)(0x30) = (unsigned int) &abort_data;       // abort_data
-    *(unsigned int *)(0x38) = (unsigned int)(&IRQEnter);        // hard int
+    *(unsigned int *)(0x24) = (unsigned int)(&undefined_instr);  // undef_instr
+    *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);      // soft int
+    *(unsigned int *)(0x2c) = (unsigned int)(&abort_prefetch);   // abort_prefetch
+    *(unsigned int *)(0x30) = (unsigned int)(&abort_data);       // abort_data
+    *(unsigned int *)(0x38) = (unsigned int)(&IRQEnter);         // hard int
     vic[0] = VIC1;
     vic[1] = VIC2;
     for(int i = 0; i < 64; i++) {
@@ -110,10 +146,4 @@ void handleInterrupt() { // kernel calls into here
 void stackdump() {
     // dump all registers
 
-}
-
-void undefinedInstructionTesterTask() {
-    debug("before");
-    asm volatile( "#0xffffffff\n\t" );
-    debug("after");
 }
