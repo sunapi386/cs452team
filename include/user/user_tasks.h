@@ -8,5 +8,6 @@ void userTaskIdle();
 
 void hwiTesterTask();
 void clockServerTesterTask();
+void undefinedInstructionTesterTask();
 
 #endif

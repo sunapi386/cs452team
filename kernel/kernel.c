@@ -8,6 +8,7 @@
 #include <kernel/timer.h>
 #include <user/user_tasks.h>
 #include <debug.h>
+#include <stdbool.h>
 
 static Syscall *request = NULL;
 
@@ -46,7 +47,8 @@ static void initKernel() {
     // int create_ret = taskCreate(1, &runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);
-    int create_ret = taskCreate(1, &userTaskIdle, 31);
+    // int create_ret = taskCreate(1, &userTaskIdle, 31);
+    int create_ret = taskCreate(1, &undefinedInstructionTesterTask, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
@@ -54,7 +56,7 @@ static void initKernel() {
 
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
-        case IRQ:
+        case INT_IRQ:
             handleInterrupt(); // see AwaitEvent and event queue
             break;
         case SYS_AWAIT_EVENT: {
@@ -110,7 +112,7 @@ int main() {
         }
         KernelExit(task);
         handleRequest(task);
-        request->type = IRQ;
+        request->type = INT_IRQ;
     }
 #if MB_ENABLE_CACHE
     disableCache();

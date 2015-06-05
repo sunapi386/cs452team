@@ -23,9 +23,77 @@ static inline void clear(int vicID, unsigned int offset) {
     setICU(vic[vicID], VIC_INT_CLEAR, offset);
 }
 
+static inline void save() {
+    asm volatile(
+        "stmfd sp!, {r0-r12}\n\t"   // store r0-r12 to stack
+        "msr cpsr_c, #0xd0\n\t"
+        "mov r0, sp\n\t"            // r0 <- sp
+        "msr cpsr_c, #0xd3\n\t"
+        "stmfd sp!, {r0}\n\t"       // store sp to stack
+    );
+}
+
+static inline void dump() {
+    bwprintf(COM2, "\r\nREGISTERS\r\n");
+    for(int i = 13; i >= 0; i--) {
+        bwprintf(COM2, "r%d:\t", i);
+        asm volatile(
+            "mov r0, #1\n\t"
+            "ldmfd sp!, {r1}\n\t"
+            "bl bwputr\n\t"
+            : : : "r0", "r1"
+        );
+        bwprintf(COM2, "\r\n");
+        // register volatile unsigned int reg asm("r3");
+        // asm volatile("ldmfd sp!, {r3}");
+        // bwprintf(COM2, "->r%d:\t%d\r\n", i, reg);
+    }
+    bwprintf(COM2, "\r\n");
+}
+
+// stacktrace takes a memory address and then decreases this address
+// until it detects the bit-pattern of a function name and we’re done.
+static inline void stacktrace() {
+    save();
+    unsigned int *lr;
+    asm volatile("mov %0, lr\n\t" : "=r"(lr));
+    dump();
+    unsigned int *pc = lr;
+    while((pc[0] & INT_POKE_MASK) != INT_POKE_MASK) {
+        pc--;
+    }
+    char *fn_name = (char *) pc - (pc[0] & (~INT_POKE_MASK));
+    bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s() %x\n\r", fn_name, lr);
+    for(;;); // busy wait do not let kernel go
+}
+
+void undefined_instr() {
+    stacktrace();
+    bwprintf(COM2, "*\n\r* UNDEFINED INSTRUCTION\n\r*\n\r");
+}
+
+void abort_data() {
+    stacktrace();
+    bwprintf(COM2, "*\n\r* ABORT DATA\n\r*\n\r");
+}
+
+void abort_prefetch() {
+    stacktrace();
+    bwprintf(COM2, "*\n\r* ABORT PREFETCH\n\r*\n\r");
+}
+
 void initInterrupts() {
-    *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter); // soft
-    *(unsigned int *)(0x38) = (unsigned int)(&IRQEnter);    // hard
+    // ldr  pc, [pc, #0x18] ; 0xe590f018 is the binary encoding
+    *((unsigned int *) 0x4) = 0xe59ff018;
+    *((unsigned int *) 0x8) = 0xe59ff018;
+    *((unsigned int *) 0xc) = 0xe59ff018;
+    *((unsigned int *) 0x10) = 0xe59ff018;
+    *((unsigned int *) 0x18) = 0xe59ff018;
+    *(unsigned int *)(0x24) = (unsigned int)(&undefined_instr);  // undef_instr
+    *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);      // soft int
+    *(unsigned int *)(0x2c) = (unsigned int)(&abort_prefetch);   // abort_prefetch
+    *(unsigned int *)(0x30) = (unsigned int)(&abort_data);       // abort_data
+    *(unsigned int *)(0x38) = (unsigned int)(&IRQEnter);         // hard int
     vic[0] = VIC1;
     vic[1] = VIC2;
     for(int i = 0; i < 64; i++) {
@@ -72,4 +140,12 @@ void handleInterrupt() { // kernel calls into here
             clear(i, interruptOffset);
         }
     }*/
+}
+
+
+
+
+void stackdump() {
+    // dump all registers
+
 }
