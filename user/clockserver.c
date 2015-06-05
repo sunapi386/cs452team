@@ -121,9 +121,8 @@ static inline void insertDelayedTask(DelayedQueue *q, DelayedTask tasks[],
     }
 }
 
-static inline int removeExpiredTasks(DelayedQueue *q, unsigned int currTick) {
+static inline void removeExpiredTasks(DelayedQueue *q, unsigned int currTick) {
     if (q->tail == 0) return 0;
-    int tasks_removed = 0;
     DelayedTask *curr = q->tail->next;
     for (;;) {
         if (curr->finalTick > currTick) {
@@ -135,7 +134,6 @@ static inline int removeExpiredTasks(DelayedQueue *q, unsigned int currTick) {
         }
         // Unblock task
         Reply(curr->tid, 0, 0);
-        tasks_removed++;
 
         if (curr == q->tail) {
             // Queue is empty; set tail to NULL
@@ -144,7 +142,6 @@ static inline int removeExpiredTasks(DelayedQueue *q, unsigned int currTick) {
         }
         curr = curr->next;
     }
-    return tasks_removed;
 }
 
 static volatile unsigned int ticks = 0;
