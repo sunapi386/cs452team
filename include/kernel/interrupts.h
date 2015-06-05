@@ -1,7 +1,7 @@
 #ifndef __INTERRUPTS_H
 #define __INTERRUPTS_H
 
-#define IRQ 0
+#define INT_IRQ 0 // interrupt request
 
 struct TaskDescriptor;
 

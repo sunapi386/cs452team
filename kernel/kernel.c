@@ -8,6 +8,7 @@
 #include <kernel/timer.h>
 #include <user/user_tasks.h>
 #include <debug.h>
+#include <stdbool.h>
 
 static Syscall *request = NULL;
 
@@ -54,7 +55,7 @@ static void initKernel() {
 
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
-        case IRQ:
+        case INT_IRQ:
             handleInterrupt(); // see AwaitEvent and event queue
             break;
         case SYS_AWAIT_EVENT: {
@@ -110,7 +111,7 @@ int main() {
         }
         KernelExit(task);
         handleRequest(task);
-        request->type = IRQ;
+        request->type = INT_IRQ;
     }
 #if MB_ENABLE_CACHE
     disableCache();
