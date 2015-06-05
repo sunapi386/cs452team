@@ -54,7 +54,7 @@ A good rule-of-thumb is that values accessed only by the context switch can be
 on the stack of the user task; other values should be in the task descriptor.
 */
 
-typedef enum {
+typedef enum __attribute__ ((packed)) {
     ready, // ready to be activated
     active, // task that has just run / is running / about to run
     zombie, // task that has exited
@@ -64,7 +64,7 @@ typedef enum {
     event_blocked, // task executed AwaitEvent, but event has not occured
 } Status;
 
-typedef struct TaskDescriptor {
+typedef struct __attribute__ ((packed)) TaskDescriptor {
     int id;
     int parent_id;
     int ret;

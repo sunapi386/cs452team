@@ -10,7 +10,7 @@
 #define _LOG_SRV(msg, ...) bwprintf(COM2, "[rps Server %d] " msg, server_tid, ## __VA_ARGS__)
 #define _LOG_CLI(msg, ...) bwprintf(COM2, "[rps Client %d] " msg, my_tid, ## __VA_ARGS__)
 
-typedef enum {
+typedef enum __attribute__ ((packed)) {
     WIN = -3,
     LOSE = -2,
     DRAW = -1,

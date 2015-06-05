@@ -15,9 +15,9 @@ static const int    FULL = -2;
 static const int    NO_NAMESERVER = -3;
 static const int    NO_TASK = -4;
 
-typedef struct {
+typedef struct __attribute__ ((packed)) {
     char name[NS_MAX_NAME];
-    enum { REGISTER_AS, WHO_IS, } type;
+    enum __attribute__ ((packed)) { REGISTER_AS, WHO_IS, } type;
 } NSRequest;
 
 
