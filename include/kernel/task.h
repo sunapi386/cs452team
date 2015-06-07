@@ -8,7 +8,7 @@
 // sp + 11 = r12
 // sp + 12 = lr
 
-#define TASK_TRAP_SIZE      12
+#define TASK_TRAP_SIZE      14
 #define TASK_BITS           8   // 2^8 = 128
 #define TASK_PRIORITY_BITS  5   // 2^5 = 32  Warning: Brujin table is 32.
 
@@ -27,8 +27,8 @@
 #define TASK_UNIQUE_MASK    ((TASK_MAX_UNIQUES - 1) << TASK_UNIQUE_OFFSET)
 
 // each task has own trapframe and stack
-#define TASK_STACK_SIZE     1024
-#define TASK_STACK_HIGH     0x500000
+#define TASK_STACK_SIZE     4096
+#define TASK_STACK_HIGH     0x600000
 #define TASK_STACK_LOW      (TASK_STACK_HIGH - \
                             TASK_MAX_TASKS * (TASK_STACK_SIZE + TASK_TRAP_SIZE))
 
@@ -55,13 +55,10 @@ on the stack of the user task; other values should be in the task descriptor.
 */
 
 typedef enum {
-    ready, // ready to be activated
-    active, // task that has just run / is running / about to run
-    zombie, // task that has exited
-    send_blocked, // task executed Receive, waiting for message sent to it
-    receive_block, // task executed Send, waiting for message to receive
-    reply_block, // task executed Send, its message received, but no reply
-    event_blocked, // task executed AwaitEvent, but event has not occured
+    ready,         // ready to be activated
+    send_blocked,  // task executed Send(), waiting for it to be received
+    receive_block, // task executed Receive(), waiting for task to Send()
+    reply_block,   // task executed Send(), its message received, waiting on reply
 } Status;
 
 typedef struct TaskDescriptor {

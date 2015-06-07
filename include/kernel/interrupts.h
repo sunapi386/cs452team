@@ -12,5 +12,7 @@ void initInterrupts();
 int awaitInterrupt(struct TaskDescriptor *active, int interruptID);
 // reschedules tasks that were waiting on interrupts
 void handleInterrupt();
+// resets PL190
+void resetInterrupts();
 
 #endif

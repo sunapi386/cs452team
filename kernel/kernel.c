@@ -33,36 +33,42 @@ void disableCache()
 }
 
 static void initKernel() {
-#if MB_ENABLE_CACHE
+    bwsetfifo(COM2, false);
     enableCache();
-#endif
     initTaskSystem();
     initScheduler();
     initMessagePassing();
     request = initSyscall();
     initInterrupts();
+    initTimer();
 
-    // int create_ret = taskCreate(1, &userTaskMessage, 0);
+    //int create_ret = taskCreate(1, &userTaskMessage, 0);
     // int create_ret = taskCreate(1, &userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, &runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);
     // int create_ret = taskCreate(1, &userTaskIdle, 31);
-    int create_ret = taskCreate(1, &undefinedInstructionTesterTask, 0);
+    int create_ret = taskCreate(1, &userTaskK3, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
 }
 
+static void resetKernel() {
+    stopTimer();
+    resetInterrupts();
+    disableCache();
+}
+
 static inline void handleRequest(TaskDescriptor *td) {
     switch (request->type) {
         case INT_IRQ:
-            handleInterrupt(); // see AwaitEvent and event queue
+            handleInterrupt();
             break;
-        case SYS_AWAIT_EVENT: {
+        case SYS_AWAIT_EVENT:
             td->ret = awaitInterrupt(td, request->arg1);
-            break;
-        }
+            // we don't want to reschedule if the task is event blocked
+            if (td->ret == 0) return;
         case SYS_SEND:
             handleSend(td, request);
             return;
@@ -96,13 +102,11 @@ static inline void handleRequest(TaskDescriptor *td) {
             debug("Invalid syscall %u!", request->type);
             break;
     }
-
     // requeue the task if we haven't returned (from SYS_EXIT)
     queueTask(td);
 }
 
 int main() {
-    bwsetfifo(COM2, false);
     initKernel();
     TaskDescriptor *task = NULL;
     for(;;) {
@@ -110,13 +114,11 @@ int main() {
         if (task == NULL) {
             break;
         }
-        KernelExit(task);
+        kernelExit(task);
         handleRequest(task);
         request->type = INT_IRQ;
     }
-#if MB_ENABLE_CACHE
-    disableCache();
-#endif
+    resetKernel();
     debug("No tasks scheduled; exiting...");
     return 0;
 }

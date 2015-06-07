@@ -40,14 +40,10 @@ void userTaskMessage() {
 
 // Create this with lowest priority of 31
 void userTaskIdle() {
-    debug("userTaskIdle");
-    for(int i = 0; i < 10000; i++) {
-        bwprintf(COM2, ".%d",i);
+    for (;;)
+    {
         Pass();
     }
-    bwprintf(COM2, "\r\n");
-    debug("exit");
-    Exit();
 }
 
 int return0() {

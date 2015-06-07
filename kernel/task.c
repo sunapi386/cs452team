@@ -65,8 +65,8 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
     global_current_stack_address -= (TASK_TRAP_SIZE + TASK_STACK_SIZE);
 
     // init trap frame on stack for c-switch
-    *(new_task->sp) = (unsigned int)code;        // r1: pc
-    *(new_task->sp + 1) = UserMode | DisableFIQ; // r2: cpsr_user
+    *(new_task->sp) = UserMode | DisableFIQ;  // cpsr
+    *(new_task->sp + 1) = (unsigned int)code; // pc
 
     return new_task->id;
 }

@@ -64,36 +64,35 @@ static inline void stacktrace() {
     }
     char *fn_name = (char *) pc - (pc[0] & (~INT_POKE_MASK));
     bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s() %x\n\r", fn_name, lr);
-    for(;;); // busy wait do not let kernel go
 }
 
 void undefined_instr() {
     stacktrace();
     bwprintf(COM2, "*\n\r* UNDEFINED INSTRUCTION\n\r*\n\r");
+    for(;;); // busy wait do not let kernel go
 }
 
 void abort_data() {
     stacktrace();
     bwprintf(COM2, "*\n\r* ABORT DATA\n\r*\n\r");
+    for(;;); // busy wait do not let kernel go
+
 }
 
 void abort_prefetch() {
     stacktrace();
     bwprintf(COM2, "*\n\r* ABORT PREFETCH\n\r*\n\r");
+    for(;;); // busy wait do not let kernel go
+
 }
 
 void initInterrupts() {
     // ldr  pc, [pc, #0x18] ; 0xe590f018 is the binary encoding
-    *((unsigned int *) 0x4) = 0xe59ff018;
-    *((unsigned int *) 0x8) = 0xe59ff018;
-    *((unsigned int *) 0xc) = 0xe59ff018;
-    *((unsigned int *) 0x10) = 0xe59ff018;
-    *((unsigned int *) 0x18) = 0xe59ff018;
     *(unsigned int *)(0x24) = (unsigned int)(&undefined_instr);  // undef_instr
-    *(unsigned int *)(0x28) = (unsigned int)(&KernelEnter);      // soft int
+    *(unsigned int *)(0x28) = (unsigned int)(&kernelEnter);      // soft int
     *(unsigned int *)(0x2c) = (unsigned int)(&abort_prefetch);   // abort_prefetch
     *(unsigned int *)(0x30) = (unsigned int)(&abort_data);       // abort_data
-    *(unsigned int *)(0x38) = (unsigned int)(&IRQEnter);         // hard int
+    *(unsigned int *)(0x38) = (unsigned int)(&irqEnter);      // hard int
     vic[0] = VIC1;
     vic[1] = VIC2;
     for(int i = 0; i < 64; i++) {
@@ -101,10 +100,12 @@ void initInterrupts() {
     }
     for(int i = 0; i < 2; i++) {
         setICU(vic[i], VIC_INT_SELECT, 0);      // select pl190 irq mode
-        setICU(vic[i], VIC_SOFT_INT_CLEAR, 1);  // clear soft int
     }
-    enable(0, 1);       // enable software interrupt
     enable(1, 1 << 19); // enable timer 3
+}
+
+void resetInterrupts() {
+    clear(1, 1 << 19); // disable timer 3
 }
 
 int awaitInterrupt(TaskDescriptor *active, int interruptID) {
@@ -112,38 +113,23 @@ int awaitInterrupt(TaskDescriptor *active, int interruptID) {
         return -1;
     }
     interruptTable[interruptID] = active; // FIXME: 1+ task waiting interruptID?
-    active->status = event_blocked;
     return 0; // FIXME
 }
 
 void handleInterrupt() { // kernel calls into here
     int statusMask = getICU(VIC2, VIC_IRQ_STATUS);
     if (statusMask & (1 << 19)) {
-        // Clear timer interrupt in ICU
-        clear(1, 1 << 19);
-
         // Clear timer interrupt in timer
         clearTimerInterrupt();
 
         // Queue task if there's a task waiting
-        if (interruptTable[51] != 0) {
-            queueTask(interruptTable[51]);
+        TaskDescriptor *td = interruptTable[51];
+        if (td != 0) {
+            queueTask(td);
             interruptTable[51] = 0;
         }
     }
-    /*
-    for(int i = 0; i < 2; i++) {
-        int statusMask;
-        while((statusMask = getICU(vic[i], VIC_IRQ_STATUS))) {
-            int interruptOffset = countLeadingZeroes(statusMask);
-            queueTask(interruptTable[interruptOffset + 32 * i]);
-            clear(i, interruptOffset);
-        }
-    }*/
 }
-
-
-
 
 void stackdump() {
     // dump all registers

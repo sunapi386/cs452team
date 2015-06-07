@@ -1,11 +1,9 @@
     .file   "context_switch.s"
     .text
     .align  2
-    .global KernelExit
-    .type   KernelExit, %function
-KernelExit:
-    @ args = 0, pretend = 0, frame = 12
-    @ frame_needed = 1, uses_anonymous_args = 0
+    .global kernelExit
+    .type   kernelExit, %function
+kernelExit:
 
     # store all kernel registers onto kernel stack
     stmfd sp!, {r0-r12, lr}
@@ -13,121 +11,105 @@ KernelExit:
     # change to system mode
     msr cpsr_c, #0xdf
 
-    # Put sp from TD+16 to sp
+    # load task->sp into sp
     ldr sp, [r0, #12]
 
-    # Put task->ret to r0
+    # load task->ret into r0
     ldr r0, [r0, #8]
 
-    # 2) load all user registers
-    # r0: retval r1: pc_usr r2: cpsr_usr
-    ldmfd   sp!, {r1-r12, lr}
+    # move sp into r1
+    mov r1, sp
+
+    # update sp to position after popping user cpsr, pc
+    add sp, sp, #8
 
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
-    # Put r2 (cpsr_usr) it to spsr_svc
+    # load user cpsr, user pc -> supervisor lr
+    ldmfd r1, {r2, lr}
+
+    # put user cpsr to spsr_svc
     msr spsr, r2
 
-    # execute user code
-    movs pc, r1
-    .size   KernelExit, .-KernelExit
-    .align  2
-    .global IRQEnter
-    .type   IRQEnter, %function
-IRQEnter:
-    # go to system mode
+    # change to system mode
     msr cpsr_c, #0xdf
 
-    # store scratch register on user stack
-    stmfd sp!, {r0-r2}
+    # load stored user regs from user stack
+    ldmfd sp!, {r1-r12, lr}
 
-    # store user sp to r0
-    mov r0, sp
+    # change to supervisor mode
+    msr cpsr_c, #0xd3
 
-    # make room for user pc and cpsr
-    sub sp, sp, #8
-
-    # go back to IRQ mode
-    msr cpsr_c, #0xd2
-
-    # Put lr (pc_usr) to r1, spsr (cpsr_usr) to
-    # r2 and push them onto the user stack
-    mov r1, lr
-    mrs r2, spsr
-    stmfd r0, {r1, r2}
+    # execute user code
+    movs pc, lr
+    .size   kernelExit, .-kernelExit
+    .align  2
+    .global irqEnter
+    .type   irqEnter, %function
+irqEnter:
 
     # go to supervisor mode
     msr cpsr_c, #0xd3
 
-    # set spsr to IRQ mode
-    mov r2, #0xd2
-    msr spsr_c, r2
+    # push r0 on the stack
+    stmfd sp!, {r0}
 
-    bl KernelEnter
-    # returned from KernelExit
-
-    # go to system mode
-    msr cpsr_c, #0xdf
-
-    # restore pc_usr, cpsr_usr
-    ldmfd sp!, {r1, r2}
-
-    # go back to IRQ mode
+    # go to irq mode
     msr cpsr_c, #0xd2
 
-    # restore lr (user pc), spsr (user cpsr)
-    mov lr, r1
-    msr spsr, r2
+    # put lr-4 (pc_usr) to r0
+    sub r0, lr, #4
 
-    # go to system mode
-    msr cpsr_c, #0xdf
+    # go to supervisor mode
+    msr cpsr_c, #0xd3
 
-    # restore user scratch registers
-    ldmfd sp!, {r0-r2}
+    # put correct pc_usr to lr_svc
+    mov lr, r0
 
-    # back to IRQ mode
-    msr cpsr_c, #0xd2
+    # pop scratch register back
+    ldmfd sp!, {r0}
 
-    # go back to user task
-    subs pc, lr, #4
-    .size   IRQEnter, .-IRQEnter
+    # set spsr to user mode (irq enabled)
+    msr spsr_c, #0x50
+    .size   irqEnter, .-irqEnter
     .align  2
-    .global KernelEnter
-    .type   KernelEnter, %function
-KernelEnter:
-    @ args = 0, pretend = 0, frame = 0
-    @ frame_needed = 1, uses_anonymous_args = 0
-
-    # put lr_svc in r1
-    mov r1, lr
-
-    # Put spsr (cpsr_usr) in r2
-    mrs r2, spsr
+    .global kernelEnter
+    .type   kernelEnter, %function
+kernelEnter:
 
     # change to system mode
     msr cpsr_c, #0xdf
 
     # store all user registers to user stack
-    stmfd   sp!, {r1-r12, lr}
+    stmfd sp!, {r1-r12, lr}
 
-    # put sp_usr in r2
+    # put user sp in r1
     mov r1, sp
+
+    # calculate user sp after pushing cpsr and pc
+    sub sp, sp, #8
 
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
-    # now:
-    # r1: sp_usr
+    # Put spsr (user cpsr) in r2
+    mrs r2, spsr
+
+    # store r2 (user cpsr), lr (user pc) to user stack
+    stmfd r1!, {r2, lr}
 
     # load r0 (*task)
     ldmfd sp!, {r0}
 
-    # store sp in task->sp
+    # store r1 (user sp) in task->sp
     str r1, [r0, #12]
+
+    # store r0 in task->ret
+    str r0, [r0, #8]
 
     # 1) load the rest of the kernel registers from stack
     ldmfd sp!, {r1-r12, pc}
 
-    .size   KernelEnter, .-KernelEnter
+    .size   kernelEnter, .-kernelEnter
     .ident  "GCC: (GNU) 4.0.2"

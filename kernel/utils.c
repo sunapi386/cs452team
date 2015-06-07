@@ -2,6 +2,7 @@
 
 // NOTE: Insecure (does not detect overlapping memory)
 void memcpy(void *dest, const void *src, size_t n) {
+    /*
     if(n == 4) {
         *((unsigned int *)dest) = *((unsigned int *)src);
         return;
@@ -34,7 +35,20 @@ void memcpy(void *dest, const void *src, size_t n) {
         : // no output
         : "r"(r_d), "r"(r_s), "r"(r_n) // input regs
         : "r3", "r4", "r5", "r6" // scratch
-    );
+    );*/
+    register unsigned int i = 0;
+    register unsigned int j = 0;
+    for (;;)
+    {
+        if (i == (n>>2)) break;
+        *((int *)dest + i) = *((int *)src + i);
+        ++i;
+    }
+    while ((n-j) % 4)
+    {
+        *((char *)dest + i + j) = *((char *)src + i + j);
+        ++j;
+    }
 }
 
 int strcmp (const char * dst, const char * src) {
@@ -74,5 +88,4 @@ int countLeadingZeroes(const unsigned int mask) {
         31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
     };
     return table[(unsigned int)((mask ^ (mask & (mask - 1))) * 0x077cb531u) >> 27];
-
 }

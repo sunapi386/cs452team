@@ -2,6 +2,8 @@
 #include <kernel/timer.h>
 
 void initTimer() {
+    clearTimerInterrupt();
+
 	// 10 ms interval for 508kHz
     *(int *)(TIMER3_BASE + LDR_OFFSET) = 5080;
 

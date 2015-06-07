@@ -198,8 +198,8 @@ static inline void handleReply(TaskDescriptor *receivingTask, Syscall *request)
     // set statuses and retvals
     sendingTask->status = ready;
 
-    queueTask(sendingTask);
     queueTask(receivingTask);
+    queueTask(sendingTask);
 }
 
 #endif // KERNEL_MAIN

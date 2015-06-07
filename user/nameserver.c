@@ -9,11 +9,11 @@
 #define NS_MAX_NAME 16
 #define NS_MAX_REGIST_SIZE 256
 
-static const int    SUCCESS = 0;
-static const int    ERROR = -1;
-static const int    FULL = -2;
-static const int    NO_NAMESERVER = -3;
-static const int    NO_TASK = -4;
+static const int SUCCESS = 0;
+static const int ERROR = -1;
+static const int FULL = -2;
+static const int NO_NAMESERVER = -3;
+static const int NO_TASK = -4;
 
 typedef struct {
     char name[NS_MAX_NAME];
@@ -22,7 +22,6 @@ typedef struct {
 
 
 void nameserverTask() {
-    bwprintf(COM2, "nameserverTask started, myTID %d\r\n", MyTid());
     struct {
         char name[NS_MAX_NAME];
         int tid;
@@ -75,9 +74,6 @@ void nameserverTask() {
             default:
                 Reply(sender_tid, (void *)&ERROR, sizeof(int));
         } // switch
-
-
-
     } // for
 }
 

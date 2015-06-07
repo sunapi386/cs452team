@@ -3,7 +3,6 @@
 
 #ifdef KERNEL_MAIN
 
-#include <utils.h>
 #include <kernel/task.h>
 #include <kernel/task_queue.h>
 
@@ -23,12 +22,17 @@ static inline void initScheduler()
 
 static inline TaskDescriptor * schedule()
 {
+    static const int table[32] = {
+        0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
+        31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
+    };
+
     if (queueStatus == 0)
     {
         return NULL;
     }
 
-    int index = countLeadingZeroes(queueStatus);
+    int index = table[(unsigned int)((queueStatus ^ (queueStatus & (queueStatus - 1))) * 0x077cb531u) >> 27];
 
     // Get the task queue with the highest priority
     TaskQueue *q = &readyQueues[index];
