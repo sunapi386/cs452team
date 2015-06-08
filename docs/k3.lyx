@@ -566,6 +566,17 @@ The SoC contains 2 PL190 interrupt controllers.
 \end_layout
 
 \begin_layout Subsection
+Hardware Interrupt Handler
+\end_layout
+
+\begin_layout Standard
+The interrupt handler only handles timer 3 underflow interrupt at the moment.
+ Status bit of the second ICU is checked for interrupt; if interrupt occurred,
+ clear the interrupt in timer device and if there is a task blocked on timer
+ event, put it back to the ready queue.
+\end_layout
+
+\begin_layout Subsection
 AwaitEvent
 \end_layout
 
