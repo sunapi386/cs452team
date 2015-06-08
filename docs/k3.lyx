@@ -546,17 +546,13 @@ ldmfd sp!, {r1-r12, pc}
 \end_layout
 
 \begin_layout Subsection
-Timer Setup
+Timer and Interrupt Control Units
 \end_layout
 
 \begin_layout Standard
 The timer 3 in the EP9302 SoC is used to track time.
  It is set up to use 508 kHz clock in periodic mode, with load register
- set to 5080 (10 miliseconds interval between interrupts).
-\end_layout
-
-\begin_layout Subsection
-Interrupt Controller Setup
+ set to 5080 (10 milliseconds interval between interrupts).
 \end_layout
 
 \begin_layout Standard
