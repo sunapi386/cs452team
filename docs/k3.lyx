@@ -1111,15 +1111,39 @@ RedBoot> go
 \end_layout
 
 \begin_layout LyX-Code
+clientTask 8 interval 71 delays completed 3 total time 2
+\end_layout
 
+\begin_layout LyX-Code
+clientTask 8 interval 33 delays completed 6 total time 7
+\end_layout
+
+\begin_layout LyX-Code
+clientTask 8 interval 23 delays completed 9 total time 9
+\end_layout
+
+\begin_layout LyX-Code
+clientTask 8 interval 10 delays completed 20 total time 9
+\end_layout
+
+\begin_layout LyX-Code
+clinetTask 4 exiting...
+\end_layout
+
+\begin_layout LyX-Code
+clientTask 7 exiting...
+\end_layout
+
+\begin_layout LyX-Code
+userTaskK3 is done, exiting...
+\end_layout
+
+\begin_layout LyX-Code
+clientTask 8 exiting...
 \end_layout
 
 \begin_layout LyX-Code
 
-\end_layout
-
-\begin_layout LyX-Code
-Program completed with status 0
 \end_layout
 
 \begin_layout Paragraph
