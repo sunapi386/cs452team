@@ -140,7 +140,11 @@ Context switch support for handling hardware interrupt
 \end_layout
 
 \begin_layout Enumerate
-Running timer 3 in periodic mode
+Setup timer and interrupt control units
+\end_layout
+
+\begin_layout Enumerate
+Hardware interrupt handler
 \end_layout
 
 \begin_layout Enumerate
@@ -556,7 +560,13 @@ Interrupt Controller Setup
 \end_layout
 
 \begin_layout Standard
-The interrupt controller, PL190, 
+The SoC contains 2 PL190 interrupt controllers.
+ On kernel start, the 20th bit (1<<19), of the second interrupt controller,
+ which is the bit corresponds to timer interrupt, is enabled.
+ Both interrupt control units' select bits are set to 0, which enables IRQ
+ mode.
+ When the program is about to exit, the 20th bit of the second interrupt
+ controller is cleared.
 \end_layout
 
 \begin_layout Subsection
