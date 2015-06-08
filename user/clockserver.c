@@ -194,11 +194,9 @@ void clockServerTask()
             Reply(tid, &tick, sizeof(tick));
             break;
         case DELAY:
-            Reply(tid, 0, 0);
             insertDelayedTask(&q, tasks, tid, req.data + tick);
             break;
         case DELAY_UNTIL:
-            Reply(tid, 0, 0);
             insertDelayedTask(&q, tasks, tid, req.data);
             break;
         default:
