@@ -99,8 +99,6 @@ Compiling by running
  kernel.elf
 \family default
  to
-\family typewriter
- 
 \end_layout
 
 \begin_layout Standard
@@ -131,12 +129,94 @@ Kernel Data Structures
 DelayedTask
 \end_layout
 
+\begin_layout Standard
+The DelayedTask struct is used by the clock server to keep track of tasks
+ blocked by Delay() and DelayUntil().
+ The tid is the tid of the task, the finalTick is the time that the delay
+ expires; the next pointer is to support inserting/removing into DelayedQueue,
+ a singly circular linked-list.
+\end_layout
+
+\begin_layout LyX-Code
+typedef struct DelayedTask {
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+int tid;
+\end_layout
+
+\begin_layout LyX-Code
+unsigned int finalTick;
+\end_layout
+
+\begin_layout LyX-Code
+struct DelayedTask *next;
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+} DelayedTask;
+\end_layout
+
 \begin_layout Subsection
 DelayedQueue
 \end_layout
 
+\begin_layout Standard
+The DelayedQueue struct is used by clock server to implement linked-list
+ of delayed tasks.
+ It only consists of a single tail pointer.
+ The list is empty if the tail pointer is NULL, and the head of the list
+ can be obtained from tail->next.
+\end_layout
+
+\begin_layout LyX-Code
+typedef struct DelayedQueue {
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+DelayedTask *tail;
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+} DelayedQueue;
+\end_layout
+
 \begin_layout Subsection
 ClockRequest
+\end_layout
+
+\begin_layout Standard
+The ClockRequest struct is used to communicate between the clock server,
+ the clock notifier, and client tasks through calling the wrapper functions
+ Time(), Delay(), DelayUntil().
+ The type can be one of {NOTIFICATION, TIME, DELAY, DELAY_UNTIL}, and data
+ maybe an argument accepted by Delay() and DelayUntil().
+\end_layout
+
+\begin_layout LyX-Code
+typedef struct ClockReq
+\end_layout
+
+\begin_layout LyX-Code
+{
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+int type;
+\end_layout
+
+\begin_layout LyX-Code
+int data;
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+} ClockReq;
 \end_layout
 
 \begin_layout Section
