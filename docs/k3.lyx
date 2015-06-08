@@ -127,6 +127,18 @@ See also Source Code location section.
 Kernel Data Structures
 \end_layout
 
+\begin_layout Subsection
+DelayedTask
+\end_layout
+
+\begin_layout Subsection
+DelayedQueue
+\end_layout
+
+\begin_layout Subsection
+ClockRequest
+\end_layout
+
 \begin_layout Section
 Kernel Algorithms
 \end_layout
