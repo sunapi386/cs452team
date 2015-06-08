@@ -56,12 +56,6 @@ void userTaskK3() {
         debug("Expected create nameserverTask >= 1, got %d", ret);
         Exit();
     }
-    debug("creating userTaskIdle");
-    ret = Create(31, &userTaskIdle);
-    if(ret < 1) {
-        debug("Expected create userTaskIdle >= 1, got %d", ret);
-        Exit();
-    }
     // create clock server
     debug("creating clockServerTask");
     ret = Create(1, &clockServerTask);
@@ -69,7 +63,6 @@ void userTaskK3() {
         debug("Expected create clockServerTask >= 1, got %d", ret);
         Exit();
     }
-
     // Create 4 client tasks
     for(int i = 0; i < 4; i++) {
         childs[i] = Create(3, &clientTask);
@@ -80,7 +73,12 @@ void userTaskK3() {
             Exit();
         }
     }
-
+    debug("creating userTaskIdle");
+    ret = Create(31, &userTaskIdle);
+    if(ret < 1) {
+        debug("Expected create userTaskIdle >= 1, got %d", ret);
+        Exit();
+    }
     // Execute receive 4 times
     for(int i = 0; i < 4; i ++) {
         int child_tid;
