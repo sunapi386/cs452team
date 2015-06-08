@@ -92,7 +92,7 @@ Program Operation
 \begin_layout Standard
 Compiling by running
 \family typewriter
- make
+ make prod
 \family default
 , which also copies the local
 \family typewriter
@@ -1139,7 +1139,26 @@ clientTask 8 exiting...
 \end_layout
 
 \begin_layout Paragraph
-Explaination
+Explanation
+\end_layout
+
+\begin_layout Standard
+The first 4 lines of the program output are the output from the client tasks,
+ after calling Delay() and being unblocked by the clock server.
+ Task 4 delayed by 20 times with 10 as the delay interval; task 5 delays
+ 9 times, 23 ticks each; task 7 delays 6 times with 33 as delay interval,
+ and task 8 delays 3 times, 71 ticks per interval.
+\end_layout
+
+\begin_layout Standard
+Task 4 is supposed to delay 200 ticks in total, task 5 is supposed to delay
+ 207 seconds in total, task 7 is supposed to delay 198 ticks in total, and
+ task 8 is supposed to be delayed 213 ticks in total.
+ As we can see, task 8 finished first, followed by 7, 5, and 4.
+ This suggests that although task 4's total delay is relatively shorter
+ than 7, it had to be delayed more times, therefore is scheduled more often.
+ Since the 4 client tasks have the same priority, the task with the least
+ delay times completed first.
 \end_layout
 
 \end_body
