@@ -853,9 +853,10 @@ Clock Notifier
 \end_layout
 
 \begin_layout Standard
-The clock notifier calls AwaitEvent(timer); on timer 3 underflow interrupt,
- it gets unblocked by the kernel and sends a notification to the clock server,
- signaling it to increase current tick.
+The clock notifier waits for a timer interrupt to occur using the kernel
+ primitive AwaitEvent(); on timer 3 underflow interrupt, it gets unblocked
+ by the kernel and sends a notification to the clock server, signaling it
+ to increase current tick.
  The Send() call is subsequently unblocked by the clock server.
 \end_layout
 
@@ -897,6 +898,40 @@ Send(pid, &req, sizeof(req), 0, 0)
 \end_deeper
 \begin_layout Subsubsection
 Time(), Delay(), and DelayUntil()
+\end_layout
+
+\begin_layout Standard
+Time(), Delay(), and DelayUntil() are functions wrapping Send() to the clock
+ server; therefore, their only difference is the type of messages they send.
+ The wrapper functions also loop up the clock server on the name server,
+ and set it to a static variable declared within each function.
+\end_layout
+
+\begin_layout Enumerate
+static clockServerTid := -1
+\end_layout
+
+\begin_layout Enumerate
+If clockServerTid < 0
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+clockServerTid := WhoIs(CLOCK_SERVER_NAME)
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Put argument and type of request {TIME, DELAY, DELAY_UNTIL} in a ClockRequest
+ object
+\end_layout
+
+\begin_layout Enumerate
+Send the ClockRequest object to clockServerTid
+\end_layout
+
+\begin_layout Enumerate
+return 0
 \end_layout
 
 \begin_layout Subsection
