@@ -104,7 +104,6 @@ void userTaskK3() {
         debug("Sending to child %d tid %d", i, childs[i]);
         Send(childs[i], 0, 0, 0, 0);
     }
-    bwprintf(COM2, "userTaskK3 is done, exiting...\r\n");
     Exit();
 }
 

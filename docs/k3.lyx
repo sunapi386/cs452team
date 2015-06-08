@@ -798,10 +798,6 @@ If request is Delay()
 
 \begin_deeper
 \begin_layout Enumerate
-Reply
-\end_layout
-
-\begin_layout Enumerate
 insertDelayedTask(tid, request.data + tick)
 \end_layout
 
@@ -811,10 +807,6 @@ If request is DelayUntil()
 \end_layout
 
 \begin_deeper
-\begin_layout Enumerate
-Reply
-\end_layout
-
 \begin_layout Enumerate
 insertDelayedTask(tid, request.data)
 \end_layout
@@ -1111,31 +1103,31 @@ RedBoot> go
 \end_layout
 
 \begin_layout LyX-Code
-clientTask 8 interval 71 delays completed 3 total time 2
+clientTask 8 interval 71 delays completed 3 total time 213
 \end_layout
 
 \begin_layout LyX-Code
-clientTask 8 interval 33 delays completed 6 total time 7
+clientTask 7 interval 33 delays completed 6 total time 213
 \end_layout
 
 \begin_layout LyX-Code
-clientTask 8 interval 23 delays completed 9 total time 9
+clientTask 5 interval 23 delays completed 9 total time 217
 \end_layout
 
 \begin_layout LyX-Code
-clientTask 8 interval 10 delays completed 20 total time 9
+clientTask 4 interval 10 delays completed 20 total time 253
 \end_layout
 
 \begin_layout LyX-Code
-clinetTask 4 exiting...
+clientTask 4 exiting...
+\end_layout
+
+\begin_layout LyX-Code
+clientTask 5 exiting...
 \end_layout
 
 \begin_layout LyX-Code
 clientTask 7 exiting...
-\end_layout
-
-\begin_layout LyX-Code
-userTaskK3 is done, exiting...
 \end_layout
 
 \begin_layout LyX-Code
