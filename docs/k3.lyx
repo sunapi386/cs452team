@@ -124,7 +124,11 @@ See also Source Code location section.
 \end_layout
 
 \begin_layout Section
-Kernel Structure
+Kernel Data Structures
+\end_layout
+
+\begin_layout Section
+Kernel Algorithms
 \end_layout
 
 \begin_layout Standard
@@ -152,7 +156,6 @@ Context Switch on Hardware Interrupt
 \end_layout
 
 \begin_layout Standard
-\paragraph_spacing double
 Before Kernel 3, interrupts are triggered using 
 \family typewriter
 swi
@@ -187,7 +190,6 @@ cpsr
 \end_layout
 
 \begin_layout Standard
-\paragraph_spacing double
 By enabling hardware interrupt in Kernel 3, the assumptions are no longer
  true: in addition to the new IRQ mode introduced by hardware interrupt,
  interrupts can occur any stage of the user program execution.
@@ -544,10 +546,9 @@ Timer Setup
 \end_layout
 
 \begin_layout Standard
-\paragraph_spacing double
 The timer 3 in the EP9302 SoC is used to track time.
- It is set up to use 509kHz clock in periodic mode, with load register set
- to 5080 (10 miliseconds interval between interrupts).
+ It is set up to use 508 kHz clock in periodic mode, with load register
+ set to 5080 (10 miliseconds interval between interrupts).
 \end_layout
 
 \begin_layout Subsection
@@ -555,7 +556,6 @@ Interrupt Controller Setup
 \end_layout
 
 \begin_layout Standard
-\paragraph_spacing double
 The interrupt controller, PL190, 
 \end_layout
 
@@ -607,14 +607,253 @@ Clock Server and Notifier
 \end_layout
 
 \begin_layout Standard
-Tasks that want to obtain service from the clock server must do so by obtaining
- its tid from the name server.
- 
+\paragraph_spacing single
+The clock server, together with the notifier, provides timing functionality
+ for other user programs.
+ Three functions are provided: Time(), which returns the current system
+ tick; Delay(), which delays a task for certain number of ticks; and DelayUntil(
+), which delays a task till a certain time.
+ A single tick is defined to be 10 milliseconds (see 2.2 Timer Setup for
+ details).
+\end_layout
+
+\begin_layout Subsubsection
+Clock Server
 \end_layout
 
 \begin_layout Standard
-Notifier wait on events from a timer and Send notifications that the timer
- ticked to the clock server.
+The clock server serves requests from the notifier task and client tasks
+ calling Time(), Delay(), and DelayUntil(), using the message passing mechanisms
+ built in Kernel 2.
+ It also registers with the name server so it could be discovered by other
+ tasks.
+ Here are the algorithms:
+\end_layout
+
+\begin_layout Description
+clockServerTask:
+\end_layout
+
+\begin_layout Enumerate
+Initialize data structures
+\end_layout
+
+\begin_layout Enumerate
+Register with name server
+\end_layout
+
+\begin_layout Enumerate
+Spawn notifier
+\end_layout
+
+\begin_layout Enumerate
+Forever loop
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Receive request
+\end_layout
+
+\begin_layout Enumerate
+If request is notification
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Reply
+\end_layout
+
+\begin_layout Enumerate
+Increment tick
+\end_layout
+
+\begin_layout Enumerate
+removeExpiredTasks()
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+If request is from Time()
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Reply with tick
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+If request is Delay()
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Reply
+\end_layout
+
+\begin_layout Enumerate
+insertDelayedTask(tid, request.data + tick)
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+If request is DelayUntil()
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Reply
+\end_layout
+
+\begin_layout Enumerate
+insertDelayedTask(tid, request.data)
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Description
+removeExpiredTasks:
+\end_layout
+
+\begin_layout Enumerate
+If tail pointer is NULL
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+return
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+cur := tail->next
+\end_layout
+
+\begin_layout Enumerate
+Forever loop
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+If curr->finalTick > current time
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+tail->next := curr;
+\end_layout
+
+\begin_layout Enumerate
+break
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Reply to curr->tid (unblocks a task)
+\end_layout
+
+\begin_layout Enumerate
+If curr = tail
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+tail = NULL
+\end_layout
+
+\begin_layout Enumerate
+break
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+curr := curr->next
+\end_layout
+
+\end_deeper
+\begin_layout Description
+insertDelayedTask(task,finalTick):
+\end_layout
+
+\begin_layout Enumerate
+If tail pointer is NULL
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+tail := task
+\end_layout
+
+\begin_layout Enumerate
+task->next := task
+\end_layout
+
+\begin_layout Enumerate
+return
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+curr := tail
+\end_layout
+
+\begin_layout Enumerate
+Forever loop
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+If curr->next->finalTick >= finalTick
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+task->next := curr->next
+\end_layout
+
+\begin_layout Enumerate
+curr->next := task
+\end_layout
+
+\begin_layout Enumerate
+return
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+If curr->next = tail
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+task->next := curr->next
+\end_layout
+
+\begin_layout Enumerate
+curr->next := task
+\end_layout
+
+\begin_layout Enumerate
+tail := task
+\end_layout
+
+\begin_layout Enumerate
+return
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+curr := curr->next
+\end_layout
+
+\end_deeper
+\begin_layout Subsubsection
+Clock Notifier
+\end_layout
+
+\begin_layout Subsubsection
+Time(), Delay(), and DelayUntil()
 \end_layout
 
 \begin_layout Subsection
