@@ -652,7 +652,7 @@ Forever loop
 
 \begin_deeper
 \begin_layout Enumerate
-Receive request
+Receive ClockRequest
 \end_layout
 
 \begin_layout Enumerate
@@ -852,6 +852,49 @@ curr := curr->next
 Clock Notifier
 \end_layout
 
+\begin_layout Standard
+The clock notifier calls AwaitEvent(timer); on timer 3 underflow interrupt,
+ it gets unblocked by the kernel and sends a notification to the clock server,
+ signaling it to increase current tick.
+ The Send() call is subsequently unblocked by the clock server.
+\end_layout
+
+\begin_layout Description
+clockNotifier:
+\end_layout
+
+\begin_layout Enumerate
+pid := MyParentTid()
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+pid now contains the tid of the clock server
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Create a ClockRequest, req
+\end_layout
+
+\begin_layout Enumerate
+req.type := NOTIFICATION
+\end_layout
+
+\begin_layout Enumerate
+Forever loop
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+AwaitEvent(TIMER_EVENT)
+\end_layout
+
+\begin_layout Enumerate
+Send(pid, &req, sizeof(req), 0, 0)
+\end_layout
+
+\end_deeper
 \begin_layout Subsubsection
 Time(), Delay(), and DelayUntil()
 \end_layout
