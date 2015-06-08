@@ -688,27 +688,9 @@ When AwaitEvent is called, it adds the calling task into the table and sets
 \end_layout
 
 \begin_layout Itemize
-The kernel doesn’t handle volatile data itself or clear the cause of the
- interrupt, it leaves that to the caller.
-\end_layout
-
-\begin_layout Itemize
-Interrupts are enabled when AwaitEvent returns.
-\end_layout
-
-\begin_layout Itemize
 At most one task to block on a single event.
  Although if needed, multiple tasks can be changed up through the next field
  in the task descriptor if needed.
-\end_layout
-
-\begin_layout Standard
-Two issues worth mentioning are (1) tasks has different priorities and (2)
- multiple interrupts can occur at the same time.
- To deal with this, De Brujin sequences are used on the registers, adding
- the task to the ready queue.
- Then it clears the bit for that interrupt and process repeats until the
- interrupt status is completely cleared.
 \end_layout
 
 \begin_layout Subsection
