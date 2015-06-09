@@ -1071,9 +1071,7 @@ gitlab@git.uwaterloo.ca:j53sun/cs452team.git
 \end_layout
 
 \begin_layout Itemize
-SHA1 hash of commit for submission: 
-\family typewriter
-FIXME
+Commit for submission: 0dce35de6c30b48f1144ac84b03ca3549241e17d
 \end_layout
 
 \begin_layout Section
