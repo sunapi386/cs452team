@@ -5,6 +5,7 @@
 #undef KERNEL_MAIN
 #include <kernel/interrupts.h>
 #include <kernel/context_switch.h>
+#include <kernel/uart.h>
 #include <kernel/timer.h>
 #include <user/user_tasks.h>
 #include <debug.h>
@@ -32,15 +33,25 @@ void disableCache()
     );
 }
 
+void bootstrap()
+{
+    int i = 0;
+    for (; i < 50; i++)
+    {
+        Pass();
+    }
+    Exit();
+}
+
 static void initKernel() {
-    bwsetfifo(COM2, false);
     enableCache();
     initTaskSystem();
     initScheduler();
     initMessagePassing();
     request = initSyscall();
     initInterrupts();
-    initTimer();
+    initUART();
+    //initTimer();
 
     //int create_ret = taskCreate(1, &userTaskMessage, 0);
     // int create_ret = taskCreate(1, &userTaskHwiTester, 0);
@@ -48,14 +59,14 @@ static void initKernel() {
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);
     // int create_ret = taskCreate(1, &userTaskIdle, 31);
-    int create_ret = taskCreate(1, &userTaskK3, 0);
+    int create_ret = taskCreate(1, &bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
 }
 
 static void resetKernel() {
-    stopTimer();
+    //resetTimer();
     resetInterrupts();
     disableCache();
 }

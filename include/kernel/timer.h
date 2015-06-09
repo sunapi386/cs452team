@@ -3,6 +3,6 @@
 
 void initTimer();
 void clearTimerInterrupt();
-void stopTimer();
+void resetTimer();
 
 #endif

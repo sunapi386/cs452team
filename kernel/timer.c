@@ -18,7 +18,7 @@ void clearTimerInterrupt()
     *(int *)(TIMER3_BASE + CLR_OFFSET) = 1;
 }
 
-void stopTimer()
+void resetTimer()
 {
     clearTimerInterrupt();
     *(int *)(TIMER3_BASE + CRTL_OFFSET) = 0;

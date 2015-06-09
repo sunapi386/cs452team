@@ -1,6 +1,7 @@
 #include <utils.h>
 #include <debug.h>
 #include <kernel/task.h>
+#include <kernel/uart.h>
 #include <kernel/timer.h>
 #include <kernel/pl190.h>
 #include <kernel/interrupts.h>
@@ -101,10 +102,15 @@ void initInterrupts() {
     for(int i = 0; i < 2; i++) {
         setICU(vic[i], VIC_INT_SELECT, 0);      // select pl190 irq mode
     }
+
+    enable(0, 1 << 25); // uart2 recv
+    enable(0, 1 << 26); // uart2 xmit
     enable(1, 1 << 19); // enable timer 3
 }
 
 void resetInterrupts() {
+    clear(0, 1 << 25); // uart2 recv
+    clear(0, 1 << 26); // uart2 xmit
     clear(1, 1 << 19); // disable timer 3
 }
 
@@ -117,8 +123,11 @@ int awaitInterrupt(TaskDescriptor *active, int interruptID) {
 }
 
 void handleInterrupt() { // kernel calls into here
-    int statusMask = getICU(VIC2, VIC_IRQ_STATUS);
-    if (statusMask & (1 << 19)) {
+
+    int vic1Status = getICU(VIC1, VIC_IRQ_STATUS);
+    int vic2Status = getICU(VIC2, VIC_IRQ_STATUS);
+
+    if (vic2Status & (1 << 19)) {
         // Clear timer interrupt in timer
         clearTimerInterrupt();
 
@@ -128,6 +137,17 @@ void handleInterrupt() { // kernel calls into here
             queueTask(td);
             interruptTable[51] = 0;
         }
+    }
+    else if (vic1Status & (1 << 25))
+    {
+        // get the character
+        char c = getUARTData(COM2);
+        bwputc(COM2, c);
+        // unblock notifier
+    }
+    else if (vic1Status & (1 << 26))
+    {
+        // bwprintf(COM2, "uart2 xmit int; status: %d\n\r", getUART2IntStatus());
     }
 }
 
