@@ -10,6 +10,7 @@
 #define SYS_MY_TID          7
 #define SYS_MY_PARENT_TID   8
 #define SYS_PASS            9
+#define SYS_SPAWN           10
 
 typedef
 struct Syscall {
@@ -120,5 +121,11 @@ Returns.
 caller.
 */
 int AwaitEvent(int eventType);
+
+/**
+Spawn - the cooler cousin of Create()
+Description. The cooler cousin of Create().
+*/
+int Spawn( int priority, void (*code) ( ), void * argument );
 
 #endif // __SYSCALL_H

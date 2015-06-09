@@ -32,6 +32,19 @@ void disableCache()
     );
 }
 
+void taskTest(volatile int arg)
+{
+    debug("my arg is %d! ;)", arg);
+    Exit();
+}
+
+void bootstrap()
+{
+    int ret = Spawn(1, &taskTest, -500);
+    debug("bootstrap retval %d", ret);
+    Exit();
+}
+
 static void initKernel() {
     bwsetfifo(COM2, false);
     enableCache();
@@ -48,7 +61,8 @@ static void initKernel() {
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);
     // int create_ret = taskCreate(1, &userTaskIdle, 31);
-    int create_ret = taskCreate(1, &userTaskK3, 0);
+    //int create_ret = taskCreate(1, &userTaskK3, 0);
+    int create_ret = taskCreate(31, &bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
@@ -86,6 +100,15 @@ static inline void handleRequest(TaskDescriptor *td) {
             } else {
                 td->ret = create_ret;
             }
+            break;
+        }
+        case SYS_SPAWN: {
+            TaskDescriptor *task = taskSpawn(request->arg1,
+                                             (void *)(request->arg2),
+                                             (void *)(request->arg3),
+                                             taskGetIndex(td));
+            queueTask(task);
+            td->ret = task == NULL ? -1 : 0;
             break;
         }
         case SYS_MY_TID:

@@ -81,3 +81,12 @@ int AwaitEvent(int eventType)
     s.arg1 = (unsigned int)eventType;
     return swi(&s);
 }
+
+int Spawn(int priority, void (*code) ( ), void * argument )
+{
+    s.type = SYS_SPAWN;
+    s.arg1 = priority;
+    s.arg2 = (unsigned int)code;
+    s.arg3 = (unsigned int)argument;
+    return swi(&s);
+}
