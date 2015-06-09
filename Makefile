@@ -54,4 +54,8 @@ clean:
 prod: clean
 	make CFLAGS="$(CFLAGS) -DPRODUCTION"
 
+
+k4: prod
+	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sunchang/k4.elf
+
 -include $(sources:.c=.d)
