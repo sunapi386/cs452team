@@ -60,5 +60,6 @@ k4: prod
 
 check:
 	git grep -n FIXME
+	git grep -n TODO
 
 -include $(sources:.c=.d)
