@@ -123,8 +123,8 @@ int awaitInterrupt(TaskDescriptor *active, int interruptID) {
     if(interruptID < 0 || interruptID > 63) {
         return -1;
     }
-    interruptTable[interruptID] = active; // FIXME: 1+ task waiting interruptID?
-    return 0; // FIXME
+    interruptTable[interruptID] = active;
+    return 0; // FIXME(jason): should return volatile data
 }
 
 void handleInterrupt() { // kernel calls into here

@@ -108,6 +108,7 @@ int Reply( int tid, void *reply, unsigned int replylen );
 AwaitEvent - block until event with eventType
 Description. AwaitEvent blocks until the event identified by eventid occurs then returns.
 The following details are implementation-dependent.
+FIXME(jason): fix AwaitEvent to return a volatile pointer to write data to
 • the kernel does not collects volatile data, and does not re-enables the interrupt.
 • interrupts are enabled when AwaitEvent returns.
 • at most one task to block on a single event.

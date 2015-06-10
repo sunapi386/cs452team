@@ -89,3 +89,11 @@ int countLeadingZeroes(const unsigned int mask) {
     };
     return table[(unsigned int)((mask ^ (mask & (mask - 1))) * 0x077cb531u) >> 27];
 }
+
+
+// TODO: implement buffer
+void CBufferInit(CBuffer *b, void *array, size_t size) {}
+void *CBufferPop(CBuffer *b) {}
+int CBufferPush(CBuffer *b, unsigned int item) {return 0;}
+bool CBufferIsEmpty(CBuffer *b) {return false;}
+void CBufferClean(CBuffer *b) {}
