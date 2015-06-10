@@ -51,11 +51,14 @@ kernel.elf: $(objects) linker.ld
 clean:
 	-rm -f kernel.elf $(objects) $(assembled_sources) $(sources:.c=.d) kernel.map
 
-prod: clean
+prod: clean check
 	make CFLAGS="$(CFLAGS) -DPRODUCTION"
 
 
 k4: prod
 	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sunchang/k4.elf
+
+check:
+	git grep -n FIXME
 
 -include $(sources:.c=.d)

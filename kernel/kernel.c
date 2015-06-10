@@ -9,7 +9,6 @@
 #include <kernel/timer.h>
 #include <user/user_tasks.h>
 #include <debug.h>
-#include <stdbool.h>
 
 static Syscall *request = NULL;
 
