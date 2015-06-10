@@ -1,5 +1,6 @@
 #include <utils.h>
 #include <debug.h>
+#include <events.h>
 #include <kernel/task.h>
 #include <kernel/uart.h>
 #include <kernel/timer.h>

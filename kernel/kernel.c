@@ -35,11 +35,6 @@ void disableCache()
 
 void bootstrap()
 {
-    int i = 0;
-    for (; i < 50; i++)
-    {
-        Pass();
-    }
     Exit();
 }
 

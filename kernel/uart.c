@@ -16,7 +16,7 @@ void initUART()
     *uart1Mid = 0x0;
 
     // Enable uart 1,2 modem, rcv, xmit interrupts
-    *uart2Ctrl |= TIEN_MASK | RIEN_MASK | MSIEN_MASK;
+    *uart2Ctrl |= TIEN_MASK | RIEN_MASK;// | MSIEN_MASK;
 
     // Set uart1 to 2 stop bits + no fifo
     int temp = *uart1High;
