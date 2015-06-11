@@ -102,11 +102,11 @@ LatexCommand tableofcontents
 
 \end_layout
 
-\begin_layout Section
+\begin_layout Part
 Administrative Details
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Section
 Source Code Location
 \end_layout
 
@@ -142,7 +142,7 @@ Compiling by running
  /u/cs452/tftp/ARM/sunchang/k4.elf
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Section
 Program Operation
 \end_layout
 
@@ -155,7 +155,7 @@ Program Operation
 > go
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Section
 Program Output
 \end_layout
 
@@ -171,16 +171,16 @@ RedBoot> go
 Output Explanation
 \end_layout
 
-\begin_layout Section
+\begin_layout Part
 Kernel Structure Details
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Section
 Context Switch
 \end_layout
 
-\begin_layout Standard
-From kernel space to user space:
+\begin_layout Subsection
+From kernel space to user space
 \end_layout
 
 \begin_layout Enumerate
@@ -277,8 +277,8 @@ movs pc, r1
 cpsr
 \end_layout
 
-\begin_layout Standard
-From user space to kernel space: 
+\begin_layout Subsection
+From user space to kernel space 
 \end_layout
 
 \begin_layout Enumerate
@@ -397,8 +397,8 @@ r2-r12
 ) from stack
 \end_layout
 
-\begin_layout Subsubsection
-Description in ARM
+\begin_layout Subsection
+ARM Assembly Code
 \end_layout
 
 \begin_layout Standard
@@ -497,7 +497,7 @@ ldmfd sp!, {r2-r12, pc}
 \end_layout
 
 \end_deeper
-\begin_layout Subsubsection
+\begin_layout Section
 Trap Frame
 \end_layout
 
@@ -558,7 +558,7 @@ swi()
 , where the syscall occurred.
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Section
 Syscalls
 \end_layout
 
@@ -681,7 +681,7 @@ arg3, arg4, arg5
  to Syscall data structure to support a maximum of 5 system call arguments.
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Section
 Tasks
 \end_layout
 
@@ -690,120 +690,155 @@ A task can be created off a function pointer and represents a chunk of code
  to execute.
 \end_layout
 
-\begin_layout Subsubsection
+\begin_layout Subsection
 Task Descriptor
 \end_layout
 
 \begin_layout Standard
-A TaskDescriptor struct holds:
+The kernel's TaskDescriptor:
 \end_layout
 
-\begin_layout Itemize
-task id, contains an index into a global table of task descriptors pre-allocated.
+\begin_layout LyX-Code
+typedef struct TaskDescriptor {
 \end_layout
 
-\begin_layout Itemize
-parent id, whoever called
-\family typewriter
- Create()
-\family default
-.
+\begin_layout LyX-Code
+    int id;
 \end_layout
 
-\begin_layout Itemize
-return value,
+\begin_layout LyX-Code
+    int parent_id;
 \end_layout
 
-\begin_layout Itemize
-stack pointer,
-\family typewriter
- sp
-\family default
- and
-\family typewriter
- spsr
-\family default
- are manipulated by the context switch.
+\begin_layout LyX-Code
+    int ret;
 \end_layout
 
-\begin_layout Itemize
-saved program status register
+\begin_layout LyX-Code
+    unsigned int *sp;
 \end_layout
 
-\begin_layout Itemize
-and a pointer to the next task descriptor for singly linked list.
+\begin_layout LyX-Code
+    Status status;
 \end_layout
 
-\begin_layout Itemize
-
-\family typewriter
-MessageStatus status
-\family default
-: Task statuses for message passing: 
-\family typewriter
-{none, send_block, receive_block, reply_block}
-\family default
-.
+\begin_layout LyX-Code
+    int *send_id;
 \end_layout
 
-\begin_layout Itemize
-
-\family typewriter
-int *send_id
-\family default
-: the pointer to sender's task id from the 
-\family typewriter
-Receive()
-\family default
- call.
+\begin_layout LyX-Code
+    void *send_buf, *recv_buf;
 \end_layout
 
-\begin_layout Itemize
-
-\family typewriter
-void *send_buf
-\family default
-: the pointer to sender's message from the 
-\family typewriter
-Send()
-\family default
- call.
+\begin_layout LyX-Code
+    unsigned int send_len, recv_len;
 \end_layout
 
-\begin_layout Itemize
-
-\family typewriter
-void *recv_buf
-\family default
-: the pointer to receiver's buffer, set when 
-\family typewriter
-Receive()
-\family default
- is called first.
+\begin_layout LyX-Code
+    struct TaskDescriptor *next; 
 \end_layout
 
-\begin_layout Itemize
-
-\family typewriter
-unsigned int send_len, recv_len
-\family default
-: the length of 
-\family typewriter
-send_buf
-\family default
- and 
-\family typewriter
-recv_buf
-\family default
-.
+\begin_layout LyX-Code
+} TaskDescriptor;
 \end_layout
 
 \begin_layout Standard
-Currently only can create 128 tasks before failing to create more tasks.
+Where a Status is
 \end_layout
 
-\begin_layout Subsubsection
-Scheduling
+\begin_layout LyX-Code
+typedef enum {
+\end_layout
+
+\begin_layout LyX-Code
+    ready,         
+\end_layout
+
+\begin_layout LyX-Code
+    send_blocked,  
+\end_layout
+
+\begin_layout LyX-Code
+    receive_block, 
+\end_layout
+
+\begin_layout LyX-Code
+    reply_block,   
+\end_layout
+
+\begin_layout LyX-Code
+} Status;
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout Paragraph
+Descriptor Notes
+\end_layout
+
+\begin_layout Itemize
+Task id contains an index into a global table of task descriptors pre-allocated
+ 
+\end_layout
+
+\begin_layout Itemize
+The 
+\family typewriter
+spsr
+\family default
+ is manipulated by context switch code
+\end_layout
+
+\begin_layout Itemize
+Not all 7 task status are needed
+\end_layout
+
+\begin_layout Itemize
+The 
+\family typewriter
+send_id,
+\family default
+ 
+\family typewriter
+send_buf, send_len, recv_buf, recv_len 
+\family default
+are for IPC.
+\end_layout
+
+\begin_layout Subsection
+Task Creation
+\end_layout
+
+\begin_layout Standard
+A task is created by specifying a priority, a function pointer, and parent
+ task id.
+ The
+\family typewriter
+ Create()
+\family default
+ syscall is implemented by this function.
+\end_layout
+
+\begin_layout Standard
+A task descriptor is filled in to the task table.
+ Then a stack is allocated, a size of 4096 words.
+ There is syscall to change a task's stack size.
+ It also initializes a trap frame by setting
+\family typewriter
+pc
+\family default
+ to the value of the function pointer and saved stored program register.
+ Currently only can create 128 tasks before failing to create more tasks.
+\end_layout
+
+\begin_layout Standard
+Finally the kernel adds the task descriptor to priority queue.
+\end_layout
+
+\begin_layout Subsection
+Task Scheduling
 \end_layout
 
 \begin_layout Standard
@@ -827,144 +862,17 @@ taskSchedule()
  as the next task to be scheduled.
 \end_layout
 
-\begin_layout Subsubsection
-Task Creation
-\end_layout
-
-\begin_layout Standard
-A task is created by specifying a priority, a function pointer, and parent
- task id.
- The
-\family typewriter
- Create()
-\family default
- syscall is implemented by this function.
-\end_layout
-
-\begin_layout Standard
-A task descriptor is filled in to the task table.
- Then a stack is allocated, a size of 4096 words.
- There is syscall to change a task's stack size.
- It also initializes a trap frame by setting
-\family typewriter
-pc
-\family default
- to the value of the function pointer and saved stored program register.
-\end_layout
-
-\begin_layout Standard
-Finally the kernel adds the task descriptor to priority queue.
-\end_layout
-
-\begin_layout Subsubsection
-Task Exit & Deletion
-\end_layout
-
-\begin_layout Standard
-Once a task is removed from the priority queues, the task will not be scheduled
- again.
- No effort is made to reclaim task descriptors.
-\end_layout
-
-\begin_layout Subsubsection
+\begin_layout Subsection
 Task Communication
 \end_layout
 
-\begin_layout Itemize
-
-\family typewriter
-handleSend()
-\family default
-, 
-\family typewriter
-handleReceive()
-\family default
-, and 
-\family typewriter
-handleReply()
-\family default
- are the kernel's system call handlers
-\end_layout
-
-\begin_layout Itemize
-
-\family typewriter
-handleSend()
-\family default
- checks whether the intended receiver is currently receive blocked.
- If receiver's status is 
-\begin_inset Quotes eld
-\end_inset
-
-receive_block
-\begin_inset Quotes erd
-\end_inset
-
-, copy the buffer from sender to receiver directly, and set it's status
- to 
-\begin_inset Quotes eld
-\end_inset
-
-reply_block
-\begin_inset Quotes erd
-\end_inset
-
-; else, enqueue to the receiver's send queue then update it's status to
+\begin_layout Standard
+Tasks who are able to make a system call are not in any queues.
  
-\begin_inset Quotes eld
-\end_inset
-
-send_block
-\begin_inset Quotes erd
-\end_inset
-
-.
- It also copies sender's reply buffer and reply buffer length into recv_buf,
- recv_len in sender's task descriptor for later use in 
-\family typewriter
-handleReply()
-\family default
-.
 \end_layout
 
-\begin_layout Itemize
-
-\family typewriter
-handleReceive()
-\family default
- checks whether there are senders in receiver's send queue.
- If there is one, or more than one senders, dequeue the sender, copy the
- message found in sender's task descriptor, update sender's status to reply_bloc
-k, and add receiver to the ready queue.
- If there are no queued senders, set receiver's status to 
-\begin_inset Quotes eld
-\end_inset
-
-receive_block
-\begin_inset Quotes erd
-\end_inset
-
- and store the pointer to the buffer and length to the receiver's task descripto
-r.
-\end_layout
-
-\begin_layout Itemize
-
-\family typewriter
-handleReply()
-\family default
- copies the message from the receiver to the sender.
- The sender's reply buffer is stored in recv_buffer in it's task descriptor,
- by 
-\family typewriter
-handleSend()
-\family default
-.
-\end_layout
-
-\begin_layout Itemize
-All three functions checks for error conditions specified in the Kernel
- Description, and sets the return values for 
+\begin_layout Standard
+There are three handlers for 
 \family typewriter
 Send()
 \family default
@@ -976,10 +884,79 @@ Receive()
 \family typewriter
 Reply()
 \family default
- system calls.
+ system calls, and sets the appropriate values.
+ 
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Enumerate
+
+\family typewriter
+handleSend()
+\family default
+ checks whether the intended receiver is currently receive blocked.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+If receiver's status is in receive block, then copy the buffer from sender
+ to receiver directly, and set it's status to reply blocked.
+\end_layout
+
+\begin_layout Enumerate
+Else, enqueue to the receiver's send queue then update it's status to send
+ blocked.
+ 
+\end_layout
+
+\begin_layout Enumerate
+It also copies sender's reply buffer and reply buffer length into recv_buf,
+ recv_len in sender's task descriptor for later use in 
+\family typewriter
+handleReply()
+\family default
+.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+\family typewriter
+handleReceive()
+\family default
+ checks whether there are senders in receiver's send queue.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+If there exists senders, then dequeue sender and move the message.
+ Sender's status is set to reply blocked, and move the receiver to the ready
+ queue.
+ 
+\end_layout
+
+\begin_layout Enumerate
+If there are no queued senders, set receiver's status to receive blocked.
+ Store the pointer to the buffer and length to the receiver's task descriptor.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+\family typewriter
+handleReply()
+\family default
+ copies the message from the receiver to the sender.
+ The sender's reply buffer address is tracked in its task descriptor, put
+ there by 
+\family typewriter
+handleSend()
+\family default
+.
+\end_layout
+
+\begin_layout Paragraph
 Memcpy
 \end_layout
 
@@ -988,9 +965,11 @@ The
 \family typewriter
 memcpy()
 \family default
- is implmented in assembly, using 4 registers and instruction to multiple
- load and unload.
- To deal with non-padded copying, n%4 jumps into an unrolled loop 
+ is implmented in assembly to make message passing faster.
+ Four registers are used, along with multiple load and unload assembly instructi
+on.
+ To deal with non-padded copying, the extra bits are copied by jumping into
+ an unrolled loop 
 \begin_inset Foot
 status collapsed
 
@@ -1004,6 +983,898 @@ Duff's Device http://en.wikipedia.org/wiki/Duff%27s_device
 \end_layout
 
 \begin_layout Subsection
+Task Exit
+\end_layout
+
+\begin_layout Standard
+Once a task is removed from the priority queues, the task will not be scheduled
+ again.
+ No effort is made to reclaim task descriptors.
+\end_layout
+
+\begin_layout Section
+Handling Interrupts
+\end_layout
+
+\begin_layout Standard
+Before Kernel 3, software interrupts are triggered using 
+\family typewriter
+swi
+\family default
+ via system calls, and IRQ is disabled in user mode.
+ The context switch of the kernel made assumptions regarding the registers
+ on kernel entry.
+ Specifically, 
+\family typewriter
+r0
+\family default
+ was thought to contain a fixed pointer to the address of the static request
+ struct, and thus was not saved and restored during the context switch.
+ Furthermore, registers 
+\family typewriter
+r2
+\family default
+ and 
+\family typewriter
+r3
+\family default
+ are dedicated to store/load user 
+\family typewriter
+pc
+\family default
+ and user 
+\family typewriter
+cpsr
+\family default
+.
+ The solution worked at the time because the GCC handled saving/restoring
+ of scratch registers in system call stubs.
+\end_layout
+
+\begin_layout Standard
+By enabling hardware interrupt in Kernel 3, these assumptions are no longer
+ true: in addition to the new IRQ mode introduced by hardware interrupt,
+ interrupts can occur any stage of the user program execution.
+ Scratch registers must be properly saved in order for the kernel to function
+ correctly.
+ The following lists will describe how the new context switch code work:
+\end_layout
+
+\begin_layout Subsection
+Kernel Exit
+\end_layout
+
+\begin_layout Standard
+\begin_inset Tabular
+<lyxtabular version="3" rows="14" columns="2">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="left" valignment="top" width="6cm">
+<column alignment="left" valignment="top" width="8cm">
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Assembly
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Explaination
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+stmfd sp!, {r0-r12, lr}
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Store all kernel registers onto kernel stack
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xdf
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Change to system mode 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+ldr sp, [r0, #12]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load task sp into sp 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+ldr r0, [r0, #8]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load task return value into r0 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+mov r1, sp
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load sp into r1 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+add sp, sp, #8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Update sp to after popping user cpsr, pc 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xd3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Change back to supervisor mode
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+ldmfd r1, {r2, lr}
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load user cpsr and user pc to supervisor lr 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr spsr, r2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load user cpsr to supervisor's spsr 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xdf
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Change to system mode 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+ldmfd sp!, {r1-r12, lr}
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load user registers from user stack 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xd3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Change to supervisor mode 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row topspace="default">
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+movs pc, lr 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Execute user code 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Hardware Interrupt Enter
+\end_layout
+
+\begin_layout Standard
+\begin_inset Tabular
+<lyxtabular version="3" rows="9" columns="2">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="left" valignment="top" width="6cm">
+<column alignment="left" valignment="top" width="8cm">
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Assembly
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Explaination
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xd3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Go to supervisor mode
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+stmfd sp!, {r0}
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Push r0 on the kernel stack
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xd2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Go to irq mode
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+sub r0, lr, #4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Put lr - 4 (pc_usr) to r0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xd3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Go to supervisor mode
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+mov lr, r0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Put correct user pc to supervisor lr
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+ldmfd sp!, {r0}
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Restore r0 from the kernel stack
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr spsr_c, #0x50
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Set spsr to user mode (irq enabled)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+
+\shape italic
+\emph on
+Note 
+\end_layout
+
+\begin_layout Standard
+
+\shape italic
+\emph on
+The program counter automatically advances into kernelEnter after the last
+ instruction in this routine.
+\end_layout
+
+\begin_layout Subsection
+Kernel Enter
+\end_layout
+
+\begin_layout Standard
+\begin_inset Tabular
+<lyxtabular version="3" rows="12" columns="2">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="left" valignment="top" width="6cm">
+<column alignment="left" valignment="top" width="0pt">
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Assembly
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Explaination
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xdf
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Change to system mode
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+stmfd sp!, {r1-r12, lr}
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Store all user registers to user stack
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+mov r1, sp
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Put user sp in r1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+sub sp, sp, #8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Calculate user sp after pushing cpsr and pc
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+msr cpsr_c, #0xd3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Change back to supervisor mode
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+mrs r2, spsr
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Put spsr (user cpsr) in r2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+stmfd r1!, {r2, lr}
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Store r2 (user cpsr), lr (user pc) to user stack
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+ldmfd sp!, {r0}
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load r0 (*task)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+str r1, [r0, #12]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Store r1 (user sp) in task->sp
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+str r0, [r0, #8]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Store r0 in task->ret
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+ldmfd sp!, {r1-r12, pc} 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load the rest of the kernel registers from stack
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Part
+Core Servers
+\end_layout
+
+\begin_layout Section
 Nameserver
 \end_layout
 
@@ -1030,6 +1901,76 @@ The nameserver keeps track of tasks in a
 Linear scan is used instead of something with better performance because
  the nameserver is anticipated not to be called after a task initializes,
  therefore its performance is not important.
+\end_layout
+
+\begin_layout Section
+Clock Server
+\end_layout
+
+\begin_layout Standard
+The clock server serves requests from the notifier task and client tasks
+ calling Time(), Delay(), and DelayUntil(), using the message passing mechanisms
+ built in Kernel 2.
+ It also registers with the name server so it could be discovered by other
+ tasks.
+\end_layout
+
+\begin_layout Standard
+The clock server keeps track of its own data structures and loops to receive
+ requests from a clock notifier.
+\end_layout
+
+\begin_layout Subsection
+Clock Notifier
+\end_layout
+
+\begin_layout Standard
+The clock notifier waits for a timer interrupt to occur using the kernel
+ primitive 
+\family typewriter
+AwaitEvent()
+\family default
+ and uses timer 3 underflow interrupt.
+ On interrupt, it gets unblocked by the kernel and sends a notification
+ to the clock server, signaling it to increase current tick.
+\end_layout
+
+\begin_layout Subsubsection
+Time(), Delay(), and DelayUntil()
+\end_layout
+
+\begin_layout Standard
+Time(), Delay(), and DelayUntil() are functions wrapping Send() to the clock
+ server; therefore, their only difference is the type of messages they send.
+ The wrapper functions also loop up the clock server on the name server,
+ and set it to a static variable declared within each function.
+\end_layout
+
+\begin_layout Enumerate
+static clockServerTid := -1
+\end_layout
+
+\begin_layout Enumerate
+If clockServerTid < 0
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+clockServerTid := WhoIs(CLOCK_SERVER_NAME)
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Put argument and type of request {TIME, DELAY, DELAY_UNTIL} in a ClockRequest
+ object
+\end_layout
+
+\begin_layout Enumerate
+Send the ClockRequest object to clockServerTid
+\end_layout
+
+\begin_layout Enumerate
+return 0
 \end_layout
 
 \begin_layout Subsection
@@ -1123,392 +2064,6 @@ int data;
 \end_layout
 
 \begin_layout Subsection
-Context Switch on Hardware Interrupt
-\end_layout
-
-\begin_layout Standard
-Before Kernel 3, interrupts are triggered using 
-\family typewriter
-swi
-\family default
- via system calls, and IRQ is disabled in user mode; the context switch
- of the kernel made assumptions regarding the registers on kernel entry.
- Specifically, 
-\family typewriter
-r0
-\family default
- was thought to contain a fixed pointer to the address of the static request
- struct, and thus was not saved and restored during the context switch.
- Furthermore, registers 
-\family typewriter
-r2
-\family default
- and 
-\family typewriter
-r3
-\family default
- are dedicated to store/load user 
-\family typewriter
-pc
-\family default
- and user 
-\family typewriter
-cpsr
-\family default
-.
- The solution worked at the time because the GCC handled saving/restoring
- of scratch registers in system call stubs.
-\end_layout
-
-\begin_layout Standard
-By enabling hardware interrupt in Kernel 3, the assumptions are no longer
- true: in addition to the new IRQ mode introduced by hardware interrupt,
- interrupts can occur any stage of the user program execution.
- Scratch registers must be properly saved in order for the kernel to function
- correctly.
- The following lists will describe how the new context switch code work:
-\end_layout
-
-\begin_layout Subsubsection
-kernelExit
-\end_layout
-
-\begin_layout Standard
-Store all kernel registers onto kernel stack
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-stmfd sp!, {r0-r12, lr}
-\end_layout
-
-\begin_layout Standard
-Change to system mode 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xdf
-\end_layout
-
-\begin_layout Standard
-Load task->sp into sp 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-ldr sp, [r0, #12]
-\end_layout
-
-\begin_layout Standard
-Load task->ret into r0 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-ldr r0, [r0, #8]
-\end_layout
-
-\begin_layout Standard
-Load sp into r1 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-mov r1, sp
-\end_layout
-
-\begin_layout Standard
-Update sp to position after popping user cpsr, pc 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-add sp, sp, #8
-\end_layout
-
-\begin_layout Standard
-Change back to supervisor mode 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xd3
-\end_layout
-
-\begin_layout Standard
-Load user cpsr, user pc -> supervisor lr 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-ldmfd r1, {r2, lr}
-\end_layout
-
-\begin_layout Standard
-Load user cpsr to supervisor's spsr 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr spsr, r2
-\end_layout
-
-\begin_layout Standard
-Change to system mode 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xdf
-\end_layout
-
-\begin_layout Standard
-Load user registers from user stack 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-ldmfd sp!, {r1-r12, lr}
-\end_layout
-
-\begin_layout Standard
-Change to supervisor mode 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xd3
-\end_layout
-
-\begin_layout Standard
-Execute user code 
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-movs pc, lr 
-\end_layout
-
-\begin_layout Subsubsection
-irqEnter
-\end_layout
-
-\begin_layout Standard
-
-\shape italic
-Note: the program counter automatically advances into kernelEnter after
- the last instruction in this routine.
-\end_layout
-
-\begin_layout Standard
-Go to supervisor mode
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xd3
-\end_layout
-
-\begin_layout Standard
-Push r0 on the kernel stack
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-stmfd sp!, {r0}
-\end_layout
-
-\begin_layout Standard
-Go to irq mode
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xd2
-\end_layout
-
-\begin_layout Standard
-Put lr - 4 (pc_usr) to r0
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-sub r0, lr, #4
-\end_layout
-
-\begin_layout Standard
-Go to supervisor mode
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xd3
-\end_layout
-
-\begin_layout Standard
-Put correct user pc to supervisor lr
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-mov lr, r0
-\end_layout
-
-\begin_layout Standard
-Restore r0 from the kernel stack
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-ldmfd sp!, {r0}
-\end_layout
-
-\begin_layout Standard
-Set spsr to user mode (irq enabled)
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr spsr_c, #0x50
-\end_layout
-
-\begin_layout Subsubsection
-kernelEnter
-\end_layout
-
-\begin_layout Standard
-Change to system mode
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xdf
-\end_layout
-
-\begin_layout Standard
-Store all user registers to user stack
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-stmfd sp!, {r1-r12, lr}
-\end_layout
-
-\begin_layout Standard
-Put user sp in r1
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-mov r1, sp
-\end_layout
-
-\begin_layout Standard
-Calculate user sp after pushing cpsr and pc
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-sub sp, sp, #8
-\end_layout
-
-\begin_layout Standard
-Change back to supervisor mode
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-msr cpsr_c, #0xd3
-\end_layout
-
-\begin_layout Standard
-Put spsr (user cpsr) in r2
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-mrs r2, spsr
-\end_layout
-
-\begin_layout Standard
-Store r2 (user cpsr), lr (user pc) to user stack
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-stmfd r1!, {r2, lr}
-\end_layout
-
-\begin_layout Standard
-Load r0 (*task)
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-ldmfd sp!, {r0}
-\end_layout
-
-\begin_layout Standard
-Store r1 (user sp) in task->sp
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-str r1, [r0, #12]
-\end_layout
-
-\begin_layout Standard
-Store r0 in task->ret
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-str r0, [r0, #8]
-\end_layout
-
-\begin_layout Standard
-Load the rest of the kernel registers from stack
-\end_layout
-
-\begin_layout Standard
-
-\family typewriter
-ldmfd sp!, {r1-r12, pc} 
-\end_layout
-
-\begin_layout Subsection
 Timer and Interrupt Control Units
 \end_layout
 
@@ -1526,6 +2081,10 @@ The SoC contains 2 PL190 interrupt controllers.
  mode.
  When the program is about to exit, the 20th bit of the second interrupt
  controller is cleared.
+\end_layout
+
+\begin_layout Section
+Interrupt Driven I/O
 \end_layout
 
 \begin_layout Subsection
@@ -1577,315 +2136,6 @@ The clock server, together with the notifier, provides timing functionality
 ), which delays a task till a certain time.
  A single tick is defined to be 10 milliseconds (see 2.2 Timer Setup for
  details).
-\end_layout
-
-\begin_layout Subsubsection
-Clock Server
-\end_layout
-
-\begin_layout Standard
-The clock server serves requests from the notifier task and client tasks
- calling Time(), Delay(), and DelayUntil(), using the message passing mechanisms
- built in Kernel 2.
- It also registers with the name server so it could be discovered by other
- tasks.
- Here are the algorithms:
-\end_layout
-
-\begin_layout Description
-clockServerTask:
-\end_layout
-
-\begin_layout Enumerate
-Initialize data structures
-\end_layout
-
-\begin_layout Enumerate
-Register with name server
-\end_layout
-
-\begin_layout Enumerate
-Spawn notifier
-\end_layout
-
-\begin_layout Enumerate
-Forever loop
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-Receive ClockRequest
-\end_layout
-
-\begin_layout Enumerate
-If request is notification
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-Reply
-\end_layout
-
-\begin_layout Enumerate
-Increment tick
-\end_layout
-
-\begin_layout Enumerate
-removeExpiredTasks()
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-If request is from Time()
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-Reply with tick
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-If request is Delay()
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-insertDelayedTask(tid, request.data + tick)
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-If request is DelayUntil()
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-insertDelayedTask(tid, request.data)
-\end_layout
-
-\end_deeper
-\end_deeper
-\begin_layout Description
-removeExpiredTasks:
-\end_layout
-
-\begin_layout Enumerate
-If tail pointer is NULL
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-return
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-cur := tail->next
-\end_layout
-
-\begin_layout Enumerate
-Forever loop
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-If curr->finalTick > current time
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-tail->next := curr;
-\end_layout
-
-\begin_layout Enumerate
-break
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-Reply to curr->tid (unblocks a task)
-\end_layout
-
-\begin_layout Enumerate
-If curr = tail
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-tail = NULL
-\end_layout
-
-\begin_layout Enumerate
-break
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-curr := curr->next
-\end_layout
-
-\end_deeper
-\begin_layout Description
-insertDelayedTask(task,finalTick):
-\end_layout
-
-\begin_layout Enumerate
-If tail pointer is NULL
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-tail := task
-\end_layout
-
-\begin_layout Enumerate
-task->next := task
-\end_layout
-
-\begin_layout Enumerate
-return
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-curr := tail
-\end_layout
-
-\begin_layout Enumerate
-Forever loop
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-If curr->next->finalTick >= finalTick
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-task->next := curr->next
-\end_layout
-
-\begin_layout Enumerate
-curr->next := task
-\end_layout
-
-\begin_layout Enumerate
-return
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-If curr->next = tail
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-task->next := curr->next
-\end_layout
-
-\begin_layout Enumerate
-curr->next := task
-\end_layout
-
-\begin_layout Enumerate
-tail := task
-\end_layout
-
-\begin_layout Enumerate
-return
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-curr := curr->next
-\end_layout
-
-\end_deeper
-\begin_layout Subsubsection
-Clock Notifier
-\end_layout
-
-\begin_layout Standard
-The clock notifier waits for a timer interrupt to occur using the kernel
- primitive AwaitEvent(); on timer 3 underflow interrupt, it gets unblocked
- by the kernel and sends a notification to the clock server, signaling it
- to increase current tick.
- The Send() call is subsequently unblocked by the clock server.
-\end_layout
-
-\begin_layout Description
-clockNotifier:
-\end_layout
-
-\begin_layout Enumerate
-pid := MyParentTid()
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-pid now contains the tid of the clock server
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-Create a ClockRequest, req
-\end_layout
-
-\begin_layout Enumerate
-req.type := NOTIFICATION
-\end_layout
-
-\begin_layout Enumerate
-Forever loop
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-AwaitEvent(TIMER_EVENT)
-\end_layout
-
-\begin_layout Enumerate
-Send(pid, &req, sizeof(req), 0, 0)
-\end_layout
-
-\end_deeper
-\begin_layout Subsubsection
-Time(), Delay(), and DelayUntil()
-\end_layout
-
-\begin_layout Standard
-Time(), Delay(), and DelayUntil() are functions wrapping Send() to the clock
- server; therefore, their only difference is the type of messages they send.
- The wrapper functions also loop up the clock server on the name server,
- and set it to a static variable declared within each function.
-\end_layout
-
-\begin_layout Enumerate
-static clockServerTid := -1
-\end_layout
-
-\begin_layout Enumerate
-If clockServerTid < 0
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-clockServerTid := WhoIs(CLOCK_SERVER_NAME)
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-Put argument and type of request {TIME, DELAY, DELAY_UNTIL} in a ClockRequest
- object
-\end_layout
-
-\begin_layout Enumerate
-Send the ClockRequest object to clockServerTid
-\end_layout
-
-\begin_layout Enumerate
-return 0
 \end_layout
 
 \begin_layout Section
