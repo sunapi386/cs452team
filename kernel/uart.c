@@ -12,7 +12,7 @@ void initUART()
     int *uart2Ctrl = (int *)(UART2_BASE + UART_CTLR_OFFSET);
 
     // Set uart1 speed to 2400
-    *uart1Low = 191;
+    *uart1Low = 0xbf;
     *uart1Mid = 0x0;
 
     // Enable uart 1,2 modem, rcv, xmit interrupts
