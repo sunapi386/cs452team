@@ -142,6 +142,10 @@ Compiling by running
  /u/cs452/tftp/ARM/sunchang/k4.elf
 \end_layout
 
+\begin_layout Subsection
+List of Submitted Files
+\end_layout
+
 \begin_layout Section
 Program Operation
 \end_layout
@@ -167,7 +171,7 @@ RedBoot> go
 
 \end_layout
 
-\begin_layout Paragraph
+\begin_layout Subsection
 Output Explanation
 \end_layout
 
@@ -1879,11 +1883,18 @@ Nameserver
 \end_layout
 
 \begin_layout Standard
-The nameserver is created during kernel initialization by the first user
- task.
- Therefore its task id is entirely deterministic, and is be shared as a
- constant between tasks.
- 
+The nameserver should be created during kernel initialization by the first
+ user task, such that its task id is entirely deterministic, and is be shared
+ as a constant between tasks (for those tasks that do not use the syscall).
+ Calls supported are:
+\end_layout
+
+\begin_layout LyX-Code
+int RegisterAs(char *name)
+\end_layout
+
+\begin_layout LyX-Code
+int WhoIs(char *name)
 \end_layout
 
 \begin_layout Standard
@@ -1908,16 +1919,45 @@ Clock Server
 \end_layout
 
 \begin_layout Standard
-The clock server serves requests from the notifier task and client tasks
- calling Time(), Delay(), and DelayUntil(), using the message passing mechanisms
- built in Kernel 2.
- It also registers with the name server so it could be discovered by other
- tasks.
+The clock server, together with the notifier, provides timing functionality
+ for other user programs.
+ Three functions are provided: 
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Time()
+\family default
+ returns the current system tick; a tick is defined to be 10 ms.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+Delay()
+\family default
+ delays a task for certain number of ticks; and 
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+DelayUntil()
+\family default
+ delays a task till a certain time.
+ 
 \end_layout
 
 \begin_layout Standard
-The clock server keeps track of its own data structures and loops to receive
- requests from a clock notifier.
+These functions wrap Send() to the clock server; therefore, their only differenc
+e is the type of messages they send.
+ The wrapper functions also loop up the clock server on the name server,
+ and set it to a static variable declared within each function.
+ It is build using the message passing mechanisms.
+ It also registers with the nameserver so it could be discovered by other
+ tasks.
+ The clock server keeps track of requests through a clock notifier.
 \end_layout
 
 \begin_layout Subsection
@@ -1933,53 +1973,24 @@ AwaitEvent()
  and uses timer 3 underflow interrupt.
  On interrupt, it gets unblocked by the kernel and sends a notification
  to the clock server, signaling it to increase current tick.
-\end_layout
-
-\begin_layout Subsubsection
-Time(), Delay(), and DelayUntil()
-\end_layout
-
-\begin_layout Standard
-Time(), Delay(), and DelayUntil() are functions wrapping Send() to the clock
- server; therefore, their only difference is the type of messages they send.
- The wrapper functions also loop up the clock server on the name server,
- and set it to a static variable declared within each function.
-\end_layout
-
-\begin_layout Enumerate
-static clockServerTid := -1
-\end_layout
-
-\begin_layout Enumerate
-If clockServerTid < 0
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-clockServerTid := WhoIs(CLOCK_SERVER_NAME)
-\end_layout
-
-\end_deeper
-\begin_layout Enumerate
-Put argument and type of request {TIME, DELAY, DELAY_UNTIL} in a ClockRequest
- object
-\end_layout
-
-\begin_layout Enumerate
-Send the ClockRequest object to clockServerTid
-\end_layout
-
-\begin_layout Enumerate
-return 0
+ 
 \end_layout
 
 \begin_layout Subsection
-DelayedTask
+Delayed Task
 \end_layout
 
 \begin_layout Standard
-The DelayedTask struct is used by the clock server to keep track of tasks
- blocked by Delay() and DelayUntil().
+This struct is used by the clock server to keep track of tasks blocked by
+ 
+\family typewriter
+Delay()
+\family default
+ and 
+\family typewriter
+DelayUntil()
+\family default
+.
  The tid is the tid of the task, the finalTick is the time that the delay
  expires; the next pointer is to support inserting/removing into DelayedQueue,
  a singly circular linked-list.
@@ -2008,7 +2019,7 @@ struct DelayedTask *next;
 \end_layout
 
 \begin_layout Subsection
-DelayedQueue
+Delayed Queue
 \end_layout
 
 \begin_layout Standard
@@ -2034,7 +2045,7 @@ DelayedTask *tail;
 \end_layout
 
 \begin_layout Subsection
-ClockRequest
+Clock Request
 \end_layout
 
 \begin_layout Standard
@@ -2087,6 +2098,13 @@ The SoC contains 2 PL190 interrupt controllers.
 Interrupt Driven I/O
 \end_layout
 
+\begin_layout Standard
+The train I/O and the computer terminal I/O are essentially copies of each
+ other.
+ There are 4 servers and 4 messenger tasks, for sending and receiving on
+ both COM port 1 and 2.
+\end_layout
+
 \begin_layout Subsection
 Hardware Interrupt Handler
 \end_layout
@@ -2124,31 +2142,19 @@ At most one task to block on a single event.
 \end_layout
 
 \begin_layout Subsection
-Clock Server and Notifier
-\end_layout
-
-\begin_layout Standard
-\paragraph_spacing single
-The clock server, together with the notifier, provides timing functionality
- for other user programs.
- Three functions are provided: Time(), which returns the current system
- tick; Delay(), which delays a task for certain number of ticks; and DelayUntil(
-), which delays a task till a certain time.
- A single tick is defined to be 10 milliseconds (see 2.2 Timer Setup for
- details).
-\end_layout
-
-\begin_layout Section
-User Tasks
+I/O Server
 \end_layout
 
 \begin_layout Subsection
-First Task
+I/O Notifier
 \end_layout
 
-\begin_layout Standard
-The first task does...
- FIXME
+\begin_layout Part
+Train Control
+\end_layout
+
+\begin_layout Section
+Terminal Screen
 \end_layout
 
 \end_body
