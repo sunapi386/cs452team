@@ -64,11 +64,11 @@ static void receiveNotifier() {
 void receiveServer() {
     // server that waits for receiveNotifier to deliver a character
     int tid = 0;
-    int taskb[64];
+    char taskb[128];
     char charb[1024];
     CBuffer taskBuffer;
     CBuffer charBuffer;
-    CBufferInit(&taskBuffer, (void*)taskb, 64);
+    CBufferInit(&taskBuffer, (void*)taskb, 128);
     CBufferInit(&charBuffer, (void*)charb, 1024);
 
     IOReq req = {

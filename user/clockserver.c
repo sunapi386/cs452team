@@ -2,6 +2,7 @@
 #include <user/nameserver.h>
 #include <user/syscall.h>
 #include <debug.h>
+#include <events.h>
 
 #define NOTIFICATION 0
 #define TIME         1
@@ -9,7 +10,6 @@
 #define DELAY_UNTIL  3
 
 #define MAX_DELAYED_TASKS 128
-#define TIMER_EVENT 51
 #define CLOCK_SERVER_NAME "clockServer"
 
 typedef

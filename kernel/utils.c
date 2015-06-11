@@ -90,10 +90,50 @@ int countLeadingZeroes(const unsigned int mask) {
     return table[(unsigned int)((mask ^ (mask & (mask - 1))) * 0x077cb531u) >> 27];
 }
 
+void CBufferInit(CBuffer *b, char *array, size_t size) {
+    b->data = array;
+    b->size = size;
+    CBufferClean(b);
+}
 
-// TODO: implement buffer
-void CBufferInit(CBuffer *b, void *array, size_t size) {}
-void *CBufferPop(CBuffer *b) {}
-int CBufferPush(CBuffer *b, unsigned int item) {return 0;}
-bool CBufferIsEmpty(CBuffer *b) {return false;}
-void CBufferClean(CBuffer *b) {}
+void CBufferPush(CBuffer *b, char ch) {
+    if ((b->tail + 1) % b->size == b->head)
+    {
+        // Buffer overflow warp around behavior:
+        // Simply switch head and tail then proceed to insert like normal
+        // since the data we have would be garbage anyways.
+        // With a large buffer and regular commands it should not overflow.
+        b->tail = b->head;
+    }
+    b->tail = (b->tail + 1) % b->size;
+    b->data[b->tail] = ch;
+}
+
+char CBufferPop(CBuffer *b) {
+    if (b->head == b->tail)
+    {
+        return '\0';
+    }
+    else if ((b->head + 1) % b->size != (b->tail + 1) % b->size)
+    {
+        // If no underflow, update head
+        b->head = (b->head + 1) % b->size;
+        return b->data[b->head];
+    }
+    else
+    {
+        //Return NUL if underflow
+        return'\0';
+    }
+}
+
+
+bool CBufferIsEmpty(CBuffer *b) {
+    return ((b->head + 1) % b->size == (b->tail + 1) % b->size) ||
+           ((b->head == b->tail) && b->head == 0);
+}
+
+void CBufferClean(CBuffer *b) {
+    b->head = 0;
+    b->tail = 0;
+}

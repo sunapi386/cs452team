@@ -12,13 +12,13 @@ int countLeadingZeroes(const unsigned int mask);
 
 
 typedef struct CBuffer {
-    void *data;
-    int size;
+    char *data;
+    size_t size, head, tail;
 } CBuffer;
 
-void CBufferInit(CBuffer *b, void *array, size_t size);
-void *CBufferPop(CBuffer *b);
-int CBufferPush(CBuffer *b, unsigned int item);
+void CBufferInit(CBuffer *b, char * array, size_t size);
+void CBufferPush(CBuffer *b, char ch);
+char CBufferPop(CBuffer *b);
 bool CBufferIsEmpty(CBuffer *b);
 void CBufferClean(CBuffer *b);
 
