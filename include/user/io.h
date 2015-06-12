@@ -27,6 +27,5 @@ Returns.
 server.
 */
 int Putc(int channel, char c);
-void receiveServer();
 
 #endif // __IO_H

@@ -64,6 +64,7 @@ int GetString(int channel, String *s) {
     sinit(s);
     int ret = Getc(channel);
     sputc(s, ret);
+    return slen(s);
 }
 
 static void receiveNotifier() {
