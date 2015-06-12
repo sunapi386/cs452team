@@ -46,12 +46,8 @@ void userTaskIdle() {
     }
 }
 
-int return0() {
-    return 0;
-}
-
 void undefinedInstructionTesterTask() {
-    volatile int a = return0();
+// Use online disassembler https://www.onlinedisassembler.com/odaweb/uSE7Vq1w/0
     asm volatile( "#0xffffffff\n\t" );
-    // debug("after");
+    debug("after");
 }

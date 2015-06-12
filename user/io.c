@@ -10,7 +10,7 @@
 typedef
 struct IOReq {
     int type;
-    char data;
+    int data; // (jason) cannot use char, volatile pointer may get stored
 } IOReq;
 
 static int com1RecvSrvTid = -1;
