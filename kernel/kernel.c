@@ -61,6 +61,7 @@ static void initKernel() {
 
 static void resetKernel() {
     //resetTimer();
+    resetUART();
     resetInterrupts();
     disableCache();
 }
