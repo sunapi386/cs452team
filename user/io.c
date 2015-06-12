@@ -10,7 +10,7 @@
 typedef
 struct IOReq {
     int type;
-    char *data;
+    unsigned int data;
 } IOReq;
 
 static int com1RecvSrvTid = -1;
@@ -40,7 +40,7 @@ int Putc(int channel, char c) {
     // Prepare request
     IOReq req = {
         .type = PUTCHAR,
-        .data = (char *)c
+        .data = (unsigned int)c
     };
     int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
     int ret = Send(server_tid, &req, sizeof(req), 0, 0);
@@ -56,15 +56,14 @@ static void receiveNotifier() {
     };
 
     for (;;) {
-        // FIXME: change UART2_RECV_EVENT to also include UART1
-        req.data = (char *)AwaitEvent(UART2_RECV_EVENT);
+        req.data = (unsigned int)AwaitEvent(UART2_RECV_EVENT);
         Send(pid, &req, sizeof(req), 0, 0);
     }
 }
 
 // server that waits for receiveNotifier to deliver a character
 void receiveServer() {
-    char c = '\0';
+    char c = 0;
     int tid = 0;
     char taskb[128];
     char charb[1024];
@@ -78,6 +77,9 @@ void receiveServer() {
         .data = '\0'
     };
 
+    // TODO: nameserver
+    com2SendSrvTid = MyTid();
+
     // Spawn notifier
     Create(1, &receiveNotifier);
 
@@ -87,13 +89,9 @@ void receiveServer() {
         switch (req.type) {
         // the notifier sent us a character
         case NOTIFICATION:
-        {
             // unblock notifier
             Reply(tid, 0, 0);
-
-            // get volatile data
-            c = *(req.data);
-
+            c = (char)req.data;
             if(CBufferIsEmpty(&taskBuffer)) {
                 // no tasks waiting, put char in a buffer
                 CBufferPush(&charBuffer, c);
@@ -102,17 +100,16 @@ void receiveServer() {
                 // there are tasks waiting for a char
                 // unblock a task and hand it the char
                 // that we'd just acquired
-                int popped_tid = CBufferPop(&taskBuffer);
+                int popped_tid = (int)CBufferPop(&taskBuffer);
 
                 Reply(popped_tid, &c, sizeof(c));
             }
             break;
-        }
         // some user task called getchar
         case GETCHAR:
             if(CBufferIsEmpty(&charBuffer)) {
                 // no char to give back to caller; block it
-                CBufferPush(&taskBuffer, tid);
+                CBufferPush(&taskBuffer, (char)tid);
             }
             else {
                 // characters in the buffer, return it
@@ -133,7 +130,7 @@ static void sendNotifier() {
     };
 
     for (;;) {
-        req.data = (char *)AwaitEvent(UART2_XMIT_EVENT);
+        req.data = (unsigned int)AwaitEvent(UART2_XMIT_EVENT);
         Send(pid, &req, sizeof(req), 0, 0);
     }
 }

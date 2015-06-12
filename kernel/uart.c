@@ -1,4 +1,5 @@
 #include <ts7200.h>
+#include <events.h>
 #include <kernel/uart.h>
 
 void initUART()
@@ -27,6 +28,38 @@ void initUART()
     temp = *uart2High;
     temp = temp & ~FEN_MASK;
     *uart2High = temp;
+}
+
+void setUARTCtrl(int event, int val)
+{
+    int *ctrl = 0;
+    unsigned int mask = 0;
+
+    // set control parameters
+    switch (event) {
+    case UART1_RECV_EVENT:
+        ctrl = (int *)(UART1_BASE + UART_INTR_OFFSET);
+        mask = RIEN_MASK;
+        break;
+    case UART1_XMIT_EVENT:
+        ctrl = (int *)(UART1_BASE + UART_INTR_OFFSET);
+        mask = TIEN_MASK;
+    case UART2_RECV_EVENT:
+        ctrl = (int *)(UART2_BASE + UART_INTR_OFFSET);
+        mask = RIEN_MASK;
+        break;
+    case UART2_XMIT_EVENT:
+        ctrl = (int *)(UART2_BASE + UART_INTR_OFFSET);
+        mask = TIEN_MASK;
+    default:
+        return;
+    }
+
+    // read the control
+    unsigned int temp = *ctrl;
+
+    // negate the bit if val is 0; else assert it
+    *ctrl = (val == 0) ? (temp & ~mask) : (temp | mask);
 }
 
 unsigned int getUARTStatus(int port)

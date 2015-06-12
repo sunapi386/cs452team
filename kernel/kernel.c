@@ -8,6 +8,7 @@
 #include <kernel/uart.h>
 #include <kernel/timer.h>
 #include <user/user_tasks.h>
+#include <user/io.h>
 #include <debug.h>
 
 static Syscall *request = NULL;
@@ -32,8 +33,35 @@ void disableCache()
     );
 }
 
+void idle()
+{
+    for (;;)
+    {
+        Pass();
+    }
+}
+
+void client()
+{
+    for (;;)
+    {
+        char c = Getc(COM2);
+        bwputc(COM2, c);
+    }
+}
+
 void bootstrap()
 {
+    // Create ReceiveServer
+    Create(1, &receiveServer);
+
+    // Create user task
+    Create(2, &client);
+
+    // Create idle task
+    Create(31, &idle);
+
+    // quit
     Exit();
 }
 
@@ -53,7 +81,7 @@ static void initKernel() {
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);
     // int create_ret = taskCreate(1, &userTaskIdle, 31);
-    int create_ret = taskCreate(1, &bootstrap, 0);
+    int create_ret = taskCreate(31, &bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));

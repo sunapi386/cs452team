@@ -5,6 +5,7 @@
 #define COM2 1
 
 void initUART();
+void setUARTCtrl(int event, int val);
 unsigned int getUARTStatus(int port);
 char getUARTData(int port);
 void resetUART();

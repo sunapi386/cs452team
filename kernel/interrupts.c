@@ -12,7 +12,7 @@
 extern void queueTask(struct TaskDescriptor *td);
 
 static int vic[2];  // for iterating
-static TaskDescriptor *interruptTable[64]; // 64 interrupt types
+static TaskDescriptor *eventTable[64]; // 64 interrupt types
 static inline void setICU(unsigned int base, unsigned int offset, unsigned int val) {
     *(volatile unsigned int *)(base + offset) = val;
 }
@@ -99,7 +99,7 @@ void initInterrupts() {
     vic[0] = VIC1;
     vic[1] = VIC2;
     for(int i = 0; i < 64; i++) {
-        interruptTable[i] = 0;
+        eventTable[i] = 0;
     }
     for(int i = 0; i < 2; i++) {
         setICU(vic[i], VIC_INT_SELECT, 0);      // select pl190 irq mode
@@ -120,11 +120,26 @@ void resetInterrupts() {
     clear(1, 1 << 19); // disable timer 3
 }
 
-int awaitInterrupt(TaskDescriptor *active, int interruptID) {
-    if(interruptID < 0 || interruptID > 63) {
+int awaitInterrupt(TaskDescriptor *active, int event) {
+    if (event < TIMER_EVENT ||
+        event > UART2_XMIT_EVENT) {
         return -1;
     }
-    interruptTable[interruptID] = active;
+
+    // Turn on IO interrutpts
+    // (selectively turned off in handleInterrupt)
+    switch (event) {
+    case UART1_RECV_EVENT:
+    case UART2_RECV_EVENT:
+    case UART1_XMIT_EVENT:
+    case UART2_XMIT_EVENT:
+        setUARTCtrl(event, 1);
+        break;
+    default:
+        break;
+    }
+
+    eventTable[event] = active;
     return 0;
 }
 
@@ -139,38 +154,44 @@ void handleInterrupt() {
         clearTimerInterrupt();
 
         // Queue task if there's a task waiting
-        TaskDescriptor *td = interruptTable[TIMER_EVENT];
+        TaskDescriptor *td = eventTable[TIMER_EVENT];
         if (td != 0) {
             td->ret = 0;
             queueTask(td);
-            interruptTable[TIMER_EVENT] = 0;
+            eventTable[TIMER_EVENT] = 0;
         }
     }
     // UART 2 receive
     else if (vic1Status & (1 << 25))
     {
-        TaskDescriptor *td = interruptTable[UART2_RECV_EVENT];
+        // Get the character
+        char c = getUARTData(COM2);
+
+        TaskDescriptor *td = eventTable[UART2_RECV_EVENT];
         if (td != 0)
         {
-            td->ret = (UART2_BASE + UART_DATA_OFFSET);
+            // unblock notifier
+            td->ret = c;
             queueTask(td);
-            interruptTable[UART2_RECV_EVENT] = 0;
+            eventTable[UART2_RECV_EVENT] = 0;
+
+            // turn interrupt off in UART
+            setUARTCtrl(UART2_RECV_EVENT, 0);
         }
     }
     // UART 2 transmit
     else if (vic1Status & (1 << 26))
     {
-        TaskDescriptor *td = interruptTable[UART2_XMIT_EVENT];
+        TaskDescriptor *td = eventTable[UART2_XMIT_EVENT];
         if (td != 0)
         {
-             td->ret = (UART2_BASE + UART_DATA_OFFSET);
-             queueTask(td);
-             interruptTable[UART2_XMIT_EVENT] = 0;
+            // unblock notifier
+            td->ret = (UART2_BASE + UART_DATA_OFFSET);
+            queueTask(td);
+            eventTable[UART2_XMIT_EVENT] = 0;
+
+            // turn interrupt off in UART
+            setUARTCtrl(UART2_RECV_EVENT, 0);
         }
     }
-}
-
-void stackdump() {
-    // dump all registers
-
 }
