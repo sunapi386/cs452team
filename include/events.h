@@ -7,4 +7,5 @@
 #define UART2_RECV_EVENT 3
 #define UART2_XMIT_EVENT 4
 
-#endif
+#endif // __EVENT_H
+
