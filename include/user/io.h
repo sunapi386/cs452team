@@ -28,5 +28,5 @@ server.
 */
 int Putc(int channel, char c);
 void receiveServer();
-
+void sendServer();
 #endif // __IO_H
