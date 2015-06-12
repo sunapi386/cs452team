@@ -17,11 +17,12 @@ Convert input bytes into messages as early as possible.
 Unpack output messages into bytes as late as possible.
 */
 
-#define STR_MAX_LEN 63 // want sizeof(String) == mod 4
+#define STR_MAX_LEN 254 // want sizeof(String) == mod 4
 
 typedef struct String {
-    unsigned len;
-    char buf[STR_MAX_LEN]; // faster memcpy
+    unsigned len:8;
+    unsigned type:2; // 2-bit, types: NOTIFY/TX/RCV/UNDEFINED
+    char buf[STR_MAX_LEN]; // faster memcpy. sizeof(char) = 8-bits
 } String;
 
 static inline void sinit(String *s) {
