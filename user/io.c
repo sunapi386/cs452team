@@ -10,7 +10,7 @@
 typedef
 struct IOReq {
     int type;
-    char data;
+    int data;
 } IOReq;
 
 static int com1RecvSrvTid = -1;
@@ -77,40 +77,35 @@ void receiveServer() {
     };
 
     // Spawn notifier
-    // FIXME: adjust priority
     Create(1, &receiveNotifier);
-    int ret;
+
     for (;;) {
-        ret = Receive(&tid, &req, sizeof(req));
-        if(ret != sizeof(req)) {
-            // complain here
-            continue;
-        }
+        Receive(&tid, &req, sizeof(req));
+
         switch (req.type) {
-        case NOTIFICATION:
         // the notifier sent us a character
+        case NOTIFICATION:
             Reply(tid, 0, 0);
             if(CBufferIsEmpty(&taskBuffer)) {
-            // no tasks waiting, put char in a buffer
+                // no tasks waiting, put char in a buffer
                 CBufferPush(&charBuffer, req.data);
             }
             else {
-            // there are tasks waiting for a char
-            // unblock a task and hand it a char
+                // there are tasks waiting for a char
+                // unblock a task and hand it a char
                 int popped_tid = CBufferPop(&taskBuffer);
                 char ch = CBufferPop(&charBuffer);
                 Reply(popped_tid, &ch, sizeof(ch));
             }
             break;
-
+        // some user task called getchar
         case GETCHAR:
-        // some user task requested get char
             if(CBufferIsEmpty(&charBuffer)) {
                 CBufferPush(&taskBuffer, tid);
                 // no reply to getC
             }
             else {
-            // characters in the buffer, return it
+                // characters in the buffer, return it
                 char ch = CBufferPop(&charBuffer);
                 Reply(tid, &ch, sizeof(ch));
             }
@@ -128,15 +123,15 @@ static void sendNotifier() {
     };
 
     for (;;) {
-        // FIXME: change UART1_XMIT_EVENT to also include UART1
         req.data = AwaitEvent(UART2_XMIT_EVENT);
         Send(pid, &req, sizeof(req), 0, 0);
     }
 }
 
+// sendServer handles outbound traffic on COM ports
 void sendServer() {
-  // server that waits for sendNotifier to deliver a character
     int tid = 0;
+    char * sendAddr = 0;
     char charb[1024];
     CBuffer charBuffer;
     CBufferInit(&charBuffer, (void*)charb, 1024);
@@ -147,36 +142,47 @@ void sendServer() {
     };
 
     // Spawn notifier
-    // FIXME: adjust priority
     Create(1, &sendNotifier);
-    int ret;
+
     for (;;) {
-        ret = Receive(&tid, &req, sizeof(req));
-        if(ret != sizeof(req)) {
-            // complain here
-            continue;
-        }
+        // Receive data
+        Receive(&tid, &req, sizeof(req));
+
         switch (req.type) {
         case NOTIFICATION:
-            if(CBufferIsEmpty(&charBuffer)) { // nothing to send
-                // don't get stuck in the interrupt loop
-                // turn interrupts off until we have a byte to send
-                // TODO: What do?
+            if(CBufferIsEmpty(&charBuffer)) {
+                // nothing to send
+                // mark that we've seen a xmit interrupt
+                sendAddr = (char *)(req.data);
             }
-            else { // there is data to send
+            else {
+                // there is data to send
                 Reply(tid, 0, 0);
                 char ch = CBufferPop(&charBuffer);
-            // write out char to volatile address
-                *((unsigned int *)req.data) = ch;
+                // write out char to volatile address
+                *((char *)req.data) = ch;
             }
             break;
-
         case PUTCHAR:
             Reply(tid, 0, 0);
-            CBufferPush(&charBuffer, req.data);
+            // We've seen a xmit but did not
+            // have a char to send at the moment
+            if (sendAddr != 0)
+            {
+                // send the char directly
+                *sendAddr = req.data;
+                // reset 'seen transmit int' state
+                sendAddr = 0;
+            }
+            // Have not seen a xmit; just buffer that shit
+            else
+            {
+                CBufferPush(&charBuffer, req.data);
+            }
             break;
         default:
             break;
         }
     }
 }
+
