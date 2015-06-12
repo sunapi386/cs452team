@@ -2,6 +2,7 @@
 #include <user/syscall.h>
 #include <events.h>
 #include <utils.h>
+#include <priority.h>
 
 #define NOTIFICATION 0
 #define PUTCHAR      1
@@ -13,10 +14,11 @@ struct IOReq {
     int data; // (jason) cannot use char, volatile pointer may get stored
 } IOReq;
 
-static int com1RecvSrvTid = -1;
-static int com2RecvSrvTid = -1;
-static int com1SendSrvTid = -1;
-static int com2SendSrvTid = -1;
+// train io and monitor io
+static int tioRecvSID = -1;
+static int tioSendSID = -1;
+static int mioRecvSID = -1;
+static int mioSendSID = -1;
 
 int Getc(int channel) {
     // Check channel type
@@ -26,7 +28,7 @@ int Getc(int channel) {
     IOReq req = {
         .type = GETCHAR
     };
-    int server_tid = (channel == COM1) ? com1RecvSrvTid : com2RecvSrvTid;
+    int server_tid = (channel == COM1) ? tioRecvSID : mioRecvSID;
     int ret = Send(server_tid, &req, sizeof(req), &(req.data), sizeof(req.data));
     return ret < 0 ? ret : req.data;
 }
@@ -40,13 +42,13 @@ int Putc(int channel, char c) {
         .type = PUTCHAR,
         .data = c
     };
-    int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
+    int server_tid = (channel == COM1) ? tioSendSID : mioSendSID;
     int ret = Send(server_tid, &req, sizeof(req), &(req.data), sizeof(req.data));
     return (ret < 0) ? -1 : 0;
 }
 
 static void receiveNotifier() {
-    // messenger that waits for com1 or com2 to produce a character
+    // messenger that waits for tio or mio to produce a character
     // and delivers to receiveServer
     int pid = MyParentTid();
     IOReq req = {
@@ -61,7 +63,7 @@ static void receiveNotifier() {
 }
 
 
-void receiveServer() {
+static void receiveServer() {
     // server that waits for receiveNotifier to deliver a character
     int tid = 0;
     char taskb[128];
@@ -77,8 +79,7 @@ void receiveServer() {
     };
 
     // Spawn notifier
-    // FIXME: adjust priority
-    Create(1, &receiveNotifier);
+    Create(PRIORITY_RECV_NOTIFIER, &receiveNotifier);
     int ret;
     for (;;) {
         ret = Receive(&tid, &req, sizeof(req));
@@ -134,7 +135,7 @@ static void sendNotifier() {
     }
 }
 
-void sendServer() {
+static void sendServer() {
   // server that waits for sendNotifier to deliver a character
     int tid = 0;
     char charb[1024];
@@ -147,8 +148,7 @@ void sendServer() {
     };
 
     // Spawn notifier
-    // FIXME: adjust priority
-    Create(1, &sendNotifier);
+    Create(PRIORITY_SEND_NOTIFIER, &sendNotifier);
     int ret;
     for (;;) {
         ret = Receive(&tid, &req, sizeof(req));
@@ -179,4 +179,12 @@ void sendServer() {
             break;
         }
     }
+}
+
+void initIO() {
+    tioRecvSID = Create(PRIORITY_TIO_RECV_SERVER, receiveServer);
+    tioSendSID = Create(PRIORITY_TIO_SEND_SERVER, sendServer);
+    mioRecvSID = Create(PRIORITY_MIO_RECV_SERVER, receiveServer);
+    mioSendSID = Create(PRIORITY_MIO_SEND_SERVER, sendServer);
+
 }
