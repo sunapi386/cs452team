@@ -2095,28 +2095,6 @@ The SoC contains 2 PL190 interrupt controllers.
 \end_layout
 
 \begin_layout Section
-Interrupt Driven I/O
-\end_layout
-
-\begin_layout Standard
-The train I/O and the computer terminal I/O are essentially copies of each
- other.
- There are 4 servers and 4 messenger tasks, for sending and receiving on
- both COM port 1 and 2.
-\end_layout
-
-\begin_layout Subsection
-Hardware Interrupt Handler
-\end_layout
-
-\begin_layout Standard
-The interrupt handler only handles timer 3 underflow interrupt at the moment.
- Status bit of the second ICU is checked for interrupt; if interrupt occurred,
- clear the interrupt in timer device and if there is a task blocked on timer
- event, put it back to the ready queue.
-\end_layout
-
-\begin_layout Subsection
 AwaitEvent
 \end_layout
 
@@ -2141,20 +2119,256 @@ At most one task to block on a single event.
  in the task descriptor if needed.
 \end_layout
 
-\begin_layout Subsection
-I/O Server
+\begin_layout Section
+Hardware Interrupt Handler
 \end_layout
 
-\begin_layout Subsection
-I/O Notifier
-\end_layout
-
-\begin_layout Part
-Train Control
+\begin_layout Standard
+The interrupt handler only handles timer 3 underflow interrupt at the moment.
+ Status bit of the second ICU is checked for interrupt; if interrupt occurred,
+ clear the interrupt in timer device and if there is a task blocked on timer
+ event, put it back to the ready queue.
 \end_layout
 
 \begin_layout Section
-Terminal Screen
+Interrupt Driven I/O
+\end_layout
+
+\begin_layout Standard
+There are 4 servers and 4 notifiers: 
+\end_layout
+
+\begin_layout Itemize
+Two kinds of I/O servers, for send and receive.
+ 
+\end_layout
+
+\begin_layout Itemize
+Two communication ports, COM1 and COM2.
+ 
+\end_layout
+
+\begin_layout Subsection
+Servers
+\end_layout
+
+\begin_layout Standard
+On startup the server is responsible for creating its own notifier with
+ the correct priority.
+ The server is almost always receive blocked.
+ There are only 4 events a server accepts.
+\end_layout
+
+\begin_layout Enumerate
+Send
+\end_layout
+
+\begin_layout Enumerate
+Receive
+\end_layout
+
+\begin_layout Enumerate
+Notifier (when its own notifier checks in)
+\end_layout
+
+\begin_layout Enumerate
+Quit
+\end_layout
+
+\begin_layout Subsubsection
+Send Data
+\end_layout
+
+\begin_layout Standard
+Data is accepted as a string, and put into a send buffer.
+ Sending data only accepts a string to guarantee entire command is put into
+ the send buffer atomically.
+ This is to avoid interleaving commands from two different tasks, if we
+ were to provide a single character sending command such as 
+\family typewriter
+Putc()
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The server then provides data to the notifier from its send buffer when
+ it checks in.
+\end_layout
+
+\begin_layout Subsubsection
+Receive Data
+\end_layout
+
+\begin_layout Standard
+The receive server gets data from a notifier event.
+ It buffers that data and append it to a 
+\family typewriter
+String
+\family default
+ which acts as a buffer.
+ When the server has both some data and a task waiting for the data, it
+ 
+\family typewriter
+Reply()
+\family default
+s to the task with the content of the buffer.
+ 
+\end_layout
+
+\begin_layout Standard
+Multiple notifier messages are concatenated into the same 
+\family typewriter
+String
+\family default
+.
+\end_layout
+
+\begin_layout Subsubsection
+Quitting
+\end_layout
+
+\begin_layout Standard
+Server tells its own notifier to quit, and subsequently breaks out of its
+ own forever loop.
+\end_layout
+
+\begin_layout Subsection
+Notifiers
+\end_layout
+
+\begin_layout Standard
+Notifiers are responsible for dealing with interrupts and handling (somewhat
+ complicated) interrupt procedures.
+\end_layout
+
+\begin_layout Subsubsection
+Sending
+\end_layout
+
+\begin_layout Standard
+When the send notifier checks into the send server, it is given some data.
+ Then it sends that data out.
+\end_layout
+
+\begin_layout Subsubsection
+Receiving
+\end_layout
+
+\begin_layout Standard
+When the receive notifier gets some data, it immediately delivers to the
+ receive server (its parent), and goes back to wait for more data.
+\end_layout
+
+\begin_layout Part
+Train Control and Related Tasks
+\end_layout
+
+\begin_layout Section
+Clock Drawer
+\end_layout
+
+\begin_layout Standard
+Calls 
+\family typewriter
+Time()
+\family default
+ and goes into an infinite loop that:
+\end_layout
+
+\begin_layout Enumerate
+Prints time
+\end_layout
+
+\begin_layout Enumerate
+Increment time by 10 clicks (1 ms)
+\end_layout
+
+\begin_layout Enumerate
+Calls 
+\family typewriter
+DelayUntil
+\family default
+.
+\end_layout
+
+\begin_layout Section
+Input Parsing
+\end_layout
+
+\begin_layout Standard
+Reads input from monitor (COM2) and echos back to the monitor.
+ Parses the instruction and calls the appropriate tasks/servers.
+ 
+\end_layout
+
+\begin_layout Standard
+Quitting calls 
+\family typewriter
+quit
+\family default
+ on all tasks and services, and the kernel exits when there are no more
+ ready tasks.
+\end_layout
+
+\begin_layout Section
+Sensor Polling
+\end_layout
+
+\begin_layout Standard
+Polls the sensors regularly.
+ Records which sensors changed since last reading and the changes are printed
+ onto screen (printing only changed data).
+\end_layout
+
+\begin_layout Section
+Train Control
+\end_layout
+
+\begin_layout Standard
+There is one planner for many trains.
+ It acts like the trains' headquarters.
+\end_layout
+
+\begin_layout Subsection
+Planner
+\end_layout
+
+\begin_layout Standard
+Planner measures train's (esitmated) positions speed on the track, and keeps
+ a mapping of train number to their associated profiles.
+ 
+\end_layout
+
+\begin_layout Subsection
+Train
+\end_layout
+
+\begin_layout Standard
+Trains simply tracks all the useful data associated with a train, such as:
+ 
+\end_layout
+
+\begin_layout Itemize
+Position
+\end_layout
+
+\begin_layout Itemize
+Speed (from 0 to 14)
+\end_layout
+
+\begin_layout Itemize
+Velocity
+\end_layout
+
+\begin_layout Itemize
+Last hit sensors and time pair
+\end_layout
+
+\begin_layout Standard
+In an infinite loop, it sends to the planner, and execute the command that
+ was replied.
 \end_layout
 
 \end_body
