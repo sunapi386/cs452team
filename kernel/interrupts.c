@@ -105,11 +105,11 @@ void initInterrupts() {
         setICU(vic[i], VIC_INT_SELECT, 0);      // select pl190 irq mode
     }
 
-    enable(0, 1 << 23); // uart1 recv
-    enable(0, 1 << 24); // uart1 xmit
+    //enable(0, 1 << 23); // uart1 recv
+    //enable(0, 1 << 24); // uart1 xmit
     enable(0, 1 << 25); // uart2 recv
     enable(0, 1 << 26); // uart2 xmit
-    enable(1, 1 << 19); // enable timer 3
+    //enable(1, 1 << 19); // enable timer 3
 }
 
 void resetInterrupts() {
@@ -182,6 +182,9 @@ void handleInterrupt() {
     // UART 2 transmit
     else if (vic1Status & (1 << 26))
     {
+        // turn interrupt off in UART
+        setUARTCtrl(UART2_XMIT_EVENT, 0);
+
         TaskDescriptor *td = eventTable[UART2_XMIT_EVENT];
         if (td != 0)
         {
@@ -189,9 +192,7 @@ void handleInterrupt() {
             td->ret = (UART2_BASE + UART_DATA_OFFSET);
             queueTask(td);
             eventTable[UART2_XMIT_EVENT] = 0;
-
-            // turn interrupt off in UART
-            setUARTCtrl(UART2_RECV_EVENT, 0);
         }
     }
 }
+

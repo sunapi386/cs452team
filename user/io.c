@@ -6,6 +6,7 @@
 #define NOTIFICATION 0
 #define PUTCHAR      1
 #define GETCHAR      2
+#define ECHO         4
 
 typedef
 struct IOReq {
@@ -27,7 +28,6 @@ int Getc(int channel) {
         .type = GETCHAR
     };
     int server_tid = (channel == COM1) ? com1RecvSrvTid : com2RecvSrvTid;
-
     char c = 0;
     int ret = Send(server_tid, &req, sizeof(req), &c, sizeof(c));
     return ret < 0 ? ret : c;
@@ -61,16 +61,33 @@ static void receiveNotifier() {
     }
 }
 
+static void echoCourier() {
+    IOReq echoReq = {
+        .type = ECHO
+    };
+    IOReq sendReq = {
+        .type = PUTCHAR
+    };
+
+    for (;;) {
+        // Request for a char from receiveServer()
+        Send(com2RecvSrvTid, &echoReq, sizeof(echoReq), &(sendReq.data), sizeof(sendReq.data));
+
+        // Send the char to sendServer() using a Putc request
+        Send(com2SendSrvTid, &sendReq, sizeof(sendReq), 0, 0);
+    }
+}
+
 // server that waits for receiveNotifier to deliver a character
 void receiveServer() {
     char c = 0;
-    int tid = 0;
+    int tid = 0, courierTid = 0;
     char taskb[128];
     char charb[1024];
     CBuffer taskBuffer;
     CBuffer charBuffer;
-    CBufferInit(&taskBuffer, (void*)taskb, 128);
-    CBufferInit(&charBuffer, (void*)charb, 1024);
+    CBufferInit(&taskBuffer, taskb, 128);
+    CBufferInit(&charBuffer, charb, 1024);
 
     IOReq req = {
         .type = -1,
@@ -78,7 +95,10 @@ void receiveServer() {
     };
 
     // TODO: nameserver
-    com2SendSrvTid = MyTid();
+    com2RecvSrvTid = MyTid();
+
+    // Spawn courier
+    Create(1, &echoCourier);
 
     // Spawn notifier
     Create(1, &receiveNotifier);
@@ -91,6 +111,15 @@ void receiveServer() {
         case NOTIFICATION:
             // unblock notifier
             Reply(tid, 0, 0);
+
+            if (courierTid)
+            {
+                // unblock the courier and give it a
+                //  char to echo it on the terminal
+                Reply(courierTid, &(req.data), sizeof(req.data));
+                courierTid = 0;
+            }
+
             c = (char)req.data;
             if(CBufferIsEmpty(&taskBuffer)) {
                 // no tasks waiting, put char in a buffer
@@ -113,9 +142,14 @@ void receiveServer() {
             }
             else {
                 // characters in the buffer, return it
-                c = CBufferPop(&charBuffer);
-                Reply(tid, &c, sizeof(c));
+                char ch = CBufferPop(&charBuffer);
+                Reply(tid, &ch, sizeof(ch));
             }
+            break;
+        // echo wants a character, block it until the next notification
+        case ECHO:
+            // block the echoer
+            courierTid = tid;
             break;
         default:
             break;
@@ -141,18 +175,20 @@ void sendServer() {
     char * sendAddr = 0;
     char charb[1024];
     CBuffer charBuffer;
-    CBufferInit(&charBuffer, (void*)charb, 1024);
+    CBufferInit(&charBuffer, charb, 1024);
 
     IOReq req = {
         .type = -1,
         .data = '\0'
     };
 
+    // TODO: nameserver
+    com2SendSrvTid = MyTid();
+
     // Spawn notifier
-    Create(1, &sendNotifier);
+    int notifierTid = Create(1, &sendNotifier);
 
     for (;;) {
-        // Receive data
         Receive(&tid, &req, sizeof(req));
 
         switch (req.type) {
@@ -160,24 +196,36 @@ void sendServer() {
             if(CBufferIsEmpty(&charBuffer)) {
                 // nothing to send
                 // mark that we've seen a xmit interrupt
+                // and block the notifier
                 sendAddr = (char *)(req.data);
             }
             else {
-                // there is data to send
-                Reply(tid, 0, 0);
                 char ch = CBufferPop(&charBuffer);
+
                 // write out char to volatile address
+                // this also clears the xmit interrupt
                 *((char *)req.data) = ch;
+
+                // unblock the notifier
+                Reply(tid, 0, 0);
             }
             break;
         case PUTCHAR:
             Reply(tid, 0, 0);
+
             // We've seen a xmit but did not
             // have a char to send at the moment
             if (sendAddr != 0)
             {
                 // send the char directly
+                // also clears the xmit interrupt
                 *sendAddr = (char)(req.data);
+
+                // unblock the notifier which will
+                // call AwaitEvent() which re-enables
+                // xmit interrupt
+                Reply(notifierTid, 0, 0);
+
                 // reset 'seen transmit int' state
                 sendAddr = 0;
             }

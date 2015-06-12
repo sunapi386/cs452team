@@ -43,16 +43,22 @@ void idle()
 
 void client()
 {
-    for (;;)
-    {
-        char c = Getc(COM2);
-        bwputc(COM2, c);
-    }
+    //for (;;)
+    //{
+        //char c = Getc(COM2);
+        //Pass();
+        //Pass();
+    //}
+    Putc(COM2, 'l');
+    Exit();
 }
 
 void bootstrap()
 {
-    // Create ReceiveServer
+    // Create sendServer
+    Create(1, &sendServer);
+
+    // Create receiveServer
     Create(1, &receiveServer);
 
     // Create user task

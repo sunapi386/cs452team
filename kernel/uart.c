@@ -38,19 +38,20 @@ void setUARTCtrl(int event, int val)
     // set control parameters
     switch (event) {
     case UART1_RECV_EVENT:
-        ctrl = (int *)(UART1_BASE + UART_INTR_OFFSET);
+        ctrl = (int *)(UART1_BASE + UART_CTLR_OFFSET);
         mask = RIEN_MASK;
         break;
     case UART1_XMIT_EVENT:
-        ctrl = (int *)(UART1_BASE + UART_INTR_OFFSET);
+        ctrl = (int *)(UART1_BASE + UART_CTLR_OFFSET);
         mask = TIEN_MASK;
     case UART2_RECV_EVENT:
-        ctrl = (int *)(UART2_BASE + UART_INTR_OFFSET);
+        ctrl = (int *)(UART2_BASE + UART_CTLR_OFFSET);
         mask = RIEN_MASK;
         break;
     case UART2_XMIT_EVENT:
-        ctrl = (int *)(UART2_BASE + UART_INTR_OFFSET);
+        ctrl = (int *)(UART2_BASE + UART_CTLR_OFFSET);
         mask = TIEN_MASK;
+        break;
     default:
         return;
     }
