@@ -3,6 +3,7 @@
 #include <user/syscall.h>
 #include <debug.h>
 #include <events.h>
+#include <priority.h>
 
 #define NOTIFICATION 0
 #define TIME         1
@@ -177,7 +178,7 @@ void clockServerTask()
     RegisterAs("clockServer");
 
     // Spawn notifier
-    Create(1, &clockNotifier);
+    Create(PRIORITY_CLOCK_NOTIFIER, &clockNotifier);
 
     // Main loop for serving requests
     for (;;)
