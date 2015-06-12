@@ -1,6 +1,21 @@
 #ifndef __STRING_H
 #define __STRING_H
 #include <debug.h>
+/**
+How ahould we handle the train controller
+
+Bandwidth of communication with the train controller will probably be the
+limiting factor in your trains project.
+
+Use it wisely, which means as little as possible.
+Any time you can substitute computation for communication you should do so.
+Communication with the train controller occurs in muli-byte messages.
+It makes no sense to pass around half a message.
+Reduce the number of system calls.
+Minimizes bugs that occur when putting parts of messages together.
+Convert input bytes into messages as early as possible.
+Unpack output messages into bytes as late as possible.
+*/
 
 #define STR_MAX_LEN 63 // want sizeof(String) == mod 4
 
