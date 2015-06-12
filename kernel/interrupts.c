@@ -1,5 +1,6 @@
 #include <utils.h>
 #include <debug.h>
+#include <ts7200.h>
 #include <events.h>
 #include <kernel/task.h>
 #include <kernel/uart.h>
@@ -124,36 +125,48 @@ int awaitInterrupt(TaskDescriptor *active, int interruptID) {
         return -1;
     }
     interruptTable[interruptID] = active;
-    return 0; // FIXME(jason): should return volatile data
+    return 0;
 }
 
-void handleInterrupt() { // kernel calls into here
+void handleInterrupt() {
 
     int vic1Status = getICU(VIC1, VIC_IRQ_STATUS);
     int vic2Status = getICU(VIC2, VIC_IRQ_STATUS);
 
+    // Timer 3 underflow
     if (vic2Status & (1 << 19)) {
         // Clear timer interrupt in timer
         clearTimerInterrupt();
 
         // Queue task if there's a task waiting
-        TaskDescriptor *td = interruptTable[51];
+        TaskDescriptor *td = interruptTable[TIMER_EVENT];
         if (td != 0) {
+            td->ret = 0;
             queueTask(td);
-            interruptTable[51] = 0;
+            interruptTable[TIMER_EVENT] = 0;
         }
     }
+    // UART 2 receive
     else if (vic1Status & (1 << 25))
     {
-        // get the character
-        char c = getUARTData(COM2);
-
-        bwputc(COM2, c);
-        // unblock notifier
+        TaskDescriptor *td = interruptTable[UART2_RECV_EVENT];
+        if (td != 0)
+        {
+            td->ret = (UART2_BASE + UART_DATA_OFFSET);
+            queueTask(td);
+            interruptTable[UART2_RECV_EVENT] = 0;
+        }
     }
+    // UART 2 transmit
     else if (vic1Status & (1 << 26))
     {
-
+        TaskDescriptor *td = interruptTable[UART2_XMIT_EVENT];
+        if (td != 0)
+        {
+             td->ret = (UART2_BASE + UART_DATA_OFFSET);
+             queueTask(td);
+             interruptTable[UART2_XMIT_EVENT] = 0;
+        }
     }
 }
 
