@@ -38,10 +38,10 @@ static inline void sputc(String *s, const char c) {
 }
 
 static inline void sputstr(String *s, const char *str) {
-    for( ; *str != '\0' ; sputc(s, str++) );
+    for( ; *str != '\0' ; sputc(s, *(str++)) );
 }
 
-static inline void sputuint(String *s, const int u, unsigned short base) {
+static inline void sputuint(String *s, int num, unsigned short base) {
     int dgt;
     unsigned int d = 1;
 
@@ -58,7 +58,7 @@ static inline void sputuint(String *s, const int u, unsigned short base) {
     }
 }
 
-static inline void sputint(String *s, const int i) {
+static inline void sputint(String *s, int num, unsigned short base) {
    if (num < 0) {
         sputc(s, '-');
         num *= -1;
@@ -67,6 +67,15 @@ static inline void sputint(String *s, const int i) {
     sputuint(s, num, base);
 }
 
+static inline char *sbuf(String *s) {
+    return s->buf;
+}
+
+static inline void sformat(String *s ) {
+// TODO: if needed, make sformat (similar to printf)
+// for now, just use sputc to manually build a string
+    (void)s;
+}
 
 
 #endif

@@ -3,6 +3,7 @@
 #include <events.h>
 #include <utils.h>
 #include <priority.h>
+#include <string.h>
 
 #define NOTIFICATION 0
 #define PUTCHAR      1
@@ -45,6 +46,24 @@ int Putc(int channel, char c) {
     int server_tid = (channel == COM1) ? tioSendSID : mioSendSID;
     int ret = Send(server_tid, &req, sizeof(req), &(req.data), sizeof(req.data));
     return (ret < 0) ? -1 : 0;
+}
+
+int PutString(int channel, String *s) {
+    // wrapper
+    char *buf = sbuf(s);
+    for(unsigned i = 0; i < slen(s); i++) {
+        if(Putc(channel, buf[i])) {
+            return -1;
+        }
+    }
+    return slen(s);
+}
+
+int GetString(int channel, String *s) {
+    // wrapper
+    sinit(s);
+    int ret = Getc(channel);
+    sputc(s, ret);
 }
 
 static void receiveNotifier() {
