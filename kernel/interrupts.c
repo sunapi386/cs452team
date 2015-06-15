@@ -115,7 +115,7 @@ void initInterrupts() {
     enable(1, UART1_OR_MASK); // uart1 OR
     //enable(0, UART2_RECV_MASK); // uart2 recv
     //enable(0, UART2_XMIT_MASK); // uart2 xmit
-    //enable(1, TIMER3_MASK); // enable timer 3
+    enable(1, TIMER3_MASK); // enable timer 3
 }
 
 void resetInterrupts() {
@@ -134,6 +134,7 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
     // (selectively turned off in handleInterrupt)
     switch (event) {
     case UART1_XMIT_EVENT:
+        enableUART1ModemInterrupt();
     case UART1_RECV_EVENT:
     case UART2_XMIT_EVENT:
     case UART2_RECV_EVENT:
@@ -189,7 +190,7 @@ void handleInterrupt() {
             int modemStatus = getUART1ModemStatus();
             int cts = (modemStatus & ctsnBit) != 0;
             int dcts = (modemStatus & dctsBit) != 0;
-            bwprintf(COM2, "modem cts: %x, dcts: %x\n\r", cts, dcts);
+            //bwprintf(COM2, "modem cts: %x, dcts: %x\n\r", cts, dcts);
 
             if (cts && dcts)
             {
@@ -215,21 +216,20 @@ void handleInterrupt() {
                 TaskDescriptor *td = eventTable[UART1_XMIT_EVENT];
                 if (td != 0)
                 {
-                    td->ret = 0;
+                    td->ret = (UART1_BASE + UART_DATA_OFFSET);
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
+                    disableUART1ModemInterrupt();
                 }
             }
         }
         // UART 1 xmit
         else if (status & xmitBit)
         {
-            bwprintf(COM2, "xmit interrupt\n\r");
-
             // turn xmit interrupt off in UART
             setUARTCtrl(UART1_XMIT_EVENT, 0);
 
-            if (ctsOn == 1)// && ctsOff)
+            if (ctsOn)// && ctsOff)
             {
                 bwprintf(COM2, "com1 ready to send: xmit\n\r");
 
@@ -242,14 +242,17 @@ void handleInterrupt() {
                 TaskDescriptor *td = eventTable[UART1_XMIT_EVENT];
                 if (td != 0)
                 {
-                    td->ret = 0;
+                    td->ret = (UART1_BASE + UART_DATA_OFFSET);
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
+                    disableUART1ModemInterrupt();
                 }
             }
             // we are not CTS-clear.
             else
             {
+                bwprintf(COM2, "com1 marking xmit ready, ctsOn: %d\n\r", ctsOn);
+
                 // mark transmit ready
                 xmitRdy = 1;
             }

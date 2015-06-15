@@ -272,9 +272,13 @@ void com1SendServer() {
     com1SendSrvTid = MyTid();
 
     // Spawn notifier
-    int notifierTid = Create(2, &com1SendNotifier);
+    int notifierTid = Create(1, &com1SendNotifier);
 
     for (;;) {
+        bwprintf(COM2, "For loop head: %d, tail: %d\n\r",
+                        charBuffer.head,
+                        charBuffer.tail);
+
         Receive(&tid, &req, sizeof(req));
 
         switch (req.type) {
@@ -303,8 +307,6 @@ void com1SendServer() {
             // have a char to send at the moment
             if (sendAddr != 0)
             {
-                bwprintf(COM2, "Putchar writing: %c\n\r", (char)(req.data));
-
                 // send the char directly
                 // also clears the xmit interrupt
                 *sendAddr = (char)(req.data);
@@ -320,7 +322,19 @@ void com1SendServer() {
             // Have not seen a xmit; just buffer that shit
             else
             {
-                CBufferPush(&charBuffer, (char)(req.data));
+                if (CBufferPush(&charBuffer, (char)(req.data)) == -1)
+                {
+                    // overflow occured
+                    // block task until we get a notification
+                            bwprintf(COM2, "\033[2J\033[HOverflow head: %d, tail: %d\n\r",
+                            charBuffer.head,
+                            charBuffer.tail);
+
+                    for (;;)
+                    {
+                        Pass();
+                    }
+                }
             }
             break;
         default:

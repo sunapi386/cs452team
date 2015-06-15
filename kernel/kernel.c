@@ -11,6 +11,9 @@
 #include <user/io.h>
 #include <debug.h>
 #include <events.h>
+#include <user/clockserver.h>
+#include <user/nameserver.h>
+
 
 static Syscall *request = NULL;
 
@@ -38,57 +41,45 @@ void idle()
 {
     for (;;)
     {
+        bwprintf(COM2, "i");
         Pass();
     }
 }
 
-#include <ts7200.h>
 void client()
 {
-    //for (;;)
-    //{
-        //char c = Getc(COM2);
-        //Pass();
-        //Pass();
-    //
-    // }
-    *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x60;
-
-    int i, j;
-    for (j = 0; j < 1000; j++)
+    unsigned int i;
+    for (;;)
     {
-        AwaitEvent(UART1_XMIT_EVENT);
-        bwprintf(COM2, "unblocked from 1st xmit event\n\r");
-        *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x10;
-        //Putc(COM1, 0x10);
-        AwaitEvent(UART1_XMIT_EVENT);
-        bwprintf(COM2, "unblocked from 2nd xmit event\n\r");
-        *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x40;
-        //Putc(COM1, 0x40);
-
-        for(i = 0; i < 1000; i++);
-        AwaitEvent(UART1_XMIT_EVENT);
-        *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x0;
-        //Putc(COM1, 0x0);
-        AwaitEvent(UART1_XMIT_EVENT);
-        *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x40;
-        //Putc(COM1, 0x40);
-
-        for(i = 0; i < 1000; i++);
+        Putc(COM1, 0x10);
+        Putc(COM1, 0x40);
+        Delay(100);
+        //for(i = 0; i < 5000; i++);
+        Putc(COM1, 0x0);
+        Putc(COM1, 0x40);
+        Delay(100);
+        //for(i = 0; i < 5000; i++);
+        //bwprintf(COM2, "%d\n\r",j);
     }
     Exit();
 }
 
 void bootstrap()
 {
+    // Create name server
+    Create (1, &nameserverTask);
+
+    // Create clock server
+    Create(1, &clockServerTask);
+
     // Create sendServer
-    //Create(2, &com1SendServer);
+    Create(1, &com1SendServer);
 
     // Create receiveServer
     //Create(1, &receiveServer);
 
     // Create user task
-    Create(3, &client);
+    Create(2, &client);
 
     // Create idle task
     Create(31, &idle);
@@ -105,7 +96,7 @@ static void initKernel() {
     request = initSyscall();
     initInterrupts();
     initUART();
-    //initTimer();
+    initTimer();
 
     //int create_ret = taskCreate(1, &userTaskMessage, 0);
     // int create_ret = taskCreate(1, &userTaskHwiTester, 0);
@@ -120,7 +111,7 @@ static void initKernel() {
 }
 
 static void resetKernel() {
-    //resetTimer();
+    resetTimer();
     resetUART();
     resetInterrupts();
     disableCache();

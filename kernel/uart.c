@@ -2,12 +2,6 @@
 #include <events.h>
 #include <kernel/uart.h>
 
-static void noop()
-{
-    volatile int i;
-    for (i = 0; i < 55; i++);
-}
-
 void initUART()
 {
     // Note: high registers must be written last
@@ -20,19 +14,15 @@ void initUART()
 
     // Set uart1 speed to 2400
     *uart1Low = 191;
-    noop();
     *uart1Mid = 0x0;
-    noop();
     *uart1Ctrl = *uart1Ctrl | MSIEN_MASK;// | RIEN_MASK ;
 
     // Enable uart 2 rcv, xmit interrupts
     //*uart2Ctrl |= TIEN_MASK | RIEN_MASK;// | MSIEN_MASK;
-    noop();
     // Set uart1 to 2 stop bits + no fifo
     int temp = *uart1High;
     temp = (temp | STP2_MASK) & ~FEN_MASK ;
     *uart1High = temp;
-    noop();
     // Set uart2 to no fifo
     temp = *uart2High;
     temp = temp & ~FEN_MASK;
@@ -100,7 +90,6 @@ char getUARTData(int port)
 void resetUART()
 {
     *(int *)(UART1_BASE + UART_CTLR_OFFSET) = 0;
-    noop();
     *(int *)(UART2_BASE + UART_CTLR_OFFSET) = 0;
 }
 
@@ -123,7 +112,6 @@ void clearUART1ModemInterrupt()
     // Modem interrupt is cleared by writing
     // anything to UART1IntIDIntClr register
     *(int *)(UART1_BASE + UART_INTR_OFFSET) = 0;
-    noop();
 }
 
 void disableUART1ModemInterrupt()
@@ -132,5 +120,4 @@ void disableUART1ModemInterrupt()
     // Disable the interrupt in UART unit
     int temp = *(int *)(UART1_BASE + UART_CTLR_OFFSET);
     *(int *)(UART1_BASE + UART_CTLR_OFFSET) = temp & ~MSIEN_MASK;
-    noop();
 }
