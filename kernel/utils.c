@@ -96,7 +96,8 @@ void CBufferInit(CBuffer *b, char *array, size_t size) {
     CBufferClean(b);
 }
 
-void CBufferPush(CBuffer *b, char ch) {
+int CBufferPush(CBuffer *b, char ch) {
+    int ret = 0;
     if ((b->tail + 1) % b->size == b->head)
     {
         // Buffer overflow warp around behavior:
@@ -104,15 +105,17 @@ void CBufferPush(CBuffer *b, char ch) {
         // since the data we have would be garbage anyways.
         // With a large buffer and regular commands it should not overflow.
         b->tail = b->head;
+        ret = -1;
     }
     b->tail = (b->tail + 1) % b->size;
     b->data[b->tail] = ch;
+    return ret;
 }
 
 char CBufferPop(CBuffer *b) {
     if (b->head == b->tail)
     {
-        return '\0';
+        return -1;
     }
     else if ((b->head + 1) % b->size != (b->tail + 1) % b->size)
     {
@@ -122,8 +125,8 @@ char CBufferPop(CBuffer *b) {
     }
     else
     {
-        //Return NUL if underflow
-        return'\0';
+        //Return -1 if underflow
+        return -1;
     }
 }
 
