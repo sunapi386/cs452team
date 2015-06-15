@@ -29,4 +29,5 @@ server.
 int Putc(int channel, char c);
 void receiveServer();
 void sendServer();
+void com1SendServer();
 #endif // __IO_H

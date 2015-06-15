@@ -2,6 +2,12 @@
 #include <events.h>
 #include <kernel/uart.h>
 
+static void noop()
+{
+    volatile int i;
+    for (i = 0; i < 55; i++);
+}
+
 void initUART()
 {
     // Note: high registers must be written last
@@ -14,16 +20,19 @@ void initUART()
 
     // Set uart1 speed to 2400
     *uart1Low = 191;
+    noop();
     *uart1Mid = 0x0;
+    noop();
+    *uart1Ctrl = *uart1Ctrl | MSIEN_MASK;// | RIEN_MASK ;
 
-    // Enable uart 1,2 modem, rcv, xmit interrupts
-    *uart2Ctrl |= TIEN_MASK | RIEN_MASK;// | MSIEN_MASK;
-
+    // Enable uart 2 rcv, xmit interrupts
+    //*uart2Ctrl |= TIEN_MASK | RIEN_MASK;// | MSIEN_MASK;
+    noop();
     // Set uart1 to 2 stop bits + no fifo
     int temp = *uart1High;
     temp = (temp | STP2_MASK) & ~FEN_MASK ;
     *uart1High = temp;
-
+    noop();
     // Set uart2 to no fifo
     temp = *uart2High;
     temp = temp & ~FEN_MASK;
@@ -33,7 +42,7 @@ void initUART()
 void setUARTCtrl(int event, int val)
 {
     int *ctrl = 0;
-    unsigned int mask = 0;
+    int mask = 0;
 
     // set control parameters
     switch (event) {
@@ -44,6 +53,7 @@ void setUARTCtrl(int event, int val)
     case UART1_XMIT_EVENT:
         ctrl = (int *)(UART1_BASE + UART_CTLR_OFFSET);
         mask = TIEN_MASK;
+        break;
     case UART2_RECV_EVENT:
         ctrl = (int *)(UART2_BASE + UART_CTLR_OFFSET);
         mask = RIEN_MASK;
@@ -57,19 +67,19 @@ void setUARTCtrl(int event, int val)
     }
 
     // read the control
-    unsigned int temp = *ctrl;
+    int temp = *ctrl;
 
     // negate the bit if val is 0; else assert it
     *ctrl = (val == 0) ? (temp & ~mask) : (temp | mask);
 }
 
-unsigned int getUARTStatus(int port)
+int getUARTIntStatus(int port)
 {
     switch (port) {
     case 0:
-        return *(unsigned int *)(UART1_BASE + UART_INTR_OFFSET);
+        return *(int *)(UART1_BASE + UART_INTR_OFFSET);
     case 1:
-        return *(unsigned int *)(UART2_BASE + UART_INTR_OFFSET);
+        return *(int *)(UART2_BASE + UART_INTR_OFFSET);
     default:
         return 0;
     }
@@ -79,9 +89,9 @@ char getUARTData(int port)
 {
     switch (port) {
     case 0:
-        return *(char *)(UART1_BASE + UART_DATA_OFFSET);
+        return (char)(*(int *)(UART1_BASE + UART_DATA_OFFSET));
     case 1:
-        return *(char *)(UART2_BASE + UART_DATA_OFFSET);
+        return (char)(*(int *)(UART2_BASE + UART_DATA_OFFSET));
     default:
         return '\0';
     }
@@ -90,5 +100,37 @@ char getUARTData(int port)
 void resetUART()
 {
     *(int *)(UART1_BASE + UART_CTLR_OFFSET) = 0;
+    noop();
     *(int *)(UART2_BASE + UART_CTLR_OFFSET) = 0;
+}
+
+/*
+    Modem interrupt is specific to UART1
+*/
+int getUART1ModemStatus()
+{
+    return *(int *)(UART1_BASE + UART_MDMSTS_OFFSET);
+}
+
+void enableUART1ModemInterrupt()
+{
+    int temp = *(int *)(UART1_BASE + UART_CTLR_OFFSET);
+    *(int *)(UART1_BASE + UART_CTLR_OFFSET) = temp | MSIEN_MASK;
+}
+
+void clearUART1ModemInterrupt()
+{
+    // Modem interrupt is cleared by writing
+    // anything to UART1IntIDIntClr register
+    *(int *)(UART1_BASE + UART_INTR_OFFSET) = 0;
+    noop();
+}
+
+void disableUART1ModemInterrupt()
+{
+    clearUART1ModemInterrupt();
+    // Disable the interrupt in UART unit
+    int temp = *(int *)(UART1_BASE + UART_CTLR_OFFSET);
+    *(int *)(UART1_BASE + UART_CTLR_OFFSET) = temp & ~MSIEN_MASK;
+    noop();
 }

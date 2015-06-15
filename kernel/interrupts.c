@@ -9,6 +9,13 @@
 #include <kernel/interrupts.h>
 #include <kernel/context_switch.h>
 
+#define UART1_RECV_MASK 1 << 23 // uart1 recv
+#define UART1_XMIT_MASK 1 << 24 // uart1 xmit
+#define UART1_OR_MASK   1 << 20 // uart1 OR
+#define UART2_RECV_MASK 1 << 25 // uart2 recv
+#define UART2_XMIT_MASK 1 << 26 // uart2 xmit
+#define TIMER3_MASK     1 << 19 // timer 3
+
 extern void queueTask(struct TaskDescriptor *td);
 
 static int vic[2];  // for iterating
@@ -95,29 +102,27 @@ void initInterrupts() {
     *(unsigned int *)(0x28) = (unsigned int)(&kernelEnter);      // soft int
     *(unsigned int *)(0x2c) = (unsigned int)(&abort_prefetch);   // abort_prefetch
     *(unsigned int *)(0x30) = (unsigned int)(&abort_data);       // abort_data
-    *(unsigned int *)(0x38) = (unsigned int)(&irqEnter);      // hard int
+    *(unsigned int *)(0x38) = (unsigned int)(&irqEnter);         // hard int
     vic[0] = VIC1;
     vic[1] = VIC2;
     for(int i = 0; i < 64; i++) {
         eventTable[i] = 0;
     }
     for(int i = 0; i < 2; i++) {
-        setICU(vic[i], VIC_INT_SELECT, 0);      // select pl190 irq mode
+        setICU(vic[i], VIC_INT_SELECT, 0);                      // select pl190 irq mode
     }
 
-    //enable(0, 1 << 23); // uart1 recv
-    //enable(0, 1 << 24); // uart1 xmit
-    enable(0, 1 << 25); // uart2 recv
-    enable(0, 1 << 26); // uart2 xmit
-    //enable(1, 1 << 19); // enable timer 3
+    enable(1, UART1_OR_MASK); // uart1 OR
+    //enable(0, UART2_RECV_MASK); // uart2 recv
+    //enable(0, UART2_XMIT_MASK); // uart2 xmit
+    //enable(1, TIMER3_MASK); // enable timer 3
 }
 
 void resetInterrupts() {
-    clear(0, 1 << 23); // uart1 recv
-    clear(0, 1 << 24); // uart1 xmit
-    clear(0, 1 << 25); // uart2 recv
-    clear(0, 1 << 26); // uart2 xmit
-    clear(1, 1 << 19); // disable timer 3
+    clear(1, UART1_OR_MASK);   // uart1 OR
+    clear(0, UART2_RECV_MASK); // uart2 recv
+    clear(0, UART2_XMIT_MASK); // uart2 xmit
+    clear(1, TIMER3_MASK);     // disable timer 3
 }
 
 int awaitInterrupt(TaskDescriptor *active, int event) {
@@ -125,31 +130,30 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
         event > UART2_XMIT_EVENT) {
         return -1;
     }
-
     // Turn on IO interrutpts
     // (selectively turned off in handleInterrupt)
     switch (event) {
-    case UART1_RECV_EVENT:
-    case UART2_RECV_EVENT:
     case UART1_XMIT_EVENT:
+    case UART1_RECV_EVENT:
     case UART2_XMIT_EVENT:
+    case UART2_RECV_EVENT:
         setUARTCtrl(event, 1);
         break;
     default:
         break;
     }
-
     eventTable[event] = active;
     return 0;
 }
 
 void handleInterrupt() {
-
+    static char ctsOn = 0;
+    static char xmitRdy = 0;
     int vic1Status = getICU(VIC1, VIC_IRQ_STATUS);
     int vic2Status = getICU(VIC2, VIC_IRQ_STATUS);
 
     // Timer 3 underflow
-    if (vic2Status & (1 << 19)) {
+    if (vic2Status & TIMER3_MASK) {
         // Clear timer interrupt in timer
         clearTimerInterrupt();
 
@@ -161,8 +165,115 @@ void handleInterrupt() {
             eventTable[TIMER_EVENT] = 0;
         }
     }
+    // UART 1 OR
+    else if (vic2Status & UART1_OR_MASK)
+    {
+        // Get interrupt status
+        int status = getUARTIntStatus(COM1);
+
+        // Check which interrupt was triggered
+        int modemBit = 1;
+        int recvBit = 1 << 1;
+        int xmitBit = 1 << 2;
+
+        // UART 1 modem interrupt
+        if (status & modemBit)
+        {
+            // clear modem interrupt
+            clearUART1ModemInterrupt();
+
+            int dctsBit = 1;
+            int ctsnBit = 1 << 4;
+
+            // Get cts
+            int modemStatus = getUART1ModemStatus();
+            int cts = (modemStatus & ctsnBit) != 0;
+            int dcts = (modemStatus & dctsBit) != 0;
+            bwprintf(COM2, "modem cts: %x, dcts: %x\n\r", cts, dcts);
+
+            if (cts && dcts)
+            {
+                ctsOn = 1;
+            }
+            else if (!cts)
+            {
+                // need to wait for another cts
+                ctsOn = 0;
+            }
+
+            // Ready to send a byte
+            if (ctsOn && xmitRdy)
+            {
+                bwprintf(COM2, "com1 ready to send: modem\n\r");
+
+                // Reset states
+                ctsOn = 0;
+                xmitRdy = 0;
+
+                // We can safely send a bit;
+                // unblock if there is a guy waiting
+                TaskDescriptor *td = eventTable[UART1_XMIT_EVENT];
+                if (td != 0)
+                {
+                    td->ret = 0;
+                    queueTask(td);
+                    eventTable[UART1_XMIT_EVENT] = 0;
+                }
+            }
+        }
+        // UART 1 xmit
+        else if (status & xmitBit)
+        {
+            bwprintf(COM2, "xmit interrupt\n\r");
+
+            // turn xmit interrupt off in UART
+            setUARTCtrl(UART1_XMIT_EVENT, 0);
+
+            if (ctsOn == 1)// && ctsOff)
+            {
+                bwprintf(COM2, "com1 ready to send: xmit\n\r");
+
+                // reset states
+                ctsOn = 0;
+                xmitRdy = 0;
+
+                // we can safely send a bit
+                // unblock if there is a guy waiting
+                TaskDescriptor *td = eventTable[UART1_XMIT_EVENT];
+                if (td != 0)
+                {
+                    td->ret = 0;
+                    queueTask(td);
+                    eventTable[UART1_XMIT_EVENT] = 0;
+                }
+            }
+            // we are not CTS-clear.
+            else
+            {
+                // mark transmit ready
+                xmitRdy = 1;
+            }
+        }
+        // UART 1 receive
+        else if (status & recvBit)
+        {
+            char c = getUARTData(COM1);
+
+            TaskDescriptor *td = eventTable[UART1_RECV_EVENT];
+            if (td != 0)
+            {
+                // unblock notifier
+                td->ret = c;
+                queueTask(td);
+                eventTable[UART1_RECV_EVENT] = 0;
+
+                // turn interrupt off in UART
+                setUARTCtrl(UART1_RECV_EVENT, 0);
+            }
+        }
+    }
     // UART 2 receive
-    else if (vic1Status & (1 << 25))
+    else if (vic1Status & UART2_RECV_MASK)
     {
         // Get the character
         char c = getUARTData(COM2);
@@ -180,7 +291,7 @@ void handleInterrupt() {
         }
     }
     // UART 2 transmit
-    else if (vic1Status & (1 << 26))
+    else if (vic1Status & UART2_XMIT_MASK)
     {
         // turn interrupt off in UART
         setUARTCtrl(UART2_XMIT_EVENT, 0);

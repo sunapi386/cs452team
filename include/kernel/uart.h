@@ -6,8 +6,13 @@
 
 void initUART();
 void setUARTCtrl(int event, int val);
-unsigned int getUARTStatus(int port);
+int getUARTIntStatus(int port);
 char getUARTData(int port);
 void resetUART();
+
+int getUART1ModemStatus();
+void enableUART1ModemInterrupt();
+void clearUART1ModemInterrupt();
+void disableUART1ModemInterrupt();
 
 #endif

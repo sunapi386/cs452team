@@ -10,6 +10,7 @@
 #include <user/user_tasks.h>
 #include <user/io.h>
 #include <debug.h>
+#include <events.h>
 
 static Syscall *request = NULL;
 
@@ -41,6 +42,7 @@ void idle()
     }
 }
 
+#include <ts7200.h>
 void client()
 {
     //for (;;)
@@ -48,21 +50,45 @@ void client()
         //char c = Getc(COM2);
         //Pass();
         //Pass();
-    //}
-    Putc(COM2, 'l');
+    //
+    // }
+    *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x60;
+
+    int i, j;
+    for (j = 0; j < 1000; j++)
+    {
+        AwaitEvent(UART1_XMIT_EVENT);
+        bwprintf(COM2, "unblocked from 1st xmit event\n\r");
+        *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x10;
+        //Putc(COM1, 0x10);
+        AwaitEvent(UART1_XMIT_EVENT);
+        bwprintf(COM2, "unblocked from 2nd xmit event\n\r");
+        *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x40;
+        //Putc(COM1, 0x40);
+
+        for(i = 0; i < 1000; i++);
+        AwaitEvent(UART1_XMIT_EVENT);
+        *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x0;
+        //Putc(COM1, 0x0);
+        AwaitEvent(UART1_XMIT_EVENT);
+        *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x40;
+        //Putc(COM1, 0x40);
+
+        for(i = 0; i < 1000; i++);
+    }
     Exit();
 }
 
 void bootstrap()
 {
     // Create sendServer
-    Create(1, &sendServer);
+    //Create(2, &com1SendServer);
 
     // Create receiveServer
-    Create(1, &receiveServer);
+    //Create(1, &receiveServer);
 
     // Create user task
-    Create(2, &client);
+    Create(3, &client);
 
     // Create idle task
     Create(31, &idle);
@@ -87,7 +113,7 @@ static void initKernel() {
     // int create_ret = taskCreate(1, &interruptRaiser, 0);
     // int create_ret = taskCreate(1, &userTaskK3, 0);
     // int create_ret = taskCreate(1, &userTaskIdle, 31);
-    int create_ret = taskCreate(31, &bootstrap, 0);
+    int create_ret = taskCreate(1, &bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
