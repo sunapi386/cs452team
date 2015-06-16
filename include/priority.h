@@ -24,4 +24,6 @@
 
 #define PRIORITY_NAMESERVER         PRIORITY_SERVER
 
+#define PRIORITY_PARSER             PRIORITY_TASK
+
 #endif
