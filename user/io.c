@@ -17,11 +17,11 @@ struct IOReq {
     unsigned int data;
 } IOReq;
 
-// train io and monitor io
-static int tioRecvSID = -1;
-static int tioSendSID = -1;
-static int mioRecvSID = -1;
-static int mioSendSID = -1;
+// TODO: Remove and replace with nameserver lookups
+static int com1RecvSrvTid = -1;
+static int com1SendSrvTid = -1;
+static int com2RecvSrvTid = -1;
+static int com2SendSrvTid = -1;
 
 int Getc(int channel) {
     // Check channel type

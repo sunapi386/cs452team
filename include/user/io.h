@@ -4,6 +4,8 @@
 #define COM1 0
 #define COM2 1
 
+struct String;
+
 /**
 Getc returns first unreturned character from the given UART.
 FIXME: Discuss in documentation: How transmission errors are handled is implementation-dependent.
@@ -34,5 +36,5 @@ int GetString(int channel, struct String *s);
 void receiveServer();
 void sendServer();
 void com1SendServer();
->>>>>>> uarts
+
 #endif // __IO_H
