@@ -8,7 +8,7 @@
 #define PRIORITY_CLIENT             16
 #define PRIORITY_IDLE               31
 
-// Individual task priorities
+// Input/output
 #define PRIORITY_TRAIN_IN_NOTIFIER     PRIORITY_NOTIFIER
 #define PRIORITY_TRAIN_OUT_NOTIFIER    PRIORITY_NOTIFIER
 #define PRIORITY_MONITOR_IN_NOTIFIER   PRIORITY_NOTIFIER

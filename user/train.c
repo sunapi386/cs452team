@@ -18,6 +18,7 @@ void trainSetReverse(int train_number) {
     String s;
     sinit(&s);
     sprintf(&s, "%c%c", REVERSE, train_number);
+    PutString(&s);
 }
 
 void trainSetSwitch(int switch_number, bool curved) {
@@ -27,5 +28,6 @@ void trainSetSwitch(int switch_number, bool curved) {
         curved ? CURVED : STRAIGHT,
         switch_number,
         SOLENOID_OFF);
+    PutString(&s);
 }
 
