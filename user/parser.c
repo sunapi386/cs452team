@@ -257,7 +257,7 @@ static bool parse(Parser *p, char c) {
                     bool curved = p->data.junction.curved;
                     trainSetSwitch(switch_number, curved);
                 }
-                else { //
+                else {
                     sputstr(&disp_msg,
                         "SW: bad switch_number\r\n");
                 }
@@ -275,7 +275,7 @@ static bool parse(Parser *p, char c) {
         } // switch
         p->state = Empty;
     } // else if carriage return
-    PutString(COM2, &disp_msg);
+    PutString(&disp_msg);
     return run;
 }
 
@@ -284,18 +284,13 @@ void parserTask() {
     Parser p;
     p.state = Empty;
     bool run = true; // set to false when we detect quit command
-    String str;
 
-    // TODO: draw the parsing window, etc
-
+    // draw the parsing window, etc
 
     // read input
     while(run) {
-        sinit(&str);
-        GetString(COM2, &str);
-        for(unsigned i = 0; i < slen(&str); i++) {
-            run = parse(&p, str.buf[i]);
-        }
+        char ch = Getc(COM2);
+        run = parse(&p, ch);
     }
 
     // write output
