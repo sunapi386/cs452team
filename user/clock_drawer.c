@@ -1,25 +1,22 @@
 #include <string.h>
 #include <priority.h>           // init
-#include <vt100.h>              // constants
+#include <user/vt100.h>              // constants
 #include <user/io.h>            // putStr
 #include <user/clockserver.h>   // Time()
-
-static inline cursor_move(String *s, unsigned row, unsigned col) {
-    sputc(s, CSI);
-    sputuint(s, row, 10);
-    sputc(s, ";");
-    sputuint(s, col, 10);
-    sputc(s, "H");
-}
+#include <user/syscall.h>       // Create
 
 static void draw(int time) {
     String s;
     sinit(&s);
-    sputc(&s, CURSOR_SAVE);
-    cursor_move(s, CLOCK_ROW, CLOCK_COL);
+    sputstr(&s, VT_CURSOR_SAVE);
+    sputstr(&s, VT_CSI);
+    sputuint(&s, VT_CLOCK_ROW, 10);
+    sputc(&s, ';');
+    sputuint(&s, VT_CLOCK_COL, 10);
+    sputc(&s, 'H');
     sputc(&s, '0' + time);
-    sputstr(&s, 'ms');
-    sputc(&s, CURSOR_RESTORE);
+    sputstr(&s, "ms");
+    sputstr(&s, VT_CURSOR_RESTORE);
 
 }
 

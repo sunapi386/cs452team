@@ -4,31 +4,33 @@
 // http://www.vt100.net/docs/vt100-ug/chapter3.html
 
 
-#define ESC             "\033"      // Escape
-#define CSI             ESC "["     // Control Sequence Introducer
+#define VT_ESC             "\033"      // Escape
+#define VT_CSI             VT_ESC "["     // Control Sequence Introducer
 
-#define CURSOR_SAVE             ESC "7"
-#define CURSOR_RESTORE          ESC "8"
-#define CURSOR_SHOW             ESC "?25h"
-#define CURSOR_HIDE             ESC "?25l"
+#define VT_CURSOR_SAVE             VT_ESC "7"
+#define VT_CURSOR_RESTORE          VT_ESC "8"
+#define VT_CURSOR_SHOW             VT_ESC "?25h"
+#define VT_CURSOR_HIDE             VT_ESC "?25l"
 
-#define CLEAR_LINE              ESC "2K"
-#define CLEAR_SCREEN            ESC "2J"
+#define VT_CLEAR_LINE              VT_ESC "2K"
+#define VT_CLEAR_SCREEN            VT_ESC "2J"
 
 
 // COLORS
 // http://www.termsys.demon.co.uk/vtansi.htm#colors
-#define COLOR_RESET                 CSI "0m"
-#define COLOR_BLACK                 CSI "30m"
-#define COLOR_RED                   CSI "31m"
-#define COLOR_GREEN                 CSI "32m"
-#define COLOR_YELLOW                CSI "33m"
-#define COLOR_BLUE                  CSI "34m"
-#define COLOR_MAGENTA               CSI "35m"
-#define COLOR_CYAN                  CSI "36m"
-#define COLOR_WHITE                 CSI "37m"
+#define VT_COLOR_RESET                 VT_CSI "0m"
+#define VT_COLOR_BLACK                 VT_CSI "30m"
+#define VT_COLOR_RED                   VT_CSI "31m"
+#define VT_COLOR_GREEN                 VT_CSI "32m"
+#define VT_COLOR_YELLOW                VT_CSI "33m"
+#define VT_COLOR_BLUE                  VT_CSI "34m"
+#define VT_COLOR_MAGENTA               VT_CSI "35m"
+#define VT_COLOR_CYAN                  VT_CSI "36m"
+#define VT_COLOR_WHITE                 VT_CSI "37m"
 
-#define CLOCK_ROW            1
-#define CLOCK_COL            30
+#define VT_CLOCK_ROW            1
+#define VT_CLOCK_COL            30
+
+#define VT_CARRIAGE_RETURN      0x0d
 
 #endif

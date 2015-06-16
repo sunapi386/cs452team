@@ -1,6 +1,6 @@
 #ifndef __IO_H
 #define __IO_H
-
+#include <string.h>
 #define COM1 0
 #define COM2 1
 
@@ -27,5 +27,10 @@ Returns.
 server.
 */
 int Putc(int channel, char c);
+
+
+int PutString(int channel, String *s);
+int GetString(int channel, String *s);
+
 
 #endif // __IO_H

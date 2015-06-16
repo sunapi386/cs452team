@@ -2,7 +2,9 @@
 #include <priority.h>
 #include <utils.h>
 #include <string.h>
-#include <io.h>
+#include <user/io.h>
+#include <user/vt100.h>
+#include <user/syscall.h> // Create
 
 // Parser is a giant state machine
 // tr train_number train_speed
@@ -36,104 +38,190 @@ typedef struct Parser {
 
     // store input data (train number and speed) until ready to use
     union Data {
-        struct Speed {
+        struct Speed { // TR commands
             int train_number;
             int train_speed;
         } speed;
-        struct Junction { // can't call it switch, reserved keyword
+        struct Junction { // SW commands
             int switch_number;
             bool curved;
         } junction;
-        struct Reverse {
+        struct Reverse { // RV data
             int train_number;
         } reverse;
     } data;
 
 } Parser;
 
+// REQUIRE: require exact character for transition to successor
+#define REQUIRE(ch,succ) \
+p->state = (c==ch) ? succ : Error;
+
+bool append_number(char c, int *num) {
+    // TODO
+    return false;
+}
+
 
 static bool parse(Parser *p, char c) {
-    // takes parser, looks at the current state and a new char c,
-    // does a transition if c is acceptable
-    // otherwise give error
-    bool run = true;
+    // transitions if c is acceptable, else errors
+    // http://ascii-table.com/
+
+
+    bool run = true; // run = false on quit command
+
+    String disp_msg;
+    sinit(&disp_msg);
+
+
     // only accept ascii characters and newline
     if(0x20 <= c && c <= 0x7e) { // if printable
-        if(0x41 <= c && c <= 0x5a) { c |= 0x20; } // lower case CAPS characters
+        if(0x41 <= c && c <= 0x5a) {
+            c |= 0x20;
+        } // lower case any capital character
+
         switch(p->state) {
         case Empty: {
-            switch(c): {
+            switch(c) {
                 case 't': p->state = TR_T;
                 case 'r': p->state = RV_R;
                 case 's': p->state = SW_S;
                 case 'q': p->state = Q_Q;
                 default:  p->state = Error; break;
-            } // switch
+            }
             break;
-        } // Empty
+        }
         case Error: {
             break;
-        } // Error
+        }
+
+        // ----------- tr train_number train_speed ----------- //
         case TR_T: {
+            REQUIRE('t', TR_R);
             break;
-        } // TR_T
+        }
         case TR_R: {
+            REQUIRE('r', TR_space_1);
             break;
-        } // TR_R
-        case TR_space_1: {
+        }
+        case TR_space_1: { // parse a train_number
+            p->data.speed.train_number = 0;
+            p->state =  append_number(c, &(p->data.speed.train_number)) ?
+                        TR_train_number :
+                        Error;
             break;
-        } // TR_space_1
+        }
         case TR_train_number: {
+            if(! append_number(c, &(p->data.speed.train_number))) {
+                REQUIRE(' ', TR_space_2);
+            }
             break;
-        } // TR_train_number
-        case TR_space_2: {
+        }
+        case TR_space_2: { // parse a train_speed
+            p->data.speed.train_speed = 0;
+            p->state =  append_number(c, &(p->data.speed.train_speed)) ?
+                        TR_speed :
+                        Error;
             break;
-        } // TR_space_2
+        }
         case TR_speed: {
+            if(! append_number(c, &(p->data.speed.train_speed))) {
+                p->state = Error;
+            }
             break;
         } // TR_speed
+
+        // rv train_number ----------- //
         case RV_R: {
+            REQUIRE('v', RV_V);
             break;
-        } // RV_R
+        }
         case RV_V: {
+            REQUIRE(' ', RV_V);
             break;
-        } // RV_V
-        case RV_space: {
+        }
+        case RV_space: { //
+            p->data.reverse.train_number = 0;
+            p->state =  append_number(c, &(p->data.reverse.train_number)) ?
+                        RV_train_number :
+                        Error;
             break;
-        } // RV_space
+        }
         case RV_train_number: {
+            if(! append_number(c, &(p->data.reverse.train_number))) {
+                p->state = Error;
+            }
             break;
         } // RV_train_number
-        case SW_S: {
-            break;
-        } // SW_S
-        case SW_W: {
-            break;
-        } // SW_W
-        case SW_space_1: {
-            break;
-        } // SW_space_1
-        case SW_switch_number: {
-            break;
-        } // SW_switch_number
-        case SW_space_2: {
-            break;
-        } // SW_space_2
-        case SW_switch_dir: {
-            break;
-        } // SW_switch_dir
-        case Q_Q: {
-            break;
-        } // Q_Q
 
+        // sw switch_number switch_direction ----------- //
+        case SW_S: {
+            REQUIRE('w', SW_W);
+            break;
+        }
+        case SW_W: {
+            REQUIRE(' ', SW_space_1);
+            break;
+        }
+        case SW_space_1: {
+            p->data.junction.switch_number = 0;
+            p->state =  append_number(c, &(p->data.junction.switch_number)) ?
+                        SW_switch_number :
+                        Error;
+            break;
+        }
+        case SW_switch_number: {
+            if(! append_number(c, &(p->data.junction.switch_number))) {
+                REQUIRE(' ', SW_space_2);
+            }
+            break;
+        }
+        case SW_space_2: {
+            switch(c) { // either 'c' or 's'
+            case 'c':
+                p->data.junction.curved = true;
+                p->state = SW_switch_dir;
+                break;
+            case 's':
+                p->data.junction.curved = true;
+                p->state = SW_switch_dir;
+            default:
+                p->state = Error;
+            }
+            break;
+        }
+        case SW_switch_dir: {
+            p->state = Error;
+            break;
+        }
+
+        // ----------- q ----------- //
+        case Q_Q: {
+            p->state = Error;
+            break;
+        }
+
+        default:
+            break;
         } // switch
+
+        if(p->state == Error) {
+            sputstr(&disp_msg, VT_COLOR_RED);
+        }
+
+        sputc(&disp_msg, c);
+
     } // if printable
+
+    else if(c == VT_CARRIAGE_RETURN) { // user pressed return (enter)
+
+    } // else if carriage return
     return run;
 }
 
 
 void parserTask() {
-    Parser parser;
+    Parser p;
     p.state = Empty;
     bool run = true; // set to false when we detect quit command
     String str;
@@ -146,7 +234,7 @@ void parserTask() {
         sinit(&str);
         GetString(COM2, &str);
         for(unsigned i = 0; i < slen(&str); i++) {
-            run = parse(&parser, ch);
+            run = parse(&p, str.buf[i]);
         }
     }
 
