@@ -140,3 +140,15 @@ void CBufferClean(CBuffer *b) {
     b->head = 0;
     b->tail = 0;
 }
+
+int CBufferPushStr(CBuffer *b, char *str)
+{
+    int ret = 0, counter = 0;
+    while(*str)
+    {
+        ret = CBufferPush(b, (char)*str);
+        str++;
+        counter++;
+    }
+    return ret == 0 ? counter : ret;
+}
