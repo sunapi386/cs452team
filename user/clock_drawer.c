@@ -1,8 +1,6 @@
 #include <string.h>
 #include <priority.h>           // init
 #include <user/vt100.h>              // constants
-#include <user/io.h>            // putStr
-#include <user/clockserver.h>   // Time()
 #include <user/syscall.h>       // Create
 
 static void draw(int time) {
