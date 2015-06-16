@@ -28,7 +28,7 @@ Returns.
 • -2 – if the serial server task id inside the wrapper is not the serial
 server.
 */
-int Putc(char c);
+int Putc(int channel, char c);
 int PutStr(char *str);
 
 int PutString(struct String *s);
