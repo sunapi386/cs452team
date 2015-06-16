@@ -16,6 +16,12 @@
 #define UART2_XMIT_MASK 1 << 26 // uart2 xmit
 #define TIMER3_MASK     1 << 19 // timer 3
 
+#define OR_MODEM_MASK 1
+    #define DCTS_MASK 1
+    #define CTSN_MASK 1 << 4
+#define OR_RECV_MASK 1 << 1
+#define OR_XMIT_MASK 1 << 2
+
 extern void queueTask(struct TaskDescriptor *td);
 
 static int vic[2];  // for iterating
@@ -134,7 +140,6 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
     // (selectively turned off in handleInterrupt)
     switch (event) {
     case UART1_XMIT_EVENT:
-        //enableUART1ModemInterrupt();
     case UART1_RECV_EVENT:
     case UART2_XMIT_EVENT:
     case UART2_RECV_EVENT:
@@ -172,25 +177,17 @@ void handleInterrupt() {
         // Get interrupt status
         int status = getUARTIntStatus(COM1);
 
-        // Check which interrupt was triggered
-        int modemBit = 1;
-        int recvBit = 1 << 1;
-        int xmitBit = 1 << 2;
-
         // UART 1 modem interrupt
-        if (status & modemBit)
+        if (status & OR_MODEM_MASK)
         {
-            int dctsBit = 1;
-            int ctsnBit = 1 << 4;
-
             // Get cts
             int modemStatus = getUART1ModemStatus();
 
             // clear modem interrupt
             clearUART1ModemInterrupt();
 
-            int cts = (modemStatus & ctsnBit) != 0;
-            int dcts = (modemStatus & dctsBit) != 0;
+            int cts = (modemStatus & CTSN_MASK) != 0;
+            int dcts = (modemStatus & DCTS_MASK) != 0;
             //bwprintf(COM2, "modem cts: %x, dcts: %x\n\r", cts, dcts);
 
             if (cts && dcts)
@@ -226,7 +223,7 @@ void handleInterrupt() {
             }
         }
         // UART 1 xmit
-        else if (status & xmitBit)
+        else if (status & OR_XMIT_MASK)
         {
             // turn xmit interrupt off in UART
             setUARTCtrl(UART1_XMIT_EVENT, 0);
@@ -260,7 +257,7 @@ void handleInterrupt() {
             }
         }
         // UART 1 receive
-        else if (status & recvBit)
+        else if (status & OR_RECV_MASK)
         {
             char c = getUARTData(COM1);
 
