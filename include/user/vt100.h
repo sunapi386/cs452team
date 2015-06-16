@@ -28,9 +28,11 @@
 #define VT_COLOR_CYAN                  VT_CSI "36m"
 #define VT_COLOR_WHITE                 VT_CSI "37m"
 
+#define VT_CARRIAGE_RETURN      0x0d
+
 #define VT_CLOCK_ROW            1
 #define VT_CLOCK_COL            30
-
-#define VT_CARRIAGE_RETURN      0x0d
+#define VT_PARSER_ROW           5
+#define VT_PARSER_COL           0
 
 #endif

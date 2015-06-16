@@ -286,6 +286,15 @@ void parserTask() {
     bool run = true; // set to false when we detect quit command
 
     // draw the parsing window, etc
+    String s;
+    sinit(&s);
+    // vtMove(&s, VT_PARSER_ROW, VT_PARSER_COL);
+    sputstr(&s, VT_CSI);
+    sputuint(&s, VT_PARSER_ROW, 10);
+    // sputstr(&s,)
+    sputuint(&s, VT_PARSER_COL, 10);
+    sputstr(&s, "> ");
+    PutString(&s);
 
     // read input
     while(run) {
