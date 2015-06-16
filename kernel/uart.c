@@ -103,6 +103,8 @@ int getUART1ModemStatus()
 
 void enableUART1ModemInterrupt()
 {
+    clearUART1ModemInterrupt();
+
     int temp = *(int *)(UART1_BASE + UART_CTLR_OFFSET);
     *(int *)(UART1_BASE + UART_CTLR_OFFSET) = temp | MSIEN_MASK;
 }
@@ -117,6 +119,7 @@ void clearUART1ModemInterrupt()
 void disableUART1ModemInterrupt()
 {
     clearUART1ModemInterrupt();
+
     // Disable the interrupt in UART unit
     int temp = *(int *)(UART1_BASE + UART_CTLR_OFFSET);
     *(int *)(UART1_BASE + UART_CTLR_OFFSET) = temp & ~MSIEN_MASK;

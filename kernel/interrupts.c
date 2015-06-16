@@ -180,14 +180,15 @@ void handleInterrupt() {
         // UART 1 modem interrupt
         if (status & modemBit)
         {
-            // clear modem interrupt
-            clearUART1ModemInterrupt();
-
             int dctsBit = 1;
             int ctsnBit = 1 << 4;
 
             // Get cts
             int modemStatus = getUART1ModemStatus();
+
+            // clear modem interrupt
+            clearUART1ModemInterrupt();
+
             int cts = (modemStatus & ctsnBit) != 0;
             int dcts = (modemStatus & dctsBit) != 0;
             //bwprintf(COM2, "modem cts: %x, dcts: %x\n\r", cts, dcts);
@@ -196,7 +197,7 @@ void handleInterrupt() {
             {
                 ctsOn = 1;
             }
-            else if (!cts)
+            else
             {
                 // need to wait for another cts
                 ctsOn = 0;
@@ -205,7 +206,7 @@ void handleInterrupt() {
             // Ready to send a byte
             if (ctsOn && xmitRdy)
             {
-                bwprintf(COM2, "com1 ready to send: modem\n\r");
+                //bwprintf(COM2, "com1 ready to send: modem\n\r");
 
                 // Reset states
                 ctsOn = 0;
@@ -220,6 +221,7 @@ void handleInterrupt() {
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
                     disableUART1ModemInterrupt();
+                    return;
                 }
             }
         }
@@ -231,7 +233,7 @@ void handleInterrupt() {
 
             if (ctsOn)// && ctsOff)
             {
-                bwprintf(COM2, "com1 ready to send: xmit\n\r");
+                //bwprintf(COM2, "com1 ready to send: xmit\n\r");
 
                 // reset states
                 ctsOn = 0;
@@ -251,7 +253,7 @@ void handleInterrupt() {
             // we are not CTS-clear.
             else
             {
-                bwprintf(COM2, "com1 marking xmit ready, ctsOn: %d\n\r", ctsOn);
+                //bwprintf(COM2, "com1 marking xmit ready, ctsOn: %d\n\r", ctsOn);
 
                 // mark transmit ready
                 xmitRdy = 1;

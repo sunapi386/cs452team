@@ -41,7 +41,7 @@ void idle()
 {
     for (;;)
     {
-        bwprintf(COM2, "i");
+        // bwprintf(COM2, "i");
         Pass();
     }
 }

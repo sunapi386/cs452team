@@ -326,9 +326,9 @@ void com1SendServer() {
                 {
                     // overflow occured
                     // block task until we get a notification
-                            bwprintf(COM2, "\033[2J\033[HOverflow head: %d, tail: %d\n\r",
-                            charBuffer.head,
-                            charBuffer.tail);
+                    bwprintf(COM2, "\033[2J\033[HOverflow head: %d, tail: %d\n\r",
+                        charBuffer.head,
+                        charBuffer.tail);
 
                     for (;;)
                     {
