@@ -28,10 +28,10 @@ Returns.
 • -2 – if the serial server task id inside the wrapper is not the serial
 server.
 */
-int Putc(int channel, char c);
+int Putc(char c);
+int PutStr(char *str);
 
-int PutString(int channel, struct String *s);
-int GetString(int channel, struct String *s);
+int PutString(struct String *s);
 
 void monitorInServer();
 void monitorOutServer();

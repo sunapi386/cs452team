@@ -53,25 +53,8 @@ int Putc(int channel, char c) {
     return (ret < 0) ? -1 : 0;
 }
 
-// FIXME(Shuo): This is not correct.
-int PutString(int channel, String *s) {
-    // wrapper
-    char *buf = sbuf(s);
-    for(unsigned i = 0; i < slen(s); i++) {
-        if(Putc(channel, buf[i])) {
-            return -1;
-        }
-    }
-    return slen(s);
-}
-
-// FIXME(Shuo): This is also not correct
-int GetString(int channel, String *s) {
-    // wrapper
-    sinit(s);
-    int ret = Getc(channel);
-    sputc(s, ret);
-    return slen(s);
+int PutString(String *s) {
+    return PutStr(s->buf);
 }
 
 int PutStr(char *str)
@@ -136,10 +119,10 @@ void monitorInServer() {
     RegisterAs("monitorInServer");
 
     // Spawn courier
-    Create(1, &echoCourier);
+    Create(PRIORITY_NOTIFIER, &echoCourier);
 
     // Spawn notifier
-    Create(1, &monitorInNotifier);
+    Create(PRIORITY_NOTIFIER, &monitorInNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
@@ -226,7 +209,7 @@ void monitorOutServer() {
     RegisterAs("monitorOutServer");
 
     // Spawn notifier
-    int notifierTid = Create(1, &monitorOutNotifier);
+    int notifierTid = Create(PRIORITY_NOTIFIER, &monitorOutNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
@@ -339,7 +322,7 @@ void trainInServer() {
     RegisterAs("trainInServer");
 
     // Spawn notifier
-    Create(1, &trainInNotifier);
+    Create(PRIORITY_NOTIFIER, &trainInNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
@@ -415,7 +398,7 @@ void trainOutServer() {
     RegisterAs("trainOutServer");
 
     // Spawn notifier
-    int notifierTid = Create(1, &trainOutNotifier);
+    int notifierTid = Create(PRIORITY_NOTIFIER, &trainOutNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
