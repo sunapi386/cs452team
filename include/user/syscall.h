@@ -122,6 +122,24 @@ caller.
 */
 int AwaitEvent(int eventType);
 
+/**
+Returns:
+0   Success
+-1  Name table full
+-2  Name server doesn't exist
+-3  Generic error
+*/
+int RegisterAs(char *name);
+
+/**
+Returns:
+>=0  Task id
+-1   No task registered under that name
+-2   Name server doesn't exist
+-3   Generic error
+ */
+int WhoIs(char *name);
+
 int Time();
 
 int Delay(int ticks);

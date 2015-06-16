@@ -1,5 +1,4 @@
 #include <user/clockserver.h>
-#include <user/nameserver.h>
 #include <user/syscall.h>
 #include <debug.h>
 #include <events.h>

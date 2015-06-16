@@ -1,6 +1,5 @@
 #include <user/io.h>
 #include <user/syscall.h>
-#include <user/nameserver.h>
 #include <events.h>
 #include <utils.h>
 #include <priority.h>
