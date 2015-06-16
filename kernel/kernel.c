@@ -49,8 +49,27 @@ void idle()
 void client()
 {
     unsigned int i;
+
     for (;;)
     {
+        /*
+        addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
+        bwprintf(COM2, "%x\n\r", addr);
+        *addr =  0x10;
+        addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
+        bwprintf(COM2, "%x\n\r", addr);
+        *addr = 0x40;
+
+        Delay(100);
+
+        addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
+        bwprintf(COM2, "%x\n\r", addr);
+        *addr =  0x0;
+        addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
+        bwprintf(COM2, "%x\n\r", addr);
+        *addr = 0x40;
+*/
+        Delay(100);
         Putc(COM1, 0x10);
         Putc(COM1, 0x40);
         Delay(100);

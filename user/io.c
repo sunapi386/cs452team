@@ -297,10 +297,6 @@ void com1SendServer() {
     int notifierTid = Create(1, &com1SendNotifier);
 
     for (;;) {
-        bwprintf(COM2, "For loop head: %d, tail: %d\n\r",
-                        charBuffer.head,
-                        charBuffer.tail);
-
         Receive(&tid, &req, sizeof(req));
 
         switch (req.type) {
@@ -344,19 +340,7 @@ void com1SendServer() {
             // Have not seen a xmit; just buffer that shit
             else
             {
-                if (CBufferPush(&charBuffer, (char)(req.data)) == -1)
-                {
-                    // overflow occured
-                    // block task until we get a notification
-                    bwprintf(COM2, "\033[2J\033[HOverflow head: %d, tail: %d\n\r",
-                        charBuffer.head,
-                        charBuffer.tail);
-
-                    for (;;)
-                    {
-                        Pass();
-                    }
-                }
+                CBufferPush(&charBuffer, (char)(req.data));
             }
             break;
         default:

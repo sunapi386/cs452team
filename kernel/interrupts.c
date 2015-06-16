@@ -134,7 +134,7 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
     // (selectively turned off in handleInterrupt)
     switch (event) {
     case UART1_XMIT_EVENT:
-        enableUART1ModemInterrupt();
+        //enableUART1ModemInterrupt();
     case UART1_RECV_EVENT:
     case UART2_XMIT_EVENT:
     case UART2_RECV_EVENT:
@@ -148,8 +148,8 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
 }
 
 void handleInterrupt() {
-    static char ctsOn = 0;
-    static char xmitRdy = 0;
+    static char ctsOn = -1;
+    static char xmitRdy = -1;
     int vic1Status = getICU(VIC1, VIC_IRQ_STATUS);
     int vic2Status = getICU(VIC2, VIC_IRQ_STATUS);
 
@@ -220,8 +220,8 @@ void handleInterrupt() {
                     td->ret = (UART1_BASE + UART_DATA_OFFSET);
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
-                    disableUART1ModemInterrupt();
-                    return;
+                    //disableUART1ModemInterrupt();
+                    //return;
                 }
             }
         }
@@ -231,7 +231,7 @@ void handleInterrupt() {
             // turn xmit interrupt off in UART
             setUARTCtrl(UART1_XMIT_EVENT, 0);
 
-            if (ctsOn)// && ctsOff)
+            if (ctsOn == 1)// && ctsOff)
             {
                 //bwprintf(COM2, "com1 ready to send: xmit\n\r");
 
@@ -247,7 +247,7 @@ void handleInterrupt() {
                     td->ret = (UART1_BASE + UART_DATA_OFFSET);
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
-                    disableUART1ModemInterrupt();
+                    //disableUART1ModemInterrupt();
                 }
             }
             // we are not CTS-clear.
