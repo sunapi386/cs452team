@@ -2341,6 +2341,22 @@ Planner measures train's (esitmated) positions speed on the track, and keeps
  
 \end_layout
 
+\begin_layout Standard
+Feedback loop for accurate train velocity estimation 
+\begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
+\end_inset
+
+ where 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ is the learning rate.
+\end_layout
+
+\begin_layout Standard
+Train has to be able to stop at arbitrarily far from a sensor position.
+\end_layout
+
 \begin_layout Subsection
 Train
 \end_layout
