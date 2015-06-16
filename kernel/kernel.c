@@ -8,7 +8,12 @@
 #include <kernel/uart.h>
 #include <kernel/timer.h>
 #include <user/user_tasks.h>
+#include <user/io.h>
 #include <debug.h>
+#include <events.h>
+#include <user/clockserver.h>
+#include <user/nameserver.h>
+
 
 static Syscall *request = NULL;
 
@@ -32,8 +37,54 @@ void disableCache()
     );
 }
 
+void idle()
+{
+    for (;;)
+    {
+        // bwprintf(COM2, "i");
+        Pass();
+    }
+}
+
+void client()
+{
+    unsigned int i;
+    for (;;)
+    {
+        Putc(COM1, 0x10);
+        Putc(COM1, 0x40);
+        Delay(100);
+        //for(i = 0; i < 5000; i++);
+        Putc(COM1, 0x0);
+        Putc(COM1, 0x40);
+        Delay(100);
+        //for(i = 0; i < 5000; i++);
+        //bwprintf(COM2, "%d\n\r",j);
+    }
+    Exit();
+}
+
 void bootstrap()
 {
+    // Create name server
+    Create (1, &nameserverTask);
+
+    // Create clock server
+    Create(1, &clockServerTask);
+
+    // Create sendServer
+    Create(1, &com1SendServer);
+
+    // Create receiveServer
+    //Create(1, &receiveServer);
+
+    // Create user task
+    Create(2, &client);
+
+    // Create idle task
+    Create(31, &idle);
+
+    // quit
     Exit();
 }
 
@@ -45,7 +96,7 @@ static void initKernel() {
     request = initSyscall();
     initInterrupts();
     initUART();
-    //initTimer();
+    initTimer();
 
     //int create_ret = taskCreate(1, &userTaskMessage, 0);
     // int create_ret = taskCreate(1, &userTaskHwiTester, 0);
@@ -60,7 +111,8 @@ static void initKernel() {
 }
 
 static void resetKernel() {
-    //resetTimer();
+    resetTimer();
+    resetUART();
     resetInterrupts();
     disableCache();
 }

@@ -4,15 +4,17 @@
 #include <utils.h>
 #include <priority.h>
 #include <string.h>
+#include <ts7200.h>
 
 #define NOTIFICATION 0
 #define PUTCHAR      1
 #define GETCHAR      2
+#define ECHO         4
 
 typedef
 struct IOReq {
     int type;
-    int data; // (jason) cannot use char, volatile pointer may get stored
+    unsigned int data;
 } IOReq;
 
 // train io and monitor io
@@ -29,22 +31,23 @@ int Getc(int channel) {
     IOReq req = {
         .type = GETCHAR
     };
-    int server_tid = (channel == COM1) ? tioRecvSID : mioRecvSID;
-    int ret = Send(server_tid, &req, sizeof(req), &(req.data), sizeof(req.data));
-    return ret < 0 ? ret : req.data;
+    int server_tid = (channel == COM1) ? com1RecvSrvTid : com2RecvSrvTid;
+    char c = 0;
+    int ret = Send(server_tid, &req, sizeof(req), &c, sizeof(c));
+    return ret < 0 ? ret : c;
 }
 
 int Putc(int channel, char c) {
-// Check channel type
+    // Check channel type
     if (channel != COM1 && channel != COM2) return -1;
-    // puts the character into sendServer's buffer
+
     // Prepare request
     IOReq req = {
         .type = PUTCHAR,
-        .data = c
+        .data = (unsigned int)c
     };
-    int server_tid = (channel == COM1) ? tioSendSID : mioSendSID;
-    int ret = Send(server_tid, &req, sizeof(req), &(req.data), sizeof(req.data));
+    int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
+    int ret = Send(server_tid, &req, sizeof(req), 0, 0);
     return (ret < 0) ? -1 : 0;
 }
 
@@ -76,65 +79,100 @@ static void receiveNotifier() {
     };
 
     for (;;) {
-        // FIXME: change UART2_RECV_EVENT to also include UART1
-        req.data = AwaitEvent(UART2_RECV_EVENT);
+        req.data = (unsigned int)AwaitEvent(UART2_RECV_EVENT);
         Send(pid, &req, sizeof(req), 0, 0);
     }
 }
 
+static void echoCourier() {
+    IOReq echoReq = {
+        .type = ECHO
+    };
+    IOReq sendReq = {
+        .type = PUTCHAR
+    };
 
-static void receiveServer() {
-    // server that waits for receiveNotifier to deliver a character
-    int tid = 0;
+    for (;;) {
+        // Request for a char from receiveServer()
+        Send(com2RecvSrvTid, &echoReq, sizeof(echoReq), &(sendReq.data), sizeof(sendReq.data));
+
+        // Send the char to sendServer() using a Putc request
+        Send(com2SendSrvTid, &sendReq, sizeof(sendReq), 0, 0);
+    }
+}
+
+// server that waits for receiveNotifier to deliver a character
+void receiveServer() {
+    char c = 0;
+    int tid = 0, courierTid = 0;
     char taskb[128];
     char charb[1024];
     CBuffer taskBuffer;
     CBuffer charBuffer;
-    CBufferInit(&taskBuffer, (void*)taskb, 128);
-    CBufferInit(&charBuffer, (void*)charb, 1024);
+    CBufferInit(&taskBuffer, taskb, 128);
+    CBufferInit(&charBuffer, charb, 1024);
 
     IOReq req = {
         .type = -1,
         .data = '\0'
     };
 
+    // TODO: nameserver
+    com2RecvSrvTid = MyTid();
+
+    // Spawn courier
+    Create(1, &echoCourier);
+
     // Spawn notifier
-    Create(PRIORITY_RECV_NOTIFIER, &receiveNotifier);
-    int ret;
+    Create(1, &receiveNotifier);
+
     for (;;) {
-        ret = Receive(&tid, &req, sizeof(req));
-        if(ret != sizeof(req)) {
-            // complain here
-            continue;
-        }
+        Receive(&tid, &req, sizeof(req));
+
         switch (req.type) {
-        case NOTIFICATION:
         // the notifier sent us a character
+        case NOTIFICATION:
+            // unblock notifier
             Reply(tid, 0, 0);
+
+            if (courierTid)
+            {
+                // unblock the courier and give it a
+                //  char to echo it on the terminal
+                Reply(courierTid, &(req.data), sizeof(req.data));
+                courierTid = 0;
+            }
+
+            c = (char)req.data;
             if(CBufferIsEmpty(&taskBuffer)) {
-            // no tasks waiting, put char in a buffer
-                CBufferPush(&charBuffer, req.data);
+                // no tasks waiting, put char in a buffer
+                CBufferPush(&charBuffer, c);
             }
             else {
-            // there are tasks waiting for a char
-            // unblock a task and hand it a char
-                int popped_tid = CBufferPop(&taskBuffer);
-                char ch = CBufferPop(&charBuffer);
-                Reply(popped_tid, &ch, sizeof(ch));
+                // there are tasks waiting for a char
+                // unblock a task and hand it the char
+                // that we'd just acquired
+                int popped_tid = (int)CBufferPop(&taskBuffer);
+
+                Reply(popped_tid, &c, sizeof(c));
             }
             break;
-
+        // some user task called getchar
         case GETCHAR:
-        // some user task requested get char
             if(CBufferIsEmpty(&charBuffer)) {
-                CBufferPush(&taskBuffer, tid);
-                // no reply to getC
+                // no char to give back to caller; block it
+                CBufferPush(&taskBuffer, (char)tid);
             }
             else {
-            // characters in the buffer, return it
+                // characters in the buffer, return it
                 char ch = CBufferPop(&charBuffer);
                 Reply(tid, &ch, sizeof(ch));
             }
+            break;
+        // echo wants a character, block it until the next notification
+        case ECHO:
+            // block the echoer
+            courierTid = tid;
             break;
         default:
             break;
@@ -149,51 +187,76 @@ static void sendNotifier() {
     };
 
     for (;;) {
-        // FIXME: change UART1_XMIT_EVENT to also include UART1
-        req.data = AwaitEvent(UART2_XMIT_EVENT);
+        req.data = (unsigned int)AwaitEvent(UART2_XMIT_EVENT);
         Send(pid, &req, sizeof(req), 0, 0);
     }
 }
 
-static void sendServer() {
-  // server that waits for sendNotifier to deliver a character
+// sendServer handles outbound traffic on COM ports
+void sendServer() {
     int tid = 0;
+    char * sendAddr = 0;
     char charb[1024];
     CBuffer charBuffer;
-    CBufferInit(&charBuffer, (void*)charb, 1024);
+    CBufferInit(&charBuffer, charb, 1024);
 
     IOReq req = {
         .type = -1,
         .data = '\0'
     };
 
+    // TODO: nameserver
+    com2SendSrvTid = MyTid();
+
     // Spawn notifier
-    Create(PRIORITY_SEND_NOTIFIER, &sendNotifier);
-    int ret;
+    int notifierTid = Create(1, &sendNotifier);
+
     for (;;) {
-        ret = Receive(&tid, &req, sizeof(req));
-        if(ret != sizeof(req)) {
-            // complain here
-            continue;
-        }
+        Receive(&tid, &req, sizeof(req));
+
         switch (req.type) {
         case NOTIFICATION:
-            if(CBufferIsEmpty(&charBuffer)) { // nothing to send
-                // don't get stuck in the interrupt loop
-                // turn interrupts off until we have a byte to send
-                // TODO: What do?
+            if(CBufferIsEmpty(&charBuffer)) {
+                // nothing to send
+                // mark that we've seen a xmit interrupt
+                // and block the notifier
+                sendAddr = (char *)(req.data);
             }
-            else { // there is data to send
-                Reply(tid, 0, 0);
+            else {
                 char ch = CBufferPop(&charBuffer);
-            // write out char to volatile address
-                *((unsigned int *)req.data) = ch;
+
+                // write out char to volatile address
+                // this also clears the xmit interrupt
+                *((char *)req.data) = ch;
+
+                // unblock the notifier
+                Reply(tid, 0, 0);
             }
             break;
-
         case PUTCHAR:
             Reply(tid, 0, 0);
-            CBufferPush(&charBuffer, req.data);
+
+            // We've seen a xmit but did not
+            // have a char to send at the moment
+            if (sendAddr != 0)
+            {
+                // send the char directly
+                // also clears the xmit interrupt
+                *sendAddr = (char)(req.data);
+
+                // unblock the notifier which will
+                // call AwaitEvent() which re-enables
+                // xmit interrupt
+                Reply(notifierTid, 0, 0);
+
+                // reset 'seen transmit int' state
+                sendAddr = 0;
+            }
+            // Have not seen a xmit; just buffer that shit
+            else
+            {
+                CBufferPush(&charBuffer, (char)(req.data));
+            }
             break;
         default:
             break;
@@ -201,10 +264,103 @@ static void sendServer() {
     }
 }
 
-void initIO() {
-    tioRecvSID = Create(PRIORITY_TIO_RECV_SERVER, receiveServer);
-    tioSendSID = Create(PRIORITY_TIO_SEND_SERVER, sendServer);
-    mioRecvSID = Create(PRIORITY_MIO_RECV_SERVER, receiveServer);
-    mioSendSID = Create(PRIORITY_MIO_SEND_SERVER, sendServer);
+static void com1SendNotifier() {
+    int pid = MyParentTid();
+    IOReq req = {
+        .type = NOTIFICATION
+    };
 
+    *(int *)(UART1_BASE + UART_DATA_OFFSET) = 0x60;
+
+    for (;;) {
+        req.data = (unsigned int)AwaitEvent(UART1_XMIT_EVENT);
+        Send(pid, &req, sizeof(req), 0, 0);
+    }
+}
+
+void com1SendServer() {
+    int tid = 0;
+    char * sendAddr = 0;
+    char charb[1024];
+    CBuffer charBuffer;
+    CBufferInit(&charBuffer, charb, 1024);
+
+    IOReq req = {
+        .type = -1,
+        .data = '\0'
+    };
+
+    // TODO: nameserver
+    com1SendSrvTid = MyTid();
+
+    // Spawn notifier
+    int notifierTid = Create(1, &com1SendNotifier);
+
+    for (;;) {
+        bwprintf(COM2, "For loop head: %d, tail: %d\n\r",
+                        charBuffer.head,
+                        charBuffer.tail);
+
+        Receive(&tid, &req, sizeof(req));
+
+        switch (req.type) {
+        case NOTIFICATION:
+            if(CBufferIsEmpty(&charBuffer)) {
+                // nothing to send
+                // mark that we've seen a xmit interrupt
+                // and block the notifier
+                sendAddr = (char *)(req.data);
+            }
+            else {
+                char ch = CBufferPop(&charBuffer);
+
+                // write out char to volatile address
+                // this also clears the xmit interrupt
+                *((char *)req.data) = ch;
+
+                // unblock the notifier
+                Reply(tid, 0, 0);
+            }
+            break;
+        case PUTCHAR:
+            Reply(tid, 0, 0);
+
+            // We've seen a xmit but did not
+            // have a char to send at the moment
+            if (sendAddr != 0)
+            {
+                // send the char directly
+                // also clears the xmit interrupt
+                *sendAddr = (char)(req.data);
+
+                // unblock the notifier which will
+                // call AwaitEvent() which re-enables
+                // xmit interrupt
+                Reply(notifierTid, 0, 0);
+
+                // reset 'seen transmit int' state
+                sendAddr = 0;
+            }
+            // Have not seen a xmit; just buffer that shit
+            else
+            {
+                if (CBufferPush(&charBuffer, (char)(req.data)) == -1)
+                {
+                    // overflow occured
+                    // block task until we get a notification
+                    bwprintf(COM2, "\033[2J\033[HOverflow head: %d, tail: %d\n\r",
+                        charBuffer.head,
+                        charBuffer.tail);
+
+                    for (;;)
+                    {
+                        Pass();
+                    }
+                }
+            }
+            break;
+        default:
+            break;
+        }
+    }
 }

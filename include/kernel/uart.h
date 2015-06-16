@@ -5,8 +5,14 @@
 #define COM2 1
 
 void initUART();
-unsigned int getUARTStatus(int port);
+void setUARTCtrl(int event, int val);
+int getUARTIntStatus(int port);
 char getUARTData(int port);
 void resetUART();
+
+int getUART1ModemStatus();
+void enableUART1ModemInterrupt();
+void clearUART1ModemInterrupt();
+void disableUART1ModemInterrupt();
 
 #endif
