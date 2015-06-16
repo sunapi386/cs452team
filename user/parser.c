@@ -58,7 +58,7 @@ typedef struct Parser {
 #define REQUIRE(ch,succ) \
 p->state = (c==ch) ? succ : Error;
 
-bool append_number(char c, int *num) {
+static inline bool append_number(char c, int *num) {
     if('0' <= c && c <= '9') {
         *num = 10 * (*num) + (int)(c - '0');
         return true;
