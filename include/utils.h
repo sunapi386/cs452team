@@ -22,4 +22,13 @@ char CBufferPop(CBuffer *b);
 bool CBufferIsEmpty(CBuffer *b);
 void CBufferClean(CBuffer *b);
 
+/**
+CBufferPushStr: pushes a NUL terminated char array into a CBuffer
+
+Return values
+    -1: overflow occured
+    or non-negative integer for the number of characters pushed
+*/
+int CBufferPushStr(CBuffer *b, char *str);
+
 #endif

@@ -9,7 +9,8 @@
 
 #define NOTIFICATION 0
 #define PUTCHAR      1
-#define GETCHAR      2
+#define PUTSTR       2
+#define GETCHAR      3
 #define ECHO         4
 
 typedef
@@ -52,6 +53,7 @@ int Putc(int channel, char c) {
     return (ret < 0) ? -1 : 0;
 }
 
+// FIXME(Shuo): This is not correct.
 int PutString(int channel, String *s) {
     // wrapper
     char *buf = sbuf(s);
@@ -63,12 +65,25 @@ int PutString(int channel, String *s) {
     return slen(s);
 }
 
+// FIXME(Shuo): This is also not correct
 int GetString(int channel, String *s) {
     // wrapper
     sinit(s);
     int ret = Getc(channel);
     sputc(s, ret);
     return slen(s);
+}
+
+int PutStr(char *str)
+{
+    // Prepare request
+    IOReq req = {
+        .type = PUTSTR,
+        .data = (unsigned int)str
+    };
+
+    int ret = Send(com2SendSrvTid, &req, sizeof(req), 0, 0);
+    return (ret < 0) ? -1 : 0;
 }
 
 static void monitorInNotifier() {
@@ -262,6 +277,31 @@ void monitorOutServer() {
                 CBufferPush(&charBuffer, (char)(req.data));
             }
             break;
+        case PUTSTR:
+            // unblock caller
+            Reply(tid, 0, 0);
+
+            // get the ptr to str
+            char *str = (char *)(req.data);
+
+            // push entire string into buffer
+            CBufferPushStr(&charBuffer, str);
+
+            // unblock notifier we've previously
+            // got a xmit but had nothing to send
+            if (!CBufferIsEmpty(&charBuffer) &&
+                sendAddr != 0)
+            {
+                *sendAddr = CBufferPop(&charBuffer);
+
+                // unblock the notifier which will
+                // call AwaitEvent() which re-enables
+                // xmit interrupt
+                Reply(notifierTid, 0, 0);
+
+                // reset 'seen transmit int' state
+                sendAddr = 0;
+            }
         default:
             break;
         }
