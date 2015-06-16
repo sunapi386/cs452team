@@ -33,8 +33,10 @@ int Putc(int channel, char c);
 int PutString(int channel, struct String *s);
 int GetString(int channel, struct String *s);
 
-void receiveServer();
-void sendServer();
-void com1SendServer();
+void monitorInServer();
+void monitorOutServer();
+
+void trainInServer();
+void trainOutServer();
 
 #endif // __IO_H

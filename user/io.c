@@ -1,5 +1,6 @@
 #include <user/io.h>
 #include <user/syscall.h>
+#include <user/nameserver.h>
 #include <events.h>
 #include <utils.h>
 #include <priority.h>
@@ -70,9 +71,7 @@ int GetString(int channel, String *s) {
     return slen(s);
 }
 
-static void receiveNotifier() {
-    // messenger that waits for tio or mio to produce a character
-    // and delivers to receiveServer
+static void monitorInNotifier() {
     int pid = MyParentTid();
     IOReq req = {
         .type = NOTIFICATION
@@ -102,7 +101,7 @@ static void echoCourier() {
 }
 
 // server that waits for receiveNotifier to deliver a character
-void receiveServer() {
+void monitorInServer() {
     char c = 0;
     int tid = 0, courierTid = 0;
     char taskb[128];
@@ -120,11 +119,13 @@ void receiveServer() {
     // TODO: nameserver
     com2RecvSrvTid = MyTid();
 
+    RegisterAs("monitorInServer");
+
     // Spawn courier
     Create(1, &echoCourier);
 
     // Spawn notifier
-    Create(1, &receiveNotifier);
+    Create(1, &monitorInNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
@@ -180,7 +181,7 @@ void receiveServer() {
     }
 }
 
-static void sendNotifier() {
+static void monitorOutNotifier() {
     int pid = MyParentTid();
     IOReq req = {
         .type = NOTIFICATION
@@ -193,7 +194,7 @@ static void sendNotifier() {
 }
 
 // sendServer handles outbound traffic on COM ports
-void sendServer() {
+void monitorOutServer() {
     int tid = 0;
     char * sendAddr = 0;
     char charb[1024];
@@ -208,8 +209,11 @@ void sendServer() {
     // TODO: nameserver
     com2SendSrvTid = MyTid();
 
+    // Register with name server
+    RegisterAs("monitorOutServer");
+
     // Spawn notifier
-    int notifierTid = Create(1, &sendNotifier);
+    int notifierTid = Create(1, &monitorOutNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
@@ -264,7 +268,7 @@ void sendServer() {
     }
 }
 
-static void com1SendNotifier() {
+static void trainOutNotifier() {
     int pid = MyParentTid();
     IOReq req = {
         .type = NOTIFICATION
@@ -278,7 +282,7 @@ static void com1SendNotifier() {
     }
 }
 
-void com1SendServer() {
+void trainOutServer() {
     int tid = 0;
     char * sendAddr = 0;
     char charb[1024];
@@ -290,11 +294,14 @@ void com1SendServer() {
         .data = '\0'
     };
 
-    // TODO: nameserver
+    // TODO: Remove
     com1SendSrvTid = MyTid();
 
+    // Register with name server
+    RegisterAs("trainOutServer");
+
     // Spawn notifier
-    int notifierTid = Create(1, &com1SendNotifier);
+    int notifierTid = Create(1, &trainOutNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));

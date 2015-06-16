@@ -91,8 +91,8 @@ void bootstrap()
     // Create clock server
     Create(1, &clockServerTask);
 
-    // Create sendServer
-    Create(1, &com1SendServer);
+    // Create trainOutServer
+    Create(1, &trainOutServer);
 
     // Create receiveServer
     //Create(1, &receiveServer);
