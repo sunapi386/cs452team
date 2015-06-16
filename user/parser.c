@@ -266,16 +266,16 @@ static bool parse(Parser *p, char c) {
             }
             case Q_Q: {
                 sputstr(&disp_msg, "Quit\r\n");
-
                 run = false;
                 break;
             }
             default: {
                 sputstr(&disp_msg, "Command not recognized!\r\n");
             }
-        }
+        } // switch
+        p->state = Empty;
     } // else if carriage return
-
+    PutString(COM2, &disp_msg);
     return run;
 }
 
