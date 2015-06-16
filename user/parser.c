@@ -5,6 +5,7 @@
 #include <user/io.h>
 #include <user/vt100.h>
 #include <user/syscall.h> // Create
+#include <user/train.h>
 
 // Parser is a giant state machine
 // tr train_number train_speed
@@ -226,7 +227,7 @@ static bool parse(Parser *p, char c) {
                 int train_speed = p->data.speed.train_speed;
                 if((0 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
-
+                    trainSetSpeed(train_number, train_speed);
                 }
                 else {
                     sputstr(&disp_msg,
@@ -239,7 +240,7 @@ static bool parse(Parser *p, char c) {
                 // check train_number
                 int train_number = p->data.reverse.train_number;
                 if(0 <= train_number && train_number <= 80) {
-
+                    trainSetReverse(train_number);
                 }
                 else {
                     sputstr(&disp_msg,
@@ -251,10 +252,10 @@ static bool parse(Parser *p, char c) {
             case SW_switch_dir: {
                 // check switch_number
                 int switch_number = p->data.junction.switch_number;
-                if(   1 <= switch_number && switch_number <= 18 ||
-                    153 <= switch_number && switch_number <= 156) {
+                if(   (1 <= switch_number && switch_number <= 18) ||
+                    (153 <= switch_number && switch_number <= 156)) {
                     bool curved = p->data.junction.curved;
-
+                    trainSetSwitch(switch_number, curved);
                 }
                 else { //
                     sputstr(&disp_msg,
