@@ -2,7 +2,6 @@
 #include <priority.h>
 #include <utils.h>
 #include <string.h>
-#include <user/io.h>
 #include <user/vt100.h>
 #include <user/syscall.h> // Create
 #include <user/train.h>

@@ -122,4 +122,57 @@ caller.
 */
 int AwaitEvent(int eventType);
 
+/**
+Returns:
+0   Success
+-1  Name table full
+-2  Name server doesn't exist
+-3  Generic error
+*/
+int RegisterAs(char *name);
+
+/**
+Returns:
+>=0  Task id
+-1   No task registered under that name
+-2   Name server doesn't exist
+-3   Generic error
+ */
+int WhoIs(char *name);
+
+int Time();
+
+int Delay(int ticks);
+
+int DelayUntil(int ticks);
+
+/**
+Getc returns first unreturned character from the given UART.
+FIXME: Discuss in documentation: How transmission errors are handled is implementation-dependent.
+Getc is actually a wrapper for a send to the serial server.
+Returns.
+• character – success.
+• -1 – if the serial server task id inside the wrapper is invalid.
+• -2 – if the serial server task id inside the wrapper is not the serial
+*/
+int Getc(int channel);
+/**
+Putc queues the given character for transmission by the given UART.
+On return the only guarantee is that the character has been queued.
+Whether it has been transmitted or received is not guaranteed.
+FIXME: Discuss in documentation: How configuration errors are handled is implementation-dependent.
+Putc is actually a wrapper for a send to the serial server.
+Returns.
+• 0 – success.
+• -1 – if the serial server task id inside the wrapper is invalid.
+• -2 – if the serial server task id inside the wrapper is not the serial
+server.
+*/
+int Putc(int channel, char c);
+
+int PutStr(char *str);
+
+struct String;
+int PutString(struct String *s);
+
 #endif // __SYSCALL_H

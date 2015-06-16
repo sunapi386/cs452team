@@ -68,7 +68,6 @@ void client()
         addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
         bwprintf(COM2, "%x\n\r", addr);
         *addr = 0x40;
-*/
         Delay(100);
         Putc(COM1, 0x10);
         Putc(COM1, 0x40);
@@ -77,8 +76,10 @@ void client()
         Putc(COM1, 0x0);
         Putc(COM1, 0x40);
         Delay(100);
+        */
         //for(i = 0; i < 5000; i++);
         //bwprintf(COM2, "%d\n\r",j);
+        Pass();
     }
     Exit();
 }
@@ -91,11 +92,11 @@ void bootstrap()
     // Create clock server
     Create(1, &clockServerTask);
 
-    // Create trainOutServer
+    // Create IO Servers
     Create(1, &trainOutServer);
-
-    // Create receiveServer
-    //Create(1, &receiveServer);
+    Create(1, &trainInServer);
+    Create(1, &monitorOutServer);
+    Create(1, &monitorInServer);
 
     // Create user task
     Create(2, &client);
