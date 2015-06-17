@@ -6,16 +6,9 @@
 static void draw(int time) {
     String s;
     sinit(&s);
-    sputstr(&s, VT_CURSOR_SAVE);
-    sputstr(&s, VT_CSI);
-    sputuint(&s, VT_CLOCK_ROW, 10);
-    sputc(&s, ';');
-    sputuint(&s, VT_CLOCK_COL, 10);
-    sputc(&s, 'H');
-    sputc(&s, '0' + time);
-    sputstr(&s, "ms");
-    sputstr(&s, VT_CURSOR_RESTORE);
-
+    vt_pos(&s, VT_CLOCK_ROW, VT_CLOCK_COL);
+    sprintf(&s, "%d ", time);
+    PutString(&s);
 }
 
 void clockDrawer() {

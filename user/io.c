@@ -53,6 +53,7 @@ int Putc(int channel, char c) {
 }
 
 int PutString(String *s) {
+    s->buf[s->len] = '\0';
     return PutStr(s->buf);
 }
 
