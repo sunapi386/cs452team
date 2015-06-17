@@ -4,5 +4,5 @@
 
 
 void vt_pos(String *s, int row, int col) {
-    sprintf("%c%d;%cH", VT_CSI, row, col);
+    sprintf(s, "%c%d;%cH", VT_CSI, row, col);
 }
