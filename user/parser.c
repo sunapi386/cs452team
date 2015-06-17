@@ -206,7 +206,7 @@ static bool parse(Parser *p, char c) {
         } // switch
 
         if(p->state == Error) {
-            sputstr(&disp_msg, VT_COLOR_RED);
+            sputstr(&disp_msg, VT_RED);
         }
 
         sputc(&disp_msg, c);
@@ -214,7 +214,7 @@ static bool parse(Parser *p, char c) {
     } // if printable
 
     else if(c == VT_CARRIAGE_RETURN) { // user pressed return (enter)
-        sputstr(&disp_msg, VT_COLOR_RESET);
+        sputstr(&disp_msg, VT_RESET);
         // should be on an end state
         switch(p->state) {
             case TR_speed: {
@@ -285,7 +285,7 @@ static bool parse(Parser *p, char c) {
 
 
 void parserTask() {
-    // vt_init();
+    vt_init();
     Parser p;
     p.state = Empty;
     bool run = true; // set to false when we detect quit command
