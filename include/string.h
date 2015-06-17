@@ -1,6 +1,8 @@
 #ifndef __STRING_H
 #define __STRING_H
 #include <debug.h>
+#include <utils.h>
+
 /**
 How ahould we handle the train controller
 
@@ -27,6 +29,13 @@ typedef struct String {
 
 static inline void sinit(String *s) {
     s->len = 0;
+}
+
+static inline void scopy(String *dst, char *src) {
+    sinit(dst);
+    size_t n = strlen(src);
+    assert(n < STR_MAX_LEN);
+    strncpy(dst->buf, src, n);
 }
 
 static inline unsigned slen(String *s) {
@@ -82,7 +91,8 @@ static inline char *sbuf(String *s) {
 #define va_end(ap)  ((void)0)
 
 #define va_arg(ap, t)   \
-         (((ap) = (ap) + __va_argsiz(t)), *((t*) (void*) ((ap) - __va_argsiz(t))))
+         (((ap) = (ap) + __va_argsiz(t)), *((t*) (void*) \
+            ((ap) - __va_argsiz(t))))
 
 
 static inline int _sa2d( char ch ) {

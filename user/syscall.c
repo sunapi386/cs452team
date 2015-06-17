@@ -81,3 +81,8 @@ int AwaitEvent(int eventType)
     s.arg1 = (unsigned int)eventType;
     return swi(&s);
 }
+
+void Halt() {
+    s.type = SYS_HALT;
+    swi(&s);
+}

@@ -15,8 +15,8 @@
 typedef struct Parser {
     // state is the last character we've parsed
     enum State {
+        Error = -1,      // Any error
         Empty,      // No input
-        Error,      // Any error
         TR_T,       // t
         TR_R,       // r
         TR_space_1,     // first space
@@ -70,7 +70,6 @@ static bool parse(Parser *p, char c) {
     // transitions if c is acceptable, else errors
     // http://ascii-table.com/
 
-
     bool run = true; // run = false on quit command
 
     String disp_msg;
@@ -86,25 +85,22 @@ static bool parse(Parser *p, char c) {
         switch(p->state) {
             case Empty: {
                 switch(c) {
-                    case 't': p->state = TR_T;
-                    case 'r': p->state = RV_R;
-                    case 's': p->state = SW_S;
-                    case 'q': p->state = Q_Q;
+                    case 't': p->state = TR_T; break;
+                    case 'r': p->state = RV_R; break;
+                    case 's': p->state = SW_S; break;
+                    case 'q': p->state = Q_Q; break;
                     default:  p->state = Error; break;
                 }
-                break;
-            }
-            case Error: {
                 break;
             }
 
             // ----------- tr train_number train_speed ----------- //
             case TR_T: {
-                REQUIRE('t', TR_R);
+                REQUIRE('r', TR_R);
                 break;
             }
             case TR_R: {
-                REQUIRE('r', TR_space_1);
+                REQUIRE(' ', TR_space_1);
                 break;
             }
             case TR_space_1: { // parse a train_number
@@ -140,7 +136,7 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case RV_V: {
-                REQUIRE(' ', RV_V);
+                REQUIRE(' ', RV_space);
                 break;
             }
             case RV_space: { //
@@ -186,8 +182,9 @@ static bool parse(Parser *p, char c) {
                     p->state = SW_switch_dir;
                     break;
                 case 's':
-                    p->data.junction.curved = true;
+                    p->data.junction.curved = false;
                     p->state = SW_switch_dir;
+                    break;
                 default:
                     p->state = Error;
                 }
@@ -209,7 +206,7 @@ static bool parse(Parser *p, char c) {
         } // switch
 
         if(p->state == Error) {
-            sputstr(&disp_msg, VT_COLOR_RED);
+            sputstr(&disp_msg, VT_RED);
         }
 
         sputc(&disp_msg, c);
@@ -217,7 +214,7 @@ static bool parse(Parser *p, char c) {
     } // if printable
 
     else if(c == VT_CARRIAGE_RETURN) { // user pressed return (enter)
-
+        sputstr(&disp_msg, VT_RESET);
         // should be on an end state
         switch(p->state) {
             case TR_speed: {
@@ -226,6 +223,8 @@ static bool parse(Parser *p, char c) {
                 int train_speed = p->data.speed.train_speed;
                 if((0 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
+                    sprintf(&disp_msg,"TR: %d %d\r\n",
+                        train_number, train_speed);
                     trainSetSpeed(train_number, train_speed);
                 }
                 else {
@@ -239,6 +238,7 @@ static bool parse(Parser *p, char c) {
                 // check train_number
                 int train_number = p->data.reverse.train_number;
                 if(0 <= train_number && train_number <= 80) {
+                    sprintf(&disp_msg,"RV: %d\r\n", train_number);
                     trainSetReverse(train_number);
                 }
                 else {
@@ -254,6 +254,8 @@ static bool parse(Parser *p, char c) {
                 if(   (1 <= switch_number && switch_number <= 18) ||
                     (153 <= switch_number && switch_number <= 156)) {
                     bool curved = p->data.junction.curved;
+                    sprintf(&disp_msg, "SW: %d %c\r\n",
+                        switch_number, (curved ? 'C' : 'S'));
                     trainSetSwitch(switch_number, curved);
                 }
                 else {
@@ -266,20 +268,24 @@ static bool parse(Parser *p, char c) {
             case Q_Q: {
                 sputstr(&disp_msg, "Quit\r\n");
                 run = false;
+                Halt();
                 break;
             }
             default: {
                 sputstr(&disp_msg, "Command not recognized!\r\n");
             }
         } // switch
+        sputstr(&disp_msg, "> ");
         p->state = Empty;
     } // else if carriage return
     PutString(&disp_msg);
+
     return run;
 }
 
 
 void parserTask() {
+    vt_init();
     Parser p;
     p.state = Empty;
     bool run = true; // set to false when we detect quit command
@@ -287,19 +293,28 @@ void parserTask() {
     // draw the parsing window, etc
     String s;
     sinit(&s);
-    // vtMove(&s, VT_PARSER_ROW, VT_PARSER_COL);
-    sputstr(&s, VT_CSI);
-    sputuint(&s, VT_PARSER_ROW, 10);
-    // sputstr(&s,)
-    sputuint(&s, VT_PARSER_COL, 10);
+    vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
     sputstr(&s, "> ");
     PutString(&s);
 
     // read input
     while(run) {
-        char ch = Getc(COM2);
-        run = parse(&p, ch);
+        String input;
+        sinit(&input);
+        while(1) { // read string
+            char ch = Getc(COM2);
+            sputc(&input, ch);
+            if(ch == VT_CARRIAGE_RETURN) break;
+        }
+        // parse string
+        for(unsigned i = 0; i < slen(&input) && run; i++) {
+            run = parse(&p, input.buf[i]);
+        }
     }
+    sinit(&s);
+    vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
+    sputstr(&s, "Parser exiting");
+    PutString(&s);
 
     // write output
     Exit();

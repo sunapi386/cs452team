@@ -17,6 +17,7 @@ struct String;
 #define SYS_MY_TID          7
 #define SYS_MY_PARENT_TID   8
 #define SYS_PASS            9
+#define SYS_HALT            10
 
 typedef
 struct Syscall {
@@ -180,5 +181,9 @@ int Putc(int channel, char c);
 int PutStr(char *str);
 
 int PutString(struct String *s);
+
+void Printf(char* str, char *fmt, ... );
+
+void Halt();
 
 #endif // __SYSCALL_H
