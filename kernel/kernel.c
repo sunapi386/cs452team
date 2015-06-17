@@ -101,12 +101,12 @@ static void initKernel() {
 
 static void resetKernel() {
     resetTimer();
-    resetUART();
+    // resetUART();
     resetInterrupts();
     disableCache();
 }
 
-static inline void handleRequest(TaskDescriptor *td) {
+static inline int handleRequest(TaskDescriptor *td) {
     switch (request->type) {
         case INT_IRQ:
             handleInterrupt();
@@ -114,16 +114,16 @@ static inline void handleRequest(TaskDescriptor *td) {
         case SYS_AWAIT_EVENT:
             td->ret = awaitInterrupt(td, request->arg1);
             // we don't want to reschedule if the task is event blocked
-            if (td->ret == 0) return;
+            if (td->ret == 0) return 0;
         case SYS_SEND:
             handleSend(td, request);
-            return;
+            return 0;
         case SYS_RECEIVE:
             handleReceive(td, request);
-            return;
+            return 0;
         case SYS_REPLY:
             handleReply(td, request);
-            return;
+            return 0;
         case SYS_CREATE: {
             int create_ret = taskCreate(request->arg1,
                 (void*)(request->arg2),
@@ -145,13 +145,16 @@ static inline void handleRequest(TaskDescriptor *td) {
         case SYS_PASS:
             break;
         case SYS_EXIT:
-            return;
+            return 0;
+        case SYS_HALT:
+            return -1;
         default:
             debug("Invalid syscall %u!", request->type);
             break;
     }
     // requeue the task if we haven't returned (from SYS_EXIT)
     queueTask(td);
+    return 0;
 }
 
 int main() {
@@ -163,10 +166,14 @@ int main() {
             break;
         }
         kernelExit(task);
-        handleRequest(task);
+        if(handleRequest(task)) {
+            bwprintf(COM2, "Halt\n\r");
+            break;
+        }
         request->type = INT_IRQ;
     }
     resetKernel();
     debug("No tasks scheduled; exiting...");
+    bwprintf(COM1, "%c", 0x61);
     return 0;
 }

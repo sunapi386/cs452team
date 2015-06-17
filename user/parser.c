@@ -268,6 +268,7 @@ static bool parse(Parser *p, char c) {
             case Q_Q: {
                 sputstr(&disp_msg, "Quit\r\n");
                 run = false;
+                Halt();
                 break;
             }
             default: {
