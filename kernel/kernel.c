@@ -50,42 +50,6 @@ void idle()
     }
 }
 
-void client()
-{
-    for (;;)
-    {
-        /*
-        addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
-        bwprintf(COM2, "%x\n\r", addr);
-        *addr =  0x10;
-        addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
-        bwprintf(COM2, "%x\n\r", addr);
-        *addr = 0x40;
-
-        Delay(100);
-
-        addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
-        bwprintf(COM2, "%x\n\r", addr);
-        *addr =  0x0;
-        addr = (char *)AwaitEvent(UART1_XMIT_EVENT);
-        bwprintf(COM2, "%x\n\r", addr);
-        *addr = 0x40;
-        Delay(100);
-        Putc(COM1, 0x10);
-        Putc(COM1, 0x40);
-        Delay(100);
-        //for(i = 0; i < 5000; i++);
-        Putc(COM1, 0x0);
-        Putc(COM1, 0x40);
-        Delay(100);
-        */
-        //for(i = 0; i < 5000; i++);
-        //bwprintf(COM2, "%d\n\r",j);
-        Pass();
-    }
-    Exit();
-}
-
 void bootstrap()
 {
     // Create name server
@@ -161,7 +125,9 @@ static inline void handleRequest(TaskDescriptor *td) {
             handleReply(td, request);
             return;
         case SYS_CREATE: {
-            int create_ret = taskCreate(request->arg1, (void*)(request->arg2), taskGetIndex(td));
+            int create_ret = taskCreate(request->arg1,
+                (void*)(request->arg2),
+                taskGetIndex(td));
             if (create_ret >= 0) {
                 td->ret = taskGetIndexById(create_ret);
                 queueTask(taskGetTDById(create_ret));
