@@ -84,5 +84,5 @@ int AwaitEvent(int eventType)
 
 void Halt() {
     s.type = SYS_HALT;
-    return swi(&s);
+    swi(&s);
 }
