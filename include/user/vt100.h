@@ -3,8 +3,9 @@
 
 // http://www.vt100.net/docs/vt100-ug/chapter3.html
 
+#define ESC 27
 
-#define VT_ESC             "\033"      // Escape
+#define VT_ESC             "\033"      // Escape in octal
 #define VT_CSI             VT_ESC "["     // Control Sequence Introducer
 #define VT_SEP              ";"
 
