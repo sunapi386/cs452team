@@ -82,7 +82,8 @@ static inline char *sbuf(String *s) {
 #define va_end(ap)  ((void)0)
 
 #define va_arg(ap, t)   \
-         (((ap) = (ap) + __va_argsiz(t)), *((t*) (void*) ((ap) - __va_argsiz(t))))
+         (((ap) = (ap) + __va_argsiz(t)), *((t*) (void*) \
+            ((ap) - __va_argsiz(t))))
 
 
 static inline int _sa2d( char ch ) {
