@@ -37,10 +37,14 @@
 #define VT_CLOCK_COL            30
 #define VT_SENSOR_ROW           2
 #define VT_SENSOR_COL           1
+
+#define VT_PARSER_TOP           3
+#define VT_PARSER_BOT           5
 #define VT_PARSER_ROW           5
 #define VT_PARSER_COL           1
 
 
+void vt_init();
 void vt_pos(struct String *s, int row, int col);
 
 #endif
