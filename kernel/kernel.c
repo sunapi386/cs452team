@@ -48,8 +48,6 @@ void idle()
 
 void client()
 {
-    unsigned int i;
-
     for (;;)
     {
         /*
