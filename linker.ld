@@ -36,5 +36,5 @@ SECTIONS
     _BssEnd = . ;
     } >ram
 
-
+    .bss . : { *(.bss) } >ram
 }

@@ -1,6 +1,6 @@
-#include <user/train.h>
 #include <string.h>
-#include <user/io.h>
+#include <user/train.h>
+#include <user/syscall.h>
 
 #define REVERSE   15
 #define STRAIGHT 33

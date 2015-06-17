@@ -6,6 +6,7 @@
 
 #define VT_ESC             "\033"      // Escape
 #define VT_CSI             VT_ESC "["     // Control Sequence Introducer
+#define VT_SEP              ";"
 
 #define VT_CURSOR_SAVE             VT_ESC "7"
 #define VT_CURSOR_RESTORE          VT_ESC "8"
@@ -30,9 +31,15 @@
 
 #define VT_CARRIAGE_RETURN      0x0d
 
+// Display positions
 #define VT_CLOCK_ROW            1
 #define VT_CLOCK_COL            30
+#define VT_SENSOR_ROW           2
+#define VT_SENSOR_COL           1
 #define VT_PARSER_ROW           5
-#define VT_PARSER_COL           0
+#define VT_PARSER_COL           1
+
+
+void vt_pos(struct String *s, int row, int col);
 
 #endif
