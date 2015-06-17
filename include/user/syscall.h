@@ -1,6 +1,13 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
 
+#include <events.h>
+
+#define COM1 0
+#define COM2 1
+
+struct String;
+
 #define SYS_AWAIT_EVENT     1
 #define SYS_SEND            2
 #define SYS_RECEIVE         3
@@ -172,7 +179,6 @@ int Putc(int channel, char c);
 
 int PutStr(char *str);
 
-struct String;
 int PutString(struct String *s);
 
 #endif // __SYSCALL_H

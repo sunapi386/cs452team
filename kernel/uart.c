@@ -15,14 +15,16 @@ void initUART()
     // Set uart1 speed to 2400
     *uart1Low = 0xbf;
     *uart1Mid = 0x0;
-    *uart1Ctrl = *uart1Ctrl | MSIEN_MASK;// | RIEN_MASK ;
+    *uart1Ctrl = *uart1Ctrl | MSIEN_MASK;
 
     // Enable uart 2 rcv, xmit interrupts
-    //*uart2Ctrl |= TIEN_MASK | RIEN_MASK;// | MSIEN_MASK;
+    *uart2Ctrl |= TIEN_MASK | RIEN_MASK;
+
     // Set uart1 to 2 stop bits + no fifo
     int temp = *uart1High;
     temp = (temp | STP2_MASK) & ~FEN_MASK ;
     *uart1High = temp;
+
     // Set uart2 to no fifo
     temp = *uart2High;
     temp = temp & ~FEN_MASK;
