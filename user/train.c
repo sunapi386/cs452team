@@ -8,26 +8,18 @@
 #define SOLENOID_OFF 32
 
 void trainSetSpeed(int train_number, int train_speed) {
-    String s;
-    sinit(&s);
-    sprintf(&s, "%c%c", train_speed, train_number);
-    PutString(&s);
+    Putc(COM1, train_speed);
+    Putc(COM1, train_number);
 }
 
 void trainSetReverse(int train_number) {
-    String s;
-    sinit(&s);
-    sprintf(&s, "%c%c", REVERSE, train_number);
-    PutString(&s);
+    Putc(COM1, REVERSE);
+    Putc(COM1, train_number);
 }
 
 void trainSetSwitch(int switch_number, bool curved) {
-    String s;
-    sinit(&s);
-    sprintf(&s, "%c%c%c",
-        curved ? CURVED : STRAIGHT,
-        switch_number,
-        SOLENOID_OFF);
-    PutString(&s);
+    Putc(COM1, curved ? CURVED : STRAIGHT);
+    Putc(COM1, switch_number);
+    Putc(COM1, SOLENOID_OFF);
 }
 
