@@ -39,9 +39,9 @@
 #define VT_SENSOR_COL           1
 
 #define VT_PARSER_TOP           3
-#define VT_PARSER_BOT           5
-#define VT_PARSER_ROW           5
-#define VT_PARSER_COL           1
+#define VT_PARSER_BOT           10
+#define VT_PARSER_ROW           11
+#define VT_PARSER_COL           0
 
 
 void vt_init();

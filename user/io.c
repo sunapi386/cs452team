@@ -69,6 +69,14 @@ int PutStr(char *str)
     return (ret < 0) ? -1 : 0;
 }
 
+void Printf(char* str, char *fmt, ... ) {
+    String s;
+    scopy(&s, str);
+    sprintf(&s, fmt);
+    PutString(&s);
+}
+
+
 static void monitorInNotifier() {
     int pid = MyParentTid();
     IOReq req = {

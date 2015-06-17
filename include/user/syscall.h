@@ -181,4 +181,6 @@ int PutStr(char *str);
 
 int PutString(struct String *s);
 
+void Printf(char* str, char *fmt, ... );
+
 #endif // __SYSCALL_H
