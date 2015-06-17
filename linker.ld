@@ -33,8 +33,7 @@ SECTIONS
     {
     _BssStart = . ;
     *(.bss)
+    *(COMMON)
     _BssEnd = . ;
     } >ram
-
-    .bss . : { *(.bss) } >ram
 }
