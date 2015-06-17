@@ -35,7 +35,7 @@ static inline void updateSensorPanel(struct Sensor *sensors, int index) {
     // PutString(COM2, &s);
 }
 
-static void sensorTask() {
+void sensorTask() {
     struct Sensor sensors[NUM_SENSORS];
     for(int i = 0; i < NUM_SENSORS; i++) {
         sensors[i].byte = sensors[i].bit = 0;
@@ -58,11 +58,4 @@ static void sensorTask() {
     }
 }
 
-void sensorInit() {
-    Create(PRIORITY_SENSOR_TASK, sensorTask);
-}
-
-void sensorQuit() {
-
-}
 

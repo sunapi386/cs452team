@@ -13,6 +13,10 @@
 #include <events.h>
 #include <user/clockserver.h>
 #include <user/nameserver.h>
+#include <priority.h>
+#include <user/clock_drawer.h>
+#include <user/parser.h>
+#include <user/sensor.h>
 
 
 static Syscall *request = NULL;
@@ -85,22 +89,25 @@ void client()
 void bootstrap()
 {
     // Create name server
-    Create (1, &nameserverTask);
+    Create (PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
-    Create(1, &clockServerTask);
+    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
     // Create IO Servers
-    Create(1, &trainOutServer);
-    Create(1, &trainInServer);
-    Create(1, &monitorOutServer);
-    Create(1, &monitorInServer);
+    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
+    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
+    Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
+    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 
     // Create user task
-    Create(2, &client);
+    // Create(2, client); // FIXME(jason): remove?
+    Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
+    Create(PRIORITY_PARSER, parserTask);
+    // Create(PRIORITY_SENSOR_TASK, sensorTask;
 
     // Create idle task
-    Create(31, &idle);
+    Create(PRIORITY_IDLE, idle);
 
     // quit
     Exit();
@@ -116,13 +123,13 @@ static void initKernel() {
     initUART();
     initTimer();
 
-    //int create_ret = taskCreate(1, &userTaskMessage, 0);
-    // int create_ret = taskCreate(1, &userTaskHwiTester, 0);
-    // int create_ret = taskCreate(1, &runBenchmarkTask, 0);
-    // int create_ret = taskCreate(1, &interruptRaiser, 0);
-    // int create_ret = taskCreate(1, &userTaskK3, 0);
-    // int create_ret = taskCreate(1, &userTaskIdle, 31);
-    int create_ret = taskCreate(1, &bootstrap, 0);
+    //int create_ret = taskCreate(1, userTaskMessage, 0);
+    // int create_ret = taskCreate(1, userTaskHwiTester, 0);
+    // int create_ret = taskCreate(1, runBenchmarkTask, 0);
+    // int create_ret = taskCreate(1, interruptRaiser, 0);
+    // int create_ret = taskCreate(1, userTaskK3, 0);
+    // int create_ret = taskCreate(1, userTaskIdle, 31);
+    int create_ret = taskCreate(1, bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));

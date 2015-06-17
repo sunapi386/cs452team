@@ -26,8 +26,3 @@ void clockDrawer() {
         DelayUntil(t);
     }
 }
-
-
-void initClockDrawer() {
-    Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
-}
