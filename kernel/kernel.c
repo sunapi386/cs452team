@@ -41,15 +41,6 @@ void disableCache()
     );
 }
 
-void idle()
-{
-    for (;;)
-    {
-        // bwprintf(COM2, "i");
-        Pass();
-    }
-}
-
 void bootstrap()
 {
     // Create name server
@@ -65,13 +56,12 @@ void bootstrap()
     Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 
     // Create user task
-    // Create(2, client); // FIXME(jason): remove?
     Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
     Create(PRIORITY_PARSER, parserTask);
     // Create(PRIORITY_SENSOR_TASK, sensorTask;
 
     // Create idle task
-    Create(PRIORITY_IDLE, idle);
+    Create(PRIORITY_IDLE, userTaskIdle);
 
     // quit
     Exit();

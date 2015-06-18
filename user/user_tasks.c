@@ -1,4 +1,6 @@
 #include <debug.h>
+#include <string.h>
+#include <user/vt100.h>
 #include <user/syscall.h>
 #include <user/user_tasks.h>
 
@@ -39,9 +41,27 @@ void userTaskMessage() {
 }
 
 // Create this with lowest priority of 31
+// monitor performance statistics: task queue lengths, task CPU usage
+static inline void drawIdle(int diff) {
+    String s;
+    sinit(&s);
+    sprintf(&s, "%c7", ESC); // SAVE CURSOR
+    vt_pos(&s, VT_CLOCK_ROW + 1, VT_CLOCK_COL);
+    sprintf(&s, "%c[?25l", ESC); // HIDE CURSOR
+    sprintf(&s, diff);
+    sprintf(&s, "%c[?25h", ESC); // SHOW CURSOR
+    sprintf(&s, "%c8", ESC); // LOAD CURSOR
+    PutString(&s);
+}
+
 void userTaskIdle() {
-    for (;;)
-    {
+    int last_woke = Time();
+    int now, diff;
+    for (;;) {
+        now = Time();
+        diff = now - last_woke;
+        drawIdle(diff);
+        last_woke = now;
         Pass();
     }
 }
