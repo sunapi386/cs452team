@@ -2099,15 +2099,52 @@ At most one task to block on a single event.
  in the task descriptor if needed.
 \end_layout
 
+\begin_layout Itemize
+If the event is related to IO, then the interrupt is set to enabled.
+\end_layout
+
 \begin_layout Section
 Hardware Interrupt Handler
 \end_layout
 
 \begin_layout Standard
-The interrupt handler only handles timer 3 underflow interrupt at the moment.
- Status bit of the second ICU is checked for interrupt; if interrupt occurred,
- clear the interrupt in timer device and if there is a task blocked on timer
- event, put it back to the ready queue.
+The interrupt handler handles 6 interrupts (listed in order of handling
+ priority): 
+\end_layout
+
+\begin_layout Itemize
+Timer 3 underflow interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 1 modem interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 1 transmit interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 1 receive interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 2 receive interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 2 transmit interrupt
+\end_layout
+
+\begin_layout Standard
+When an interrupt occurs, the highest priority interrupt is handled.
+ Only one interrupt is handled per kernel entry.
+ If the interrupt is related to UARTs, then the interrupt is disabled in
+ the UART.
+ Furthermore, the handling of UART 1 transmit event is slightly different
+ than the other interrupts; the waiting task is only unblocked when the
+ kernel handles a transmit interrupt as well as a modem interrupt where
+ both the CTS bit and the DCTS bit are asserted.
 \end_layout
 
 \begin_layout Section
@@ -2119,19 +2156,19 @@ There are kinds of 4 servers and 4 notifiers:
 \end_layout
 
 \begin_layout Itemize
-Monitor-in server, handling input from the keyboard.
+Monitor-in server/notifier, handling input from the keyboard.
 \end_layout
 
 \begin_layout Itemize
-Monitor-out server, for sending to the terminal.
+Monitor-out server/notifier, for sending to the terminal.
 \end_layout
 
 \begin_layout Itemize
-Train-in server, handling input from the train control unit.
+Train-in server/notifier, handling input from the train control unit.
 \end_layout
 
 \begin_layout Itemize
-Train-out server, for sending to the train control unit.
+Train-out server/notifier, for sending to the train control unit.
 \end_layout
 
 \begin_layout Standard
@@ -2203,8 +2240,10 @@ Notifiers
 \end_layout
 
 \begin_layout Standard
-Notifiers are very simple, they wait for input interrupts and let the server
- know when one occurs, so the server can go read it or write it.
+Notifiers are very simple, they wait for input interrupts by calling AwaitEvent(
+).
+ When AwaitEvent() unblocks, it the notifier returns the volatile data back
+ to the server.
 \end_layout
 
 \begin_layout Part
