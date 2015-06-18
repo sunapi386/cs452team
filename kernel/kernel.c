@@ -41,9 +41,8 @@ void disableCache()
     );
 }
 
-void idleProfiler() {
+void idle() {
     for (;;) {
-        drawIdle(getIdlingRatio());
         Pass();
     }
 }
@@ -68,7 +67,7 @@ void bootstrap()
     Create(PRIORITY_SENSOR_TASK, sensorTask);
 
     // Create idle task
-    Create(PRIORITY_IDLE, idleProfiler);
+    Create(PRIORITY_IDLE, idle);
 
     // quit
     Exit();
