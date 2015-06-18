@@ -41,6 +41,13 @@ void disableCache()
     );
 }
 
+void idleProfiler() {
+    for (;;) {
+        drawIdle(getIdlingRatio());
+        Pass();
+    }
+}
+
 void bootstrap()
 {
     // Create name server
@@ -61,7 +68,7 @@ void bootstrap()
     Create(PRIORITY_SENSOR_TASK, sensorTask);
 
     // Create idle task
-    Create(PRIORITY_IDLE, userTaskIdle);
+    Create(PRIORITY_IDLE, idleProfiler);
 
     // quit
     Exit();

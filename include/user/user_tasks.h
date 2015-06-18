@@ -9,5 +9,6 @@ void userTaskIdle();
 void hwiTesterTask();
 void clockServerTesterTask();
 void undefinedInstructionTesterTask();
+void drawIdle(unsigned int diff);
 
 #endif

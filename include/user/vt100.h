@@ -43,7 +43,7 @@
 #define VT_PARSER_ROW           11
 #define VT_PARSER_COL           0
 
-
+struct String;
 void vt_init();
 void vt_pos(struct String *s, int row, int col);
 

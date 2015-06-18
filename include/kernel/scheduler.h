@@ -8,16 +8,24 @@
 
 static unsigned int queueStatus = 0;
 static TaskQueue readyQueues[32];
+// for keeping track of idling usage
+static unsigned int idling, busy;
 
 static inline void initScheduler()
 {
     int i;
+    idling = busy = 1; // avoid div by 0
     for (i = 0; i < 32; i++)
     {
         readyQueues[i].head = NULL;
         readyQueues[i].tail = NULL;
     }
     queueStatus = 0;
+}
+#define MAX_INT_32 2147483647
+static inline unsigned int getIdlingRatio() {
+    if(idling > MAX_INT_32) { busy = idling = 1; } // reset
+    return busy / idling;
 }
 
 static inline TaskDescriptor * schedule()
@@ -32,7 +40,11 @@ static inline TaskDescriptor * schedule()
         return NULL;
     }
 
-    int index = table[(unsigned int)((queueStatus ^ (queueStatus & (queueStatus - 1))) * 0x077cb531u) >> 27];
+    int index = table[(unsigned int)((queueStatus ^ (queueStatus &
+        (queueStatus - 1))) * 0x077cb531u) >> 27];
+
+    if(index == 31) { idling++; }
+    else { busy++; }
 
     // Get the task queue with the highest priority
     TaskQueue *q = &readyQueues[index];
