@@ -19,7 +19,7 @@ typedef struct CBuffer {
 void CBufferInit(CBuffer *b, char * array, size_t size);
 int CBufferPush(CBuffer *b, char ch);
 char CBufferPop(CBuffer *b);
-bool CBufferIsEmpty(CBuffer *b);
+bool CBufferIsEmpty(const CBuffer *b);
 void CBufferClean(CBuffer *b);
 
 /**
