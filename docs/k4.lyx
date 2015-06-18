@@ -1950,14 +1950,50 @@ DelayUntil()
 \end_layout
 
 \begin_layout Standard
-These functions wrap Send() to the clock server; therefore, their only differenc
-e is the type of messages they send.
- The wrapper functions also loop up the clock server on the name server,
+These functions wrap 
+\family typewriter
+Send()
+\family default
+ to the clock server; therefore, their only difference is the type of request
+ they send.
+ A 
+\family typewriter
+ClockReq
+\family default
+ struct, composing of a request type and request data, is passed around
+ the clock server, the clock notifier, and client tasks, to communicate
+ requests.
+\end_layout
+
+\begin_layout LyX-Code
+typedef struct ClockReq {
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+int type;
+\end_layout
+
+\begin_layout LyX-Code
+int data;
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+} ClockReq;
+\end_layout
+
+\begin_layout Standard
+The wrapper functions also loop up the clock server on the name server,
  and set it to a static variable declared within each function.
  It is build using the message passing mechanisms.
  It also registers with the nameserver so it could be discovered by other
  tasks.
- The clock server keeps track of requests through a clock notifier.
+ 
+\end_layout
+
+\begin_layout Standard
+The clock server keeps track of requests through a clock notifier.
 \end_layout
 
 \begin_layout Subsection
@@ -2016,62 +2052,6 @@ struct DelayedTask *next;
 \end_deeper
 \begin_layout LyX-Code
 } DelayedTask;
-\end_layout
-
-\begin_layout Subsection
-Delayed Queue
-\end_layout
-
-\begin_layout Standard
-The DelayedQueue struct is used by clock server to implement linked-list
- of delayed tasks.
- It only consists of a single tail pointer.
- The list is empty if the tail pointer is NULL, and the head of the list
- can be obtained from tail->next.
-\end_layout
-
-\begin_layout LyX-Code
-typedef struct DelayedQueue {
-\end_layout
-
-\begin_deeper
-\begin_layout LyX-Code
-DelayedTask *tail;
-\end_layout
-
-\end_deeper
-\begin_layout LyX-Code
-} DelayedQueue;
-\end_layout
-
-\begin_layout Subsection
-Clock Request
-\end_layout
-
-\begin_layout Standard
-The ClockRequest struct is used to communicate between the clock server,
- the clock notifier, and client tasks through calling the wrapper functions
- Time(), Delay(), DelayUntil().
- The type can be one of {NOTIFICATION, TIME, DELAY, DELAY_UNTIL}, and data
- maybe an argument accepted by Delay() and DelayUntil().
-\end_layout
-
-\begin_layout LyX-Code
-typedef struct ClockReq {
-\end_layout
-
-\begin_deeper
-\begin_layout LyX-Code
-int type;
-\end_layout
-
-\begin_layout LyX-Code
-int data;
-\end_layout
-
-\end_deeper
-\begin_layout LyX-Code
-} ClockReq;
 \end_layout
 
 \begin_layout Subsection
@@ -2135,17 +2115,33 @@ Interrupt Driven I/O
 \end_layout
 
 \begin_layout Standard
-There are 4 servers and 4 notifiers: 
+There are kinds of 4 servers and 4 notifiers: 
 \end_layout
 
 \begin_layout Itemize
-Two kinds of I/O servers, for send and receive.
- 
+Monitor-in server, handling input from the keyboard.
 \end_layout
 
 \begin_layout Itemize
-Two communication ports, COM1 and COM2.
- 
+Monitor-out server, for sending to the terminal.
+\end_layout
+
+\begin_layout Itemize
+Train-in server, handling input from the train control unit.
+\end_layout
+
+\begin_layout Itemize
+Train-out server, for sending to the train control unit.
+\end_layout
+
+\begin_layout Standard
+This seperation is necessary because there are different interrupts that
+ need to be handled, and it is conceptually easier to program them seperately
+ despite the input servers being similar and output servers being similar.
+\end_layout
+
+\begin_layout Standard
+Notifiers do similar tasks, which we will cover.
 \end_layout
 
 \begin_layout Subsection
@@ -2153,26 +2149,12 @@ Servers
 \end_layout
 
 \begin_layout Standard
-On startup the server is responsible for creating its own notifier with
- the correct priority.
- The server is almost always receive blocked.
- There are only 4 events a server accepts.
-\end_layout
-
-\begin_layout Enumerate
-Send
-\end_layout
-
-\begin_layout Enumerate
-Receive
-\end_layout
-
-\begin_layout Enumerate
-Notifier (when its own notifier checks in)
-\end_layout
-
-\begin_layout Enumerate
-Quit
+On startup the server is responsible for creating its own notifier.
+ The server is almost always receive blocked, waiting on the notifier.
+ However, servers are responsible for dealing with interrupts and handling
+ (somewhat complicated) interrupt procedures.
+ We want the notifiers, which are the interrupt handlers, to return to waiting
+ for interrupts as quickly as possible.
 \end_layout
 
 \begin_layout Subsubsection
@@ -2180,13 +2162,18 @@ Send Data
 \end_layout
 
 \begin_layout Standard
-Data is accepted as a string, and put into a send buffer.
+Data can be accepted as a string, using 
+\family typewriter
+PutString(struct String*) or PutStr(char*)
+\family default
+, and put into a send buffer.
+ Or it can be accepted as a character at a time.
  Sending data only accepts a string to guarantee entire command is put into
  the send buffer atomically.
  This is to avoid interleaving commands from two different tasks, if we
  were to provide a single character sending command such as 
 \family typewriter
-Putc()
+Putc(char)
 \family default
 .
  
@@ -2203,35 +2190,12 @@ Receive Data
 
 \begin_layout Standard
 The receive server gets data from a notifier event.
- It buffers that data and append it to a 
+ It buffers that data and replies to the appropriate task.
+ There is only 
 \family typewriter
-String
+Getc()
 \family default
- which acts as a buffer.
- When the server has both some data and a task waiting for the data, it
- 
-\family typewriter
-Reply()
-\family default
-s to the task with the content of the buffer.
- 
-\end_layout
-
-\begin_layout Standard
-Multiple notifier messages are concatenated into the same 
-\family typewriter
-String
-\family default
-.
-\end_layout
-
-\begin_layout Subsubsection
-Quitting
-\end_layout
-
-\begin_layout Standard
-Server tells its own notifier to quit, and subsequently breaks out of its
- own forever loop.
+ supported.
 \end_layout
 
 \begin_layout Subsection
@@ -2239,26 +2203,8 @@ Notifiers
 \end_layout
 
 \begin_layout Standard
-Notifiers are responsible for dealing with interrupts and handling (somewhat
- complicated) interrupt procedures.
-\end_layout
-
-\begin_layout Subsubsection
-Sending
-\end_layout
-
-\begin_layout Standard
-When the send notifier checks into the send server, it is given some data.
- Then it sends that data out.
-\end_layout
-
-\begin_layout Subsubsection
-Receiving
-\end_layout
-
-\begin_layout Standard
-When the receive notifier gets some data, it immediately delivers to the
- receive server (its parent), and goes back to wait for more data.
+Notifiers are very simple, they wait for input interrupts and let the server
+ know when one occurs, so the server can go read it or write it.
 \end_layout
 
 \begin_layout Part
@@ -2278,11 +2224,11 @@ Time()
 \end_layout
 
 \begin_layout Enumerate
-Prints time
+Prints time.
 \end_layout
 
 \begin_layout Enumerate
-Increment time by 10 clicks (1 ms)
+Increment time by 10 clicks (1 ms).
 \end_layout
 
 \begin_layout Enumerate
@@ -2293,23 +2239,35 @@ DelayUntil
 .
 \end_layout
 
+\begin_layout Standard
+DelayUntil is used instead of Delay to avoid clock slew, because the clockserver
+ calls Time() each time we use Delay.
+ Calculating the DelayUntil time ourselves therefore eliminates clock slewing.
+\end_layout
+
 \begin_layout Section
 Input Parsing
 \end_layout
 
 \begin_layout Standard
-Reads input from monitor (COM2) and echos back to the monitor.
- Parses the instruction and calls the appropriate tasks/servers.
+Parsing takes place after a complete string has been read in, meaning the
+ user has pressed the return key.
+ Then each character is fed into a parser.
+ The parser is a finite state machine, and transitions the state upon acceptable
+ valid.
+ Upon unacceptable input the machine goes into Error state and all subsequent
+ characters are colored red.
+ For valid instruction, it calls the appropriate functions.
  
 \end_layout
 
 \begin_layout Standard
-Quitting calls 
+Quitting calls the syscall 
 \family typewriter
-quit
+Halt()
 \family default
- on all tasks and services, and the kernel exits when there are no more
- ready tasks.
+, which breaks out of the main loop of the kernel.
+ Essentially it dumps all the active tasks on the floor.
 \end_layout
 
 \begin_layout Section
@@ -2317,9 +2275,13 @@ Sensor Polling
 \end_layout
 
 \begin_layout Standard
-Polls the sensors regularly.
- Records which sensors changed since last reading and the changes are printed
- onto screen (printing only changed data).
+A sensor task polls the sensors continously.
+ It records the poll into a circular buffer, and draws onto screen.
+ 
+\end_layout
+
+\begin_layout Standard
+An improvement can be made, which is to only draw if data has changed.
 \end_layout
 
 \begin_layout Section
@@ -2327,7 +2289,12 @@ Train Control
 \end_layout
 
 \begin_layout Standard
-There is one planner for many trains.
+This is not implemented in K4.
+ But there is design in the works.
+\end_layout
+
+\begin_layout Standard
+The idea is that there is one planner for many trains.
  It acts like the trains' headquarters.
 \end_layout
 
@@ -2362,8 +2329,9 @@ Train
 \end_layout
 
 \begin_layout Standard
-Trains simply tracks all the useful data associated with a train, such as:
- 
+The goal is to track all the useful data associated with a train into a
+ Train class.
+ Useful data such as: 
 \end_layout
 
 \begin_layout Itemize
@@ -2389,6 +2357,11 @@ In an infinite loop, it sends to the planner, and execute the command that
 
 \begin_layout Section
 Sensors Calibration
+\end_layout
+
+\begin_layout Standard
+This is not implemented in K4.
+ 
 \end_layout
 
 \begin_layout Standard
@@ -2568,6 +2541,11 @@ Train is approximately 50 cm/s and in 1 ms can move 5 cm.
 
 \begin_layout Subsection
 Calibration
+\end_layout
+
+\begin_layout Standard
+This is not implemented in K4.
+ 
 \end_layout
 
 \begin_layout Standard
