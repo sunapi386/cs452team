@@ -41,47 +41,85 @@ void disableCache()
     );
 }
 
-void idle() {
+void idleProfiler() {
     for (;;) {
+        //drawIdle(getIdlingRatio());
+        //bwprintf(COM2, "_");
         Pass();
     }
+}
+#include <ts7200.h>
+#include <utils.h>
+void client()
+{
+    char *dataAddr = (char *)(UART2_BASE + UART_DATA_OFFSET);
+    char buf[1024];
+    CBuffer rb;
+    CBufferInit(&rb, buf, 1024);
+
+    unsigned int i, j, ret;
+
+    for (j = 0; j < 2000; j++)
+    {
+        ret = CBufferPush(&rb, '~');
+        bwprintf(COM2, "%d ret: %d\n\r", j, ret);
+    }
+
+    for (i = 0;; i++)
+    {
+        AwaitEvent(UART2_XMIT_EVENT);
+        char c = CBufferPop(&rb);
+
+        //for (j = 0; j < 5; j++) CBufferPush(&rb, '!');
+
+        if (c == (char)(-1))
+        {
+            bwprintf(COM2, "Client done.\n\r");
+            break;
+        }
+        //bwprintf(COM2, "i: %d\n\r", i);
+        *dataAddr = c;
+    }
+    Exit();
 }
 
 void bootstrap()
 {
     // Create name server
-    Create (PRIORITY_NAMESERVER, nameserverTask);
+    //Create (PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
-    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
+    //Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
     // Create IO Servers
-    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
-    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
+    //Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
+    //Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
     Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
-    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
+    //Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 
     // Create user task
-    Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
-    Create(PRIORITY_PARSER, parserTask);
-    Create(PRIORITY_SENSOR_TASK, sensorTask);
+    //Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
+    //Create(PRIORITY_PARSER, parserTask);
+    //Create(PRIORITY_SENSOR_TASK, sensorTask);
+
+    Create(PRIORITY_USERTASK, client);
 
     // Create idle task
-    Create(PRIORITY_IDLE, idle);
+    Create(PRIORITY_IDLE, idleProfiler);
 
     // quit
     Exit();
 }
 
 static void initKernel() {
-    enableCache();
+    //enableCache();
     initTaskSystem();
     initScheduler();
     initMessagePassing();
     request = initSyscall();
     initInterrupts();
     initUART();
-    initTimer();
+    //initTimer();
 
     //int create_ret = taskCreate(1, userTaskMessage, 0);
     // int create_ret = taskCreate(1, userTaskHwiTester, 0);
@@ -99,7 +137,7 @@ static void resetKernel() {
     resetTimer();
     // resetUART();
     resetInterrupts();
-    disableCache();
+    // /disableCache();
 }
 
 static inline int handleRequest(TaskDescriptor *td) {
@@ -170,6 +208,6 @@ int main() {
     }
     resetKernel();
     debug("No tasks scheduled; exiting...");
-    bwprintf(COM1, "%c", 0x61);
+    bwputc(COM1, 0x61);
     return 0;
 }
