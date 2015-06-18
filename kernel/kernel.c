@@ -58,7 +58,7 @@ void bootstrap()
     // Create user task
     Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
     Create(PRIORITY_PARSER, parserTask);
-    // Create(PRIORITY_SENSOR_TASK, sensorTask;
+    Create(PRIORITY_SENSOR_TASK, sensorTask);
 
     // Create idle task
     Create(PRIORITY_IDLE, userTaskIdle);
