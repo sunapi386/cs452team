@@ -214,7 +214,7 @@ void monitorOutServer() {
     com2SendSrvTid = MyTid();
 
     // Register with name server
-    RegisterAs("monitorOutServer");
+    //RegisterAs("monitorOutServer");
 
     // Spawn notifier
     int notifierTid = Create(PRIORITY_NOTIFIER, &monitorOutNotifier);

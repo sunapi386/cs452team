@@ -18,7 +18,7 @@ void initUART()
     *uart1Ctrl = *uart1Ctrl | MSIEN_MASK;
 
     // Enable uart 2 rcv, xmit interrupts
-    *uart2Ctrl |= TIEN_MASK | RIEN_MASK;
+    //*uart2Ctrl |= TIEN_MASK | RIEN_MASK;
 
     // Set uart1 to 2 stop bits + no fifo
     int temp = *uart1High;
@@ -33,8 +33,8 @@ void initUART()
 
 void setUARTCtrl(int event, int val)
 {
-    int *ctrl = 0;
-    int mask = 0;
+    volatile int *ctrl = 0;
+    volatile int mask = 0;
 
     // set control parameters
     switch (event) {
@@ -59,7 +59,7 @@ void setUARTCtrl(int event, int val)
     }
 
     // read the control
-    int temp = *ctrl;
+    volatile int temp = *ctrl;
 
     // negate the bit if val is 0; else assert it
     *ctrl = (val == 0) ? (temp & ~mask) : (temp | mask);

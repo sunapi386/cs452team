@@ -200,7 +200,6 @@ void clockServerTask()
             insertDelayedTask(&q, tasks, tid, req.data);
             break;
         default:
-            assert(0);
             break;
         }
     }

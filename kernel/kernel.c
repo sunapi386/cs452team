@@ -52,33 +52,19 @@ void idleProfiler() {
 #include <utils.h>
 void client()
 {
+    /*
     char *dataAddr = (char *)(UART2_BASE + UART_DATA_OFFSET);
-    char buf[1024];
+    char buf[2048];
     CBuffer rb;
-    CBufferInit(&rb, buf, 1024);
+    CBufferInit(&rb, buf, 2048);
+    */
+    unsigned int i;
 
-    unsigned int i, j, ret;
-
-    for (j = 0; j < 2000; j++)
+    for (;;)
     {
-        ret = CBufferPush(&rb, '~');
-        bwprintf(COM2, "%d ret: %d\n\r", j, ret);
-    }
-
-    for (i = 0;; i++)
-    {
-        AwaitEvent(UART2_XMIT_EVENT);
-        char c = CBufferPop(&rb);
-
-        //for (j = 0; j < 5; j++) CBufferPush(&rb, '!');
-
-        if (c == (char)(-1))
-        {
-            bwprintf(COM2, "Client done.\n\r");
-            break;
-        }
-        //bwprintf(COM2, "i: %d\n\r", i);
-        *dataAddr = c;
+        //AwaitEvent(UART2_XMIT_EVENT);
+        //*dataAddr = '*';
+        Putc(COM2, '*');
     }
     Exit();
 }

@@ -118,10 +118,10 @@ void initInterrupts() {
         setICU(vic[i], VIC_INT_SELECT, 0);                      // select pl190 irq mode
     }
 
-    enable(1, UART1_OR_MASK); // uart1 OR
-    enable(0, UART2_RECV_MASK); // uart2 recv
+    //enable(1, UART1_OR_MASK); // uart1 OR
+    //enable(0, UART2_RECV_MASK); // uart2 recv
     enable(0, UART2_XMIT_MASK); // uart2 xmit
-    enable(1, TIMER3_MASK); // enable timer 3
+    //enable(1, TIMER3_MASK); // enable timer 3
 }
 
 void resetInterrupts() {
@@ -188,7 +188,6 @@ void handleInterrupt() {
 
             int cts = (modemStatus & CTSN_MASK) != 0;
             int dcts = (modemStatus & DCTS_MASK) != 0;
-            //bwprintf(COM2, "modem cts: %x, dcts: %x\n\r", cts, dcts);
 
             if (cts && dcts)
             {
@@ -203,8 +202,6 @@ void handleInterrupt() {
             // Ready to send a byte
             if (ctsOn && xmitRdy)
             {
-                //bwprintf(COM2, "com1 ready to send: modem\n\r");
-
                 // Reset states
                 ctsOn = 0;
                 xmitRdy = 0;
@@ -217,8 +214,6 @@ void handleInterrupt() {
                     td->ret = (UART1_BASE + UART_DATA_OFFSET);
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
-                    //disableUART1ModemInterrupt();
-                    //return;
                 }
             }
         }
@@ -230,8 +225,6 @@ void handleInterrupt() {
 
             if (ctsOn == 1)// && ctsOff)
             {
-                //bwprintf(COM2, "com1 ready to send: xmit\n\r");
-
                 // reset states
                 ctsOn = 0;
                 xmitRdy = 0;
@@ -250,8 +243,6 @@ void handleInterrupt() {
             // we are not CTS-clear.
             else
             {
-                //bwprintf(COM2, "com1 marking xmit ready, ctsOn: %d\n\r", ctsOn);
-
                 // mark transmit ready
                 xmitRdy = 1;
             }
