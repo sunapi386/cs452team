@@ -55,8 +55,8 @@ prod: clean check
 	make CFLAGS="$(CFLAGS) -DPRODUCTION"
 
 
-k4: prod
-	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sunchang/k4.elf
+tc1: prod
+	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sunchang/tc1.elf
 
 check:
 	git grep -n FIXME
