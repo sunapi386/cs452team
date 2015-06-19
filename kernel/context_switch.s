@@ -99,14 +99,17 @@ kernelEnter:
     # store r2 (user cpsr), lr (user pc) to user stack
     stmfd r1!, {r2, lr}
 
+    # move r0 to r2
+    mov r2, r0
+
     # load r0 (*task)
     ldmfd sp!, {r0}
 
     # store r1 (user sp) in task->sp
     str r1, [r0, #12]
 
-    # store r0 in task->ret
-    str r0, [r0, #8]
+    # store r2 (r0) in task->ret
+    str r2, [r0, #8]
 
     # 1) load the rest of the kernel registers from stack
     ldmfd sp!, {r1-r12, pc}
