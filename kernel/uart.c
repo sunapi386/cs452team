@@ -10,15 +10,11 @@ void initUART()
     int *uart1High = (int *)(UART1_BASE + UART_LCRH_OFFSET);
     int *uart1Ctrl = (int *)(UART1_BASE + UART_CTLR_OFFSET);
     int *uart2High = (int *)(UART2_BASE + UART_LCRH_OFFSET);
-    int *uart2Ctrl = (int *)(UART2_BASE + UART_CTLR_OFFSET);
 
     // Set uart1 speed to 2400
     *uart1Low = 0xbf;
     *uart1Mid = 0x0;
     *uart1Ctrl = *uart1Ctrl | MSIEN_MASK;
-
-    // Enable uart 2 rcv, xmit interrupts
-    //*uart2Ctrl |= TIEN_MASK | RIEN_MASK;
 
     // Set uart1 to 2 stop bits + no fifo
     int temp = *uart1High;
