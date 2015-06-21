@@ -33,7 +33,7 @@ hand_assemblies := kernel/context_switch.s
 objects := $(patsubst %.s,%.o,$(hand_assemblies)) $(patsubst %.c,%.o,$(sources))
 
 deploy: kernel.elf
-	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sunchang/${USER}.elf
+	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sc/${USER}.elf
 
 kernel.elf: $(objects) linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lgcc
@@ -55,8 +55,8 @@ prod: clean check
 	make CFLAGS="$(CFLAGS) -DPRODUCTION"
 
 
-tc1: prod
-	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sunchang/tc1.elf
+k5: prod
+	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sc/k5.elf
 
 check:
 	git grep -n FIXME
