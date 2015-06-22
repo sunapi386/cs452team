@@ -17,6 +17,7 @@
 #include <user/clock_drawer.h>
 #include <user/parser.h>
 #include <user/sensor.h>
+#include <user/train.h>
 
 
 static Syscall *request = NULL;
@@ -129,7 +130,7 @@ static void initKernel() {
     initInterrupts();
     initUART();
     initTimer();
-
+    initTrain();
     //int create_ret = taskCreate(1, userTaskMessage, 0);
     // int create_ret = taskCreate(1, userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, runBenchmarkTask, 0);
