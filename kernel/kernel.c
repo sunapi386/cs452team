@@ -48,47 +48,38 @@ void idleProfiler() {
         Pass();
     }
 }
-#include <ts7200.h>
-#include <utils.h>
+
 void client()
 {
-    /*
-    char *dataAddr = (char *)(UART2_BASE + UART_DATA_OFFSET);
-    char buf[2048];
-    CBuffer rb;
-    CBufferInit(&rb, buf, 2048);
-    */
-    // unsigned int i;
-
     for (;;)
     {
-        //AwaitEvent(UART2_XMIT_EVENT);
-        //*dataAddr = '*';
-        Putc(COM2, '*');
+        //printf(COM2, "%s%d\n\r", "hello world!", 123);
+        PutStr(COM2, "HELLO");
     }
+
     Exit();
 }
 
 void bootstrap()
 {
     // Create name server
-    Create (PRIORITY_NAMESERVER, nameserverTask);
+    //Create(PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
-    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
+    //Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
     // Create IO Servers
-    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
-    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
+    //Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
+    //Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
     Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
-    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
+    //Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 
     // Create user task
-    Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
-    Create(PRIORITY_PARSER, parserTask);
-    // Create(PRIORITY_SENSOR_TASK, sensorTask);
+    //Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
+    //Create(PRIORITY_PARSER, parserTask);
+    //Create(PRIORITY_SENSOR_TASK, sensorTask);
 
-    // Create(PRIORITY_USERTASK, client);
+    Create(PRIORITY_USERTASK, client);
 
     // Create idle task
     Create(PRIORITY_IDLE, idleProfiler);
@@ -98,14 +89,14 @@ void bootstrap()
 }
 
 static void initKernel() {
-    //enableCache();
+    enableCache();
     initTaskSystem();
     initScheduler();
     initMessagePassing();
     request = initSyscall();
     initInterrupts();
     initUART();
-    initTimer();
+    //initTimer();
 
     //int create_ret = taskCreate(1, userTaskMessage, 0);
     // int create_ret = taskCreate(1, userTaskHwiTester, 0);
@@ -123,7 +114,7 @@ static void resetKernel() {
     resetTimer();
     // resetUART();
     resetInterrupts();
-    // /disableCache();
+    disableCache();
 }
 
 static inline int handleRequest(TaskDescriptor *td) {
