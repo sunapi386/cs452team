@@ -24,6 +24,8 @@
 
 extern void queueTask(struct TaskDescriptor *td);
 
+static int hwi = -1;
+
 static int vic[2];  // for iterating
 static TaskDescriptor *eventTable[64]; // 64 interrupt types
 static inline void setICU(unsigned int base, unsigned int offset, unsigned int val) {
@@ -37,6 +39,21 @@ static inline void enable(unsigned int vicID, unsigned int offset) {
 }
 static inline void clear(int vicID, unsigned int offset) {
     setICU(vic[vicID], VIC_INT_CLEAR, offset);
+}
+
+void setHwi()
+{
+    hwi = 1;
+}
+
+void clearHwi()
+{
+    hwi = 0;
+}
+
+int isHwi()
+{
+    return hwi == 1;
 }
 
 static inline void save() {
@@ -118,8 +135,10 @@ void initInterrupts() {
         setICU(vic[i], VIC_INT_SELECT, 0);                      // select pl190 irq mode
     }
 
-    enable(1, UART1_OR_MASK); // uart1 OR
-    enable(0, UART2_RECV_MASK); // uart2 recv
+    clearHwi();
+
+    //enable(1, UART1_OR_MASK); // uart1 OR
+    //enable(0, UART2_RECV_MASK); // uart2 recv
     enable(0, UART2_XMIT_MASK); // uart2 xmit
     enable(1, TIMER3_MASK); // enable timer 3
 }
@@ -162,7 +181,6 @@ void handleInterrupt() {
     if (vic2Status & TIMER3_MASK) {
         // Clear timer interrupt in timer
         clearTimerInterrupt();
-
         // Queue task if there's a task waiting
         TaskDescriptor *td = eventTable[TIMER_EVENT];
         if (td != 0) {
@@ -298,5 +316,9 @@ void handleInterrupt() {
             eventTable[UART2_XMIT_EVENT] = 0;
         }
     }
+    else
+    {
+        // something is wrong here
+        assert(0);
+    }
 }
-
