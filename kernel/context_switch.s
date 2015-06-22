@@ -64,14 +64,15 @@ irqEnter:
     # go to supervisor mode
     msr cpsr_c, #0xd3
 
+    # set hardware int flag
+    bl setHwi
+
     # put correct pc_usr to lr_svc
     mov lr, r0
 
     # pop scratch register back
     ldmfd sp!, {r0}
 
-    # set spsr to user mode (irq enabled)
-    msr spsr_c, #0x50
     .size   irqEnter, .-irqEnter
     .align  2
     .global kernelEnter

@@ -1,11 +1,15 @@
 #ifndef __INTERRUPTS_H
 #define __INTERRUPTS_H
 
-#define INT_IRQ 0 // interrupt request
 #define INT_POKE_MASK   0xff000000  // see -mpoke-function-name
 
-
 struct TaskDescriptor;
+
+void setHwi();
+
+void clearHwi();
+
+int isHwi();
 
 void initInterrupts();
 // puts a task onto interrupt table to wait for interruptID

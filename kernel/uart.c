@@ -9,6 +9,8 @@ void initUART()
     int *uart1Low  = (int *)(UART1_BASE + UART_LCRL_OFFSET);
     int *uart1High = (int *)(UART1_BASE + UART_LCRH_OFFSET);
     int *uart1Ctrl = (int *)(UART1_BASE + UART_CTLR_OFFSET);
+    int *uart2Low  = (int *)(UART2_BASE + UART_LCRL_OFFSET);
+    int *uart2Mid  = (int *)(UART2_BASE + UART_LCRM_OFFSET);
     int *uart2High = (int *)(UART2_BASE + UART_LCRH_OFFSET);
 
     // Set uart1 speed to 2400
@@ -21,7 +23,9 @@ void initUART()
     temp = (temp | STP2_MASK) & ~FEN_MASK ;
     *uart1High = temp;
 
-    // Set uart2 to no fifo
+    // Set uart2 to no fifo, 115200 speed
+    *uart2Low = 0x3;
+    *uart2Mid = 0x0;
     temp = *uart2High;
     temp = temp & ~FEN_MASK;
     *uart2High = temp;
