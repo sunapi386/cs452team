@@ -12,11 +12,11 @@ struct String;
 #define SYS_SEND            2
 #define SYS_RECEIVE         3
 #define SYS_REPLY           4
-#define SYS_CREATE          5 //
-#define SYS_EXIT            6 //
+#define SYS_CREATE          5
+#define SYS_EXIT            6
 #define SYS_MY_TID          7
 #define SYS_MY_PARENT_TID   8
-#define SYS_PASS            9 //
+#define SYS_PASS            9
 #define SYS_HALT            10
 
 typedef
