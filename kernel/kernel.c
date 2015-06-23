@@ -45,7 +45,7 @@ void disableCache()
 void idleProfiler() {
     for (;;) {
         //drawIdle(getIdlingRatio());
-        //bwprintf(COM2, "i");
+        bwprintf(COM2, "i");
         //Putc(COM2, 'i');
         //bwprintf(COM2, "i");
         //bwprintf(COM2, "i2");
@@ -76,10 +76,10 @@ void client()
 void bootstrap()
 {
     // Create name server
-    Create(PRIORITY_NAMESERVER, nameserverTask);
+    //Create(PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
-    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
+    //Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
     // Create IO Servers
     //Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
@@ -115,12 +115,12 @@ static void initKernel() {
     initTrain();
 
     //int create_ret = taskCreate(PRIORITY_INIT, userTaskMessage, 0);
-    int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
+    //int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, interruptRaiser, 0);
     //int create_ret = taskCreate(0, userTaskK3, 0);
     // int create_ret = taskCreate(1, userTaskIdle, 31);
-    //int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
+    int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));

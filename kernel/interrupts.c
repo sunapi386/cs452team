@@ -118,10 +118,10 @@ void initInterrupts() {
         setICU(vic[i], VIC_INT_SELECT, 0);                      // select pl190 irq mode
     }
 
-    enable(0, 1); // soft int
+    //enable(0, 1); // soft int
     //enable(1, UART1_OR_MASK); // uart1 OR
     //enable(0, UART2_RECV_MASK); // uart2 recv
-    //enable(0, UART2_XMIT_MASK); // uart2 xmit
+    enable(0, UART2_XMIT_MASK); // uart2 xmit
     //enable(1, TIMER3_MASK); // enable timer 3
 }
 
