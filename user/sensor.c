@@ -4,7 +4,7 @@
 #include <user/sensor.h>
 #include <user/syscall.h>
 
-#define QUERY 133
+#define SENSOR_QUERY 133
 
 void intToString(unsigned int number, char *buf)
 {
@@ -64,7 +64,7 @@ processData(CBuffer *b, const char replyCount, const char data)
         }
     }
 }
-
+/*
 static inline void
 putStatus(const char status)
 {
@@ -143,6 +143,25 @@ draw(const CBuffer *b)
     }
     PutStr("\33[u");
 }
+*/
+void printStatus(char replyCount, char data)
+{
+    char i, index, name = 0, offset = replyCount % 2 == 0 ? 0 : 8;
+
+    if      (replyCount < 2) name = 0;
+    else if (replyCount < 4) name = 1;
+    else if (replyCount < 6) name = 2;
+    else if (replyCount < 8) name = 3;
+    else                     name = 4;
+
+    for (i = 0, index = 8; i < 8; i++, index--)
+    {
+        if ((1 << i) & data)
+        {
+            printf(COM2, "%c%d\n\r", 'A' + name, index + offset);
+        }
+    }
+}
 
 void sensorTask()
 {
@@ -153,17 +172,18 @@ void sensorTask()
     for (;;)
     {
         // Query for data
-        Putc(COM1, QUERY);
+        Putc(COM1, SENSOR_QUERY);
 
         // Grab 10 replies
-        int i;
+        char i;
         for (i = 0; i < 10; i++)
         {
             char c = Getc(COM1);
             if (c != 0)
             {
-                processData(&sensorStatus, i, c);
-                draw(&sensorStatus);
+                //processData(&sensorStatus, i, c);
+                //draw(&sensorStatus);
+                printStatus(i, c);
             }
         }
     }

@@ -1,4 +1,4 @@
-#include <string.h>
+#include <utils.h>
 #include <user/vt100.h>
 #include <user/syscall.h>
 
@@ -13,7 +13,7 @@ void vt_init() {
     sprintf(&s, "%s%d;%dr", VT_CSI, 18, 20);
     sputstr(&s, VT_CURSOR_SHOW);
     sputstr(&s, "Loading...");
-    PutString(&s);
+    PutString(COM2, &s);
 }
 
 void vt_pos(String *s, int row, int col) {

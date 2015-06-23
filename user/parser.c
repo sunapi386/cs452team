@@ -1,7 +1,6 @@
 #include <user/parser.h>
 #include <priority.h>
 #include <utils.h>
-#include <string.h>
 #include <user/vt100.h>
 #include <user/syscall.h> // Create
 #include <user/train.h>
@@ -278,7 +277,7 @@ static bool parse(Parser *p, char c) {
         sputstr(&disp_msg, "> ");
         p->state = Empty;
     } // else if carriage return
-    PutString(&disp_msg);
+    PutString(COM2, &disp_msg);
 
     return run;
 }
@@ -295,7 +294,7 @@ void parserTask() {
     sinit(&s);
     vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
     sputstr(&s, "> ");
-    PutString(&s);
+    PutString(COM2, &s);
 
     // read input
     while(run) {
@@ -307,14 +306,14 @@ void parserTask() {
             if(ch == VT_CARRIAGE_RETURN) break;
         }
         // parse string
-        for(unsigned i = 0; i < slen(&input) && run; i++) {
+        for(unsigned i = 0; i < input.len && run; i++) {
             run = parse(&p, input.buf[i]);
         }
     }
     sinit(&s);
     vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
     sputstr(&s, "Parser exiting");
-    PutString(&s);
+    PutString(COM2, &s);
 
     // write output
     Exit();
