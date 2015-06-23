@@ -42,10 +42,7 @@ void disableCache()
 
 void idleProfiler()
 {
-    for (;;)
-    {
-        Pass();
-    }
+    for (;;);
     Exit();
 }
 
@@ -56,14 +53,9 @@ void client()
     {
         dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
 
-        if (dataAddr != (char *)(UART2_BASE + UART_DATA_OFFSET))
-        {
-            bwprintf(COM2, "gg %x", dataAddr);
-            break;
-        }
+        assert(dataAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
 
         *dataAddr = '*';
-        //Putc(COM2, '*');
     }
     Exit();
 }
@@ -87,7 +79,7 @@ void bootstrap()
     //Create(PRIORITY_PARSER, parserTask);
     // Create(PRIORITY_SENSOR_TASK, sensorTask);
 
-    // Create(PRIORITY_USERTASK, client);
+    Create(PRIORITY_USERTASK, client);
     //Create(PRIORITY_USERTASK, clientNotifier);
     //Create(PRIORITY_USERTASK, client2);
 
@@ -111,12 +103,12 @@ static void initKernel() {
     initTrain();
 
     //int create_ret = taskCreate(PRIORITY_INIT, userTaskMessage, 0);
-    int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
+    //int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, interruptRaiser, 0);
     //int create_ret = taskCreate(0, userTaskK3, 0);
     // int create_ret = taskCreate(1, userTaskIdle, 31);
-    //int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
+    int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
