@@ -73,25 +73,6 @@ void client()
     Exit();
 }
 
-void clientNotifier()
-{
-    //char *dataAddr = (char *)(UART2_BASE + UART_DATA_OFFSET);
-    /*
-        char buf[2048];
-        CBuffer rb;
-        CBufferInit(&rb, buf, 2048);
-    */
-    // unsigned int i;
-    //clientTid = clientTid;
-    for (;;)
-    {
-        //AwaitEvent(UART2_XMIT_EVENT);
-        //*dataAddr = '*';
-        Pass();
-    }
-    Exit();
-}
-
 void bootstrap()
 {
     // Create name server
@@ -147,7 +128,6 @@ static void initKernel() {
 
 static void resetKernel() {
     resetTimer();
-    // resetUART();
     resetInterrupts();
     disableCache();
 }
@@ -215,12 +195,12 @@ int handleRequest(TaskDescriptor *td) {
     return 0;
 }
 
-int main() {
+int main()
+{
     initKernel();
     TaskDescriptor *task = NULL;
     for(;;) {
         task = schedule();
-        //bwprintf(COM2, "Scheduled: %x, number of tasks: %d\n\r", task, getNumTasks());
         if (task == NULL) {
             break;
         }
@@ -233,5 +213,7 @@ int main() {
     resetKernel();
     debug("No tasks scheduled; exiting...");
     bwputc(COM1, 0x61);
+    resetUART();
     return 0;
 }
+
