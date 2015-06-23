@@ -19,7 +19,6 @@
 #include <user/sensor.h>
 #include <user/train.h>
 
-
 static Syscall *request = NULL;
 
 void enableCache()
@@ -41,32 +40,34 @@ void disableCache()
         "mcr p15, 0, r0, c1, c0, 0\n\t"
     );
 }
+#include <ts7200.h>
 
 void idleProfiler() {
     for (;;) {
         //drawIdle(getIdlingRatio());
-        //bwprintf(COM2, "_");
+        //bwprintf(COM2, "i");
         //Putc(COM2, 'i');
+        //bwprintf(COM2, "i");
+        //bwprintf(COM2, "i2");
         Pass();
     }
+    Exit();
 }
-
-#include <ts7200.h>
-
-static int clientTid = -1;
 
 void client()
 {
+    char *dataAddr = 0;
     for (;;)
     {
-        char *dataAddr = (char *)AwaitEvent(UART2_XMIT_EVENT);
+        dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
+
         if (dataAddr != (char *)(UART2_BASE + UART_DATA_OFFSET))
         {
             bwprintf(COM2, "gg %x", dataAddr);
-            bwprintf(COM2, "my tid: %d, original tid: %d", MyTid(), clientTid);
             break;
         }
-        *dataAddr = ' ';
+
+        *dataAddr = '*';
         //Putc(COM2, '*');
     }
     Exit();
@@ -94,7 +95,7 @@ void clientNotifier()
 void bootstrap()
 {
     // Create name server
-    //Create (PRIORITY_NAMESERVER, nameserverTask);
+    Create(PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
     Create(PRIORITY_CLOCK_SERVER, clockServerTask);
@@ -111,7 +112,7 @@ void bootstrap()
     // Create(PRIORITY_SENSOR_TASK, sensorTask);
 
     Create(PRIORITY_USERTASK, client);
-    Create(PRIORITY_USERTASK, clientNotifier);
+    //Create(PRIORITY_USERTASK, clientNotifier);
     //Create(PRIORITY_USERTASK, client2);
 
     // Create idle task
@@ -131,6 +132,7 @@ static void initKernel() {
     initUART();
     initTimer();
     initTrain();
+
     //int create_ret = taskCreate(1, userTaskMessage, 0);
     // int create_ret = taskCreate(1, userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, runBenchmarkTask, 0);
@@ -150,15 +152,16 @@ static void resetKernel() {
     disableCache();
 }
 
-static inline int handleRequest(TaskDescriptor *td) {
-    if (isHwi())
+int handleRequest(TaskDescriptor *td) {
+    if (td->hwi)
     {
+        //bwprintf(COM2, "handleRequest\n\r");
         handleInterrupt();
-        clearHwi();
-        goto done;
+        td->hwi = 0; //clearHwi();
     }
-
-    switch (request->type) {
+    else
+    {
+        switch (request->type) {
         case SYS_AWAIT_EVENT:
             if (awaitInterrupt(td, request->arg1) == -1)
             {
@@ -204,8 +207,9 @@ static inline int handleRequest(TaskDescriptor *td) {
         default:
             debug("Invalid syscall %u!", request->type);
             break;
+        }
     }
-done:
+
     // requeue the task if we haven't returned (from SYS_EXIT)
     queueTask(td);
     return 0;
@@ -216,6 +220,7 @@ int main() {
     TaskDescriptor *task = NULL;
     for(;;) {
         task = schedule();
+        //bwprintf(COM2, "Scheduled: %x, number of tasks: %d\n\r", task, getNumTasks());
         if (task == NULL) {
             break;
         }

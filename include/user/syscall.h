@@ -8,16 +8,16 @@
 
 struct String;
 
-#define SYS_AWAIT_EVENT     0
-#define SYS_SEND            1
-#define SYS_RECEIVE         2
-#define SYS_REPLY           3
-#define SYS_CREATE          4
-#define SYS_EXIT            5
-#define SYS_MY_TID          6
-#define SYS_MY_PARENT_TID   7
-#define SYS_PASS            8
-#define SYS_HALT            9
+#define SYS_AWAIT_EVENT     1
+#define SYS_SEND            2
+#define SYS_RECEIVE         3
+#define SYS_REPLY           4
+#define SYS_CREATE          5
+#define SYS_EXIT            6
+#define SYS_MY_TID          7
+#define SYS_MY_PARENT_TID   8
+#define SYS_PASS            9
+#define SYS_HALT            10
 
 typedef
 struct Syscall {

@@ -66,6 +66,7 @@ typedef struct TaskDescriptor {
     int parent_id;
     int ret;
     unsigned int *sp;
+    int hwi;
     Status status;
     int *send_id;
     void *send_buf, *recv_buf;

@@ -24,8 +24,6 @@
 
 extern void queueTask(struct TaskDescriptor *td);
 
-static int hwi = -1;
-
 static int vic[2];  // for iterating
 static TaskDescriptor *eventTable[64]; // 64 interrupt types
 static inline void setICU(unsigned int base, unsigned int offset, unsigned int val) {
@@ -39,21 +37,6 @@ static inline void enable(unsigned int vicID, unsigned int offset) {
 }
 static inline void clear(int vicID, unsigned int offset) {
     setICU(vic[vicID], VIC_INT_CLEAR, offset);
-}
-
-void setHwi()
-{
-    hwi = 1;
-}
-
-void clearHwi()
-{
-    hwi = 0;
-}
-
-int isHwi()
-{
-    return hwi == 1;
 }
 
 static inline void save() {
@@ -135,8 +118,6 @@ void initInterrupts() {
         setICU(vic[i], VIC_INT_SELECT, 0);                      // select pl190 irq mode
     }
 
-    clearHwi();
-
     //enable(1, UART1_OR_MASK); // uart1 OR
     //enable(0, UART2_RECV_MASK); // uart2 recv
     enable(0, UART2_XMIT_MASK); // uart2 xmit
@@ -151,6 +132,7 @@ void resetInterrupts() {
 }
 
 int awaitInterrupt(TaskDescriptor *active, int event) {
+    //bwprintf(COM2, "Kernel AwaitEvent: %d\n\r", event);
     if (event < TIMER_EVENT ||
         event > UART2_XMIT_EVENT) {
         return -1;
@@ -172,6 +154,8 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
 }
 
 void handleInterrupt() {
+    //bwprintf(COM2, "Kernel handleInterrupt, hwi: %d\n\r", _int_hwi);
+
     static char ctsOn = -1;
     static char xmitRdy = -1;
     int vic1Status = getICU(VIC1, VIC_IRQ_STATUS);
@@ -181,6 +165,7 @@ void handleInterrupt() {
     if (vic2Status & TIMER3_MASK) {
         // Clear timer interrupt in timer
         clearTimerInterrupt();
+
         // Queue task if there's a task waiting
         TaskDescriptor *td = eventTable[TIMER_EVENT];
         if (td != 0) {
@@ -307,6 +292,8 @@ void handleInterrupt() {
         // turn interrupt off in UART
         setUARTCtrl(UART2_XMIT_EVENT, 0);
 
+        //bwprintf(COM2, "XMIT interrupt.\n\r");
+
         TaskDescriptor *td = eventTable[UART2_XMIT_EVENT];
         if (td != 0)
         {
@@ -319,6 +306,7 @@ void handleInterrupt() {
     else
     {
         // something is wrong here
-        assert(0);
+        //assert(0);
+        bwprintf(COM2, "handleInterrupt() when there is no interrupt.\n\r");
     }
 }
