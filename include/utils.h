@@ -21,14 +21,26 @@ int CBufferPush(CBuffer *b, char ch);
 char CBufferPop(CBuffer *b);
 bool CBufferIsEmpty(const CBuffer *b);
 void CBufferClean(CBuffer *b);
-
-/**
-CBufferPushStr: pushes a NUL terminated char array into a CBuffer
-
-Return values
-    -1: overflow occured
-    or non-negative integer for the number of characters pushed
-*/
 int CBufferPushStr(CBuffer *b, char *str);
+
+#define STR_MAX_LEN 255
+
+typedef struct String {
+    unsigned int len;
+    char buf[STR_MAX_LEN + 1];
+} String;
+
+static inline void sinit(String *s) {
+    s->len = 0;
+}
+
+void scopy(String *dst, const char *src);
+void sputc(String *s, const char c);
+void sputstr(String *s, const char *str);
+void sputuint(String *s, int num, unsigned short base);
+void sputint(String *s, int num, unsigned short base);
+void sformat(String *s, char *fmt, char * va);
+void sprintf(String *s, char *fmt, ... );
+void printf(int channel, char *fmt, ... );
 
 #endif

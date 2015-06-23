@@ -177,11 +177,9 @@ server.
 */
 int Putc(int channel, char c);
 
-int PutStr(char *str);
+int PutStr(int channel, char *str);
 
-int PutString(struct String *s);
-
-void Printf(char* str, char *fmt, ... );
+int PutString(int channel, struct String *s);
 
 void Halt();
 

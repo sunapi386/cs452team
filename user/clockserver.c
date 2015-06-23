@@ -182,7 +182,7 @@ void clockServerTask()
     // Main loop for serving requests
     for (;;)
     {
-        Receive(&tid, &req, sizeof(ClockReq));
+        Receive(&tid, &req, sizeof(req));
         switch (req.type)
         {
         case NOTIFICATION:

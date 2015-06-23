@@ -3,7 +3,6 @@
 #include <events.h>
 #include <utils.h>
 #include <priority.h>
-#include <string.h>
 #include <ts7200.h>
 
 #define NOTIFICATION 0
@@ -52,30 +51,25 @@ int Putc(int channel, char c) {
     return (ret < 0) ? -1 : 0;
 }
 
-int PutString(String *s) {
+int PutString(int channel, String *s) {
     s->buf[s->len] = '\0';
-    return PutStr(s->buf);
+    return PutStr(channel, s->buf);
 }
 
-int PutStr(char *str)
+int PutStr(int channel, char *str)
 {
+    // Check channel type
+    if (channel != COM1 && channel != COM2) return -1;
+
     // Prepare request
     IOReq req = {
         .type = PUTSTR,
         .data = (unsigned int)str
     };
-
-    int ret = Send(com2SendSrvTid, &req, sizeof(req), 0, 0);
+    int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
+    int ret = Send(server_tid, &req, sizeof(req), 0, 0);
     return (ret < 0) ? -1 : 0;
 }
-
-void Printf(char* str, char *fmt, ... ) {
-    String s;
-    scopy(&s, str);
-    sprintf(&s, fmt);
-    PutString(&s);
-}
-
 
 static void monitorInNotifier() {
     int pid = MyParentTid();
@@ -455,6 +449,31 @@ void trainOutServer() {
                 CBufferPush(&charBuffer, (char)(req.data));
             }
             break;
+        case PUTSTR:
+            // unblock caller
+            Reply(tid, 0, 0);
+
+            // get the ptr to str
+            char *str = (char *)(req.data);
+
+            // push entire string into buffer
+            CBufferPushStr(&charBuffer, str);
+
+            // unblock notifier we've previously
+            // got a xmit but had nothing to send
+            if (!CBufferIsEmpty(&charBuffer) &&
+                sendAddr != 0)
+            {
+                *sendAddr = CBufferPop(&charBuffer);
+
+                // unblock the notifier which will
+                // call AwaitEvent() which re-enables
+                // xmit interrupt
+                Reply(notifierTid, 0, 0);
+
+                // reset 'seen transmit int' state
+                sendAddr = 0;
+            }
         default:
             break;
         }

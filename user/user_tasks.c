@@ -1,5 +1,5 @@
 #include <debug.h>
-#include <string.h>
+#include <utils.h>
 #include <user/vt100.h>
 #include <user/syscall.h>
 #include <user/user_tasks.h>
@@ -51,7 +51,7 @@ inline void drawIdle(unsigned int diff) {
     sprintf(&s, "%u %%", diff);
     sprintf(&s, "%c[?25h", ESC); // SHOW CURSOR
     sprintf(&s, "%c8", ESC); // LOAD CURSOR
-    PutString(&s);
+    PutString(COM2, &s);
 }
 
 void userTaskIdle() {

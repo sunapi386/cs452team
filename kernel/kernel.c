@@ -79,12 +79,12 @@ void bootstrap()
     Create(PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
-    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
+    //Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
     // Create IO Servers
     //Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
     //Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
-    //Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
+    Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
     //Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 
     // Create user task
@@ -93,7 +93,6 @@ void bootstrap()
     // Create(PRIORITY_SENSOR_TASK, sensorTask);
 
     Create(PRIORITY_USERTASK, client);
-    //Create(PRIORITY_USERTASK, clientNotifier);
     //Create(PRIORITY_USERTASK, client2);
 
     // Create idle task
@@ -113,6 +112,7 @@ static void initKernel() {
     initUART();
     initTimer();
     initTrain();
+
 
     //int create_ret = taskCreate(1, userTaskMessage, 0);
     // int create_ret = taskCreate(1, userTaskHwiTester, 0);
@@ -135,7 +135,6 @@ static void resetKernel() {
 int handleRequest(TaskDescriptor *td) {
     if (td->hwi)
     {
-        //bwprintf(COM2, "handleRequest\n\r");
         handleInterrupt();
         td->hwi = 0; //clearHwi();
     }
@@ -199,7 +198,8 @@ int main()
 {
     initKernel();
     TaskDescriptor *task = NULL;
-    for(;;) {
+    for(;;)
+    {
         task = schedule();
         if (task == NULL) {
             break;

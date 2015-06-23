@@ -1,4 +1,4 @@
-#include <string.h>
+#include <utils.h>
 #include <priority.h>           // init
 #include <user/vt100.h>              // constants
 #include <user/syscall.h>       // Create
@@ -21,7 +21,7 @@ static void draw(int time) {
     sputc(&s, '0' + (time % 100) / 10);
     sprintf(&s, "%c[?25h", ESC); // SHOW CURSOR
     sprintf(&s, "%c8", ESC); // LOAD CURSOR
-    PutString(&s);
+    PutString(COM2, &s);
 }
 
 void clockDrawer() {
