@@ -1,8 +1,8 @@
 #define KERNEL_MAIN
 #include <kernel/scheduler.h>
 #include <kernel/message_passing.h>
-#include <user/syscall.h>
 #undef KERNEL_MAIN
+#include <user/syscall.h>
 #include <kernel/interrupts.h>
 #include <kernel/context_switch.h>
 #include <kernel/uart.h>
@@ -18,8 +18,6 @@
 #include <user/parser.h>
 #include <user/sensor.h>
 #include <user/train.h>
-
-static Syscall *request = NULL;
 
 void enableCache()
 {
@@ -136,7 +134,7 @@ static void resetKernel() {
     disableCache();
 }
 
-int handleRequest(TaskDescriptor *td) {
+int handleRequest(TaskDescriptor *td, Syscall *request) {
 
     if (td->hwi)
     {
@@ -184,7 +182,6 @@ int handleRequest(TaskDescriptor *td) {
             break;
         case SYS_PASS:
             //debug("Pass task %x\n\r", td);
-            td->ret = 555;
             break;
         case SYS_EXIT:
             //debug("Exit task %x\n\r", td);
@@ -206,15 +203,16 @@ int main()
 {
     initKernel();
     TaskDescriptor *task = NULL;
+    Syscall *request = NULL;
     for(;;) {
         task = schedule();
         if (task == NULL) {
             debug("No tasks scheduled; exiting...");
             break;
         }
-        kernelExit(task);
-        if(handleRequest(task)) {
-            bwprintf(COM2, "Halt\n\r");
+        request = kernelExit(task);
+        if(handleRequest(task, request)) {
+            debug("Halt");
             break;
         }
     }

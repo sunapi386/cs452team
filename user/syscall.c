@@ -1,14 +1,4 @@
-#define SYSCALL_DEFNS
 #include <user/syscall.h>
-#undef SYSCALL_DEFNS
-
-static Syscall s;
-
-Syscall *initSyscall()
-{
-    s.type = 0;
-    return &s;
-}
 
 // Don't modify this! I know there isn't are return statement!
 // It's magic! (It needs the request parameter too)
@@ -20,6 +10,7 @@ int swi(Syscall *request) {
 }
 
 int Create(int priority, void (*code) ()) {
+    Syscall s;
     s.type = SYS_CREATE;
     s.arg1 = priority;
     s.arg2 = (unsigned int)code;
@@ -27,27 +18,32 @@ int Create(int priority, void (*code) ()) {
 }
 
 int MyTid() {
+    Syscall s;
     s.type = SYS_MY_TID;
     return swi(&s);
 }
 
 int MyParentTid() {
+    Syscall s;
     s.type = SYS_MY_PARENT_TID;
     return swi(&s);
 }
 
 void Pass() {
+    Syscall s;
     s.type = SYS_PASS;
     swi(&s);
 }
 
 void Exit() {
+    Syscall s;
     s.type = SYS_EXIT;
     swi(&s);
 }
 
 int Send(int tid, void *msg, unsigned int msglen, void *reply, unsigned int replylen)
 {
+    Syscall s;
     s.type = SYS_SEND;
     s.arg1 = (unsigned int)tid;
     s.arg2 = (unsigned int)msg;
@@ -59,6 +55,7 @@ int Send(int tid, void *msg, unsigned int msglen, void *reply, unsigned int repl
 
 int Receive(int *tid, void *msg, unsigned int msglen)
 {
+    Syscall s;
     s.type = SYS_RECEIVE;
     s.arg1 = (unsigned int)tid;
     s.arg2 = (unsigned int)msg;
@@ -68,6 +65,7 @@ int Receive(int *tid, void *msg, unsigned int msglen)
 
 int Reply(int tid, void *reply, unsigned int replylen)
 {
+    Syscall s;
     s.type = SYS_REPLY;
     s.arg1 = (unsigned int)tid;
     s.arg2 = (unsigned int)reply;
@@ -77,12 +75,14 @@ int Reply(int tid, void *reply, unsigned int replylen)
 
 int AwaitEvent(int eventType)
 {
+    Syscall s;
     s.type = SYS_AWAIT_EVENT;
     s.arg1 = (unsigned int)eventType;
     return swi(&s);
 }
 
 void Halt() {
+    Syscall s;
     s.type = SYS_HALT;
     swi(&s);
 }
