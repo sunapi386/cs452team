@@ -40,13 +40,10 @@ void disableCache()
 }
 #include <ts7200.h>
 
-void idleProfiler() {
-    for (;;) {
-        //drawIdle(getIdlingRatio());
-        //bwprintf(COM2, "i");
-        //Putc(COM2, 'i');
-        //bwprintf(COM2, "i");
-        //bwprintf(COM2, "i2");
+void idleProfiler()
+{
+    for (;;)
+    {
         Pass();
     }
     Exit();
@@ -90,7 +87,7 @@ void bootstrap()
     //Create(PRIORITY_PARSER, parserTask);
     // Create(PRIORITY_SENSOR_TASK, sensorTask);
 
-    Create(PRIORITY_USERTASK, client);
+    // Create(PRIORITY_USERTASK, client);
     //Create(PRIORITY_USERTASK, clientNotifier);
     //Create(PRIORITY_USERTASK, client2);
 
@@ -100,37 +97,6 @@ void bootstrap()
     //Create();
 
     // quit
-    Exit();
-}
-
-void taskTest1()
-{
-    int mothership = 0;
-    int otherGuy = 0;
-    int msg = 42;
-    Receive(&mothership, &otherGuy, sizeof(otherGuy));
-    debug("Received message from mothership (%d): %d", mothership, otherGuy);
-    Reply(mothership, 0, 0);
-    Send(otherGuy, &msg, sizeof(msg), 0, 0);
-    Exit();
-}
-
-void taskTest2()
-{
-    int otherGuy = 0;
-    int data = 0;
-    Receive(&otherGuy, &data, sizeof(data));
-    debug("Received data: %d", data);
-    Reply(otherGuy, 0, 0);
-    Exit();
-}
-
-void mothership()
-{
-    int tid1 = Create(PRIORITY_USERTASK, taskTest1);
-    int tid2 = Create(PRIORITY_USERTASK, taskTest2);
-    Send(tid1, &tid2, sizeof(tid2), 0, 0);
-    debug("mothership exiting...");
     Exit();
 }
 
@@ -145,13 +111,12 @@ static void initKernel() {
     initTrain();
 
     //int create_ret = taskCreate(PRIORITY_INIT, userTaskMessage, 0);
-    //int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
+    int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, interruptRaiser, 0);
     //int create_ret = taskCreate(0, userTaskK3, 0);
     // int create_ret = taskCreate(1, userTaskIdle, 31);
     //int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
-    int create_ret = taskCreate(PRIORITY_INIT, mothership, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));

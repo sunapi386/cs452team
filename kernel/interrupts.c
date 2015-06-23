@@ -307,7 +307,7 @@ void handleInterrupt() {
     // soft int
     else if (vic1Status & 1)
     {
-        bwprintf(COM2, "Clearing soft int\n\r");
+        //bwprintf(COM2, "Clearing soft int\n\r");
         *(unsigned int *)(VIC1 + VIC_SOFT_INT_CLEAR) = 1;
     }
     else

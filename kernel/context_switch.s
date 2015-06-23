@@ -49,34 +49,10 @@ kernelExit:
     .type   irqEnter, %function
 irqEnter:
 
-    # go to supervisor mode
-    msr cpsr_c, #0xd3
-
-    # push r0 on the stack
-    stmfd sp!, {r0}
-
-    # go to irq mode
-    msr cpsr_c, #0xd2
-
-    # put lr-4 (pc_usr) to r0
-    sub r0, lr, #4
-
-    # go to supervisor mode
-    msr cpsr_c, #0xd3
-
-    # put correct pc_usr to lr_svc
-    mov lr, r0
-
-    # pop scratch register back
-    ldmfd sp!, {r0}
-
-    # set spsr to user mode (irq enabled)
-    msr spsr_c, #0x50
-
     # change to system mode
     msr cpsr_c, #0xdf
 
-    # store all user registers to user stack
+    # store r1-r12 user registers to user stack
     stmfd sp!, {r1-r12, lr}
 
     # put user sp in r1
@@ -85,31 +61,40 @@ irqEnter:
     # calculate user sp after pushing cpsr and pc
     sub sp, sp, #8
 
+    # go to irq mode
+    msr cpsr_c, #0xd2
+
+    # put lr-4 (pc_usr) to r3
+    sub r3, lr, #4
+
     # change back to supervisor mode
     msr cpsr_c, #0xd3
 
     # Put spsr (user cpsr) in r2
     mrs r2, spsr
 
-    # store r2 (user cpsr), lr (user pc) to user stack
-    stmfd r1!, {r2, lr}
+    # {r1, r2, r3} = {user sp, user cpsr, user pc}, we are svc
+    #
+    # store r2 (user cpsr), r3 (user pc) to user stack
+    stmfd r1!, {r2, r3}
 
     # move r0 to r2
-    mov r2, r0
+    mov r0, r2
 
     # load r0 (*task)
     ldmfd sp!, {r0}
 
-    # store r1 (user sp) in task->sp
-    str r1, [r0, #12]
-
     # store r2 (r0) in task->ret
     str r2, [r0, #8]
 
+    # store r1 (user sp) in task->sp
+    str r1, [r0, #12]
+
+    # set task->hwi to 1
     mov r2, #1
     str r2, [r0, #16]
 
-    # 1) load the rest of the kernel registers from stack
+    # load the rest of the kernel registers from stack
     ldmfd sp!, {r1-r12, pc}
 
     .size   irqEnter, .-irqEnter
