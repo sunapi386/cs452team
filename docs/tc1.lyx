@@ -2340,26 +2340,34 @@ Train Control
 \end_layout
 
 \begin_layout Standard
-This is not implemented in K4.
- But there is design in the works.
-\end_layout
-
-\begin_layout Standard
-The idea is that there is one planner for many trains.
- It acts like the trains' headquarters.
+There is one controller for many trains.
 \end_layout
 
 \begin_layout Subsection
-Planner
+Controller
 \end_layout
 
 \begin_layout Standard
-Planner measures train's (esitmated) positions speed on the track, and keeps
- a mapping of train number to their associated profiles.
+The train controller manages: 
+\end_layout
+
+\begin_layout Enumerate
+A train's position
+\end_layout
+
+\begin_layout Enumerate
+Expected sensor that would be triggered for a train engineer, and does path
+ planning.
+\end_layout
+
+\begin_layout Enumerate
+Speed on the track, and keeps a mapping of train number to their associated
+ profiles.
  
 \end_layout
 
-\begin_layout Standard
+\begin_deeper
+\begin_layout Enumerate
 Feedback loop for accurate train velocity estimation 
 \begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
 \end_inset
@@ -2371,18 +2379,18 @@ Feedback loop for accurate train velocity estimation
  is the learning rate.
 \end_layout
 
+\end_deeper
 \begin_layout Standard
 Train has to be able to stop at arbitrarily far from a sensor position.
 \end_layout
 
 \begin_layout Subsection
-Train
+Engineer
 \end_layout
 
 \begin_layout Standard
-The goal is to track all the useful data associated with a train into a
- Train class.
- Useful data such as: 
+A train engineer is the task that drives the train.
+ Associated with the Engineer are data such as: 
 \end_layout
 
 \begin_layout Itemize
