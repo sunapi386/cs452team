@@ -17,7 +17,7 @@
 #include <user/clock_drawer.h>
 #include <user/parser.h>
 #include <user/sensor.h>
-
+#include <user/train.h>
 
 static Syscall *request = NULL;
 
@@ -25,7 +25,7 @@ void enableCache()
 {
     asm volatile(
         "mrc p15, 0, r0, c1, c0, 0\n\t"
-        "ldr r1, =0xc0001004\n\t"
+        "ldr r1, =0x00001004\n\t"
         "orr r0, r0, r1\n\t"
         "mcr p15, 0, r0, c1, c0, 0\n\t"
     );
@@ -35,35 +35,48 @@ void disableCache()
 {
     asm volatile(
         "mrc p15, 0, r0, c1, c0, 0\n\t"
-        "ldr r1, =0x1fffeffb\n\t"
+        "ldr r1, =0xffffeffb\n\t"
         "and r0, r0, r1\n\t"
         "mcr p15, 0, r0, c1, c0, 0\n\t"
     );
 }
+#include <ts7200.h>
 
 void idleProfiler() {
     for (;;) {
         //drawIdle(getIdlingRatio());
-        //bwprintf(COM2, "_");
+        //bwprintf(COM2, "i");
+        //Putc(COM2, 'i');
+        //bwprintf(COM2, "i");
+        //bwprintf(COM2, "i2");
         Pass();
     }
+    Exit();
 }
 
 void client()
 {
+    char *dataAddr = 0;
     for (;;)
     {
-        //printf(COM2, "%s%d\n\r", "hello world!", 123);
-        PutStr(COM2, "HELLO");
-    }
+        dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
 
+        if (dataAddr != (char *)(UART2_BASE + UART_DATA_OFFSET))
+        {
+            bwprintf(COM2, "gg %x", dataAddr);
+            break;
+        }
+
+        *dataAddr = '*';
+        //Putc(COM2, '*');
+    }
     Exit();
 }
 
 void bootstrap()
 {
     // Create name server
-    //Create(PRIORITY_NAMESERVER, nameserverTask);
+    Create(PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
     //Create(PRIORITY_CLOCK_SERVER, clockServerTask);
@@ -77,9 +90,10 @@ void bootstrap()
     // Create user task
     //Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
     //Create(PRIORITY_PARSER, parserTask);
-    //Create(PRIORITY_SENSOR_TASK, sensorTask);
+    // Create(PRIORITY_SENSOR_TASK, sensorTask);
 
     Create(PRIORITY_USERTASK, client);
+    //Create(PRIORITY_USERTASK, client2);
 
     // Create idle task
     Create(PRIORITY_IDLE, idleProfiler);
@@ -96,7 +110,9 @@ static void initKernel() {
     request = initSyscall();
     initInterrupts();
     initUART();
-    //initTimer();
+    initTimer();
+    initTrain();
+
 
     //int create_ret = taskCreate(1, userTaskMessage, 0);
     // int create_ret = taskCreate(1, userTaskHwiTester, 0);
@@ -104,7 +120,7 @@ static void initKernel() {
     // int create_ret = taskCreate(1, interruptRaiser, 0);
     // int create_ret = taskCreate(1, userTaskK3, 0);
     // int create_ret = taskCreate(1, userTaskIdle, 31);
-    int create_ret = taskCreate(1, bootstrap, 0);
+    int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
@@ -117,15 +133,24 @@ static void resetKernel() {
     disableCache();
 }
 
-static inline int handleRequest(TaskDescriptor *td) {
-    switch (request->type) {
-        case INT_IRQ:
-            handleInterrupt();
-            break;
+int handleRequest(TaskDescriptor *td) {
+    if (td->hwi)
+    {
+        handleInterrupt();
+        td->hwi = 0; //clearHwi();
+    }
+    else
+    {
+        switch (request->type) {
         case SYS_AWAIT_EVENT:
-            td->ret = awaitInterrupt(td, request->arg1);
-            // we don't want to reschedule if the task is event blocked
-            if (td->ret == 0) return 0;
+            if (awaitInterrupt(td, request->arg1) == -1)
+            {
+                // we want rescheduling
+                td->ret = -1;
+                break;
+            }
+            // we don't want rescheduling now that it's event blocked
+            return 0;
         case SYS_SEND:
             handleSend(td, request);
             return 0;
@@ -162,16 +187,20 @@ static inline int handleRequest(TaskDescriptor *td) {
         default:
             debug("Invalid syscall %u!", request->type);
             break;
+        }
     }
+
     // requeue the task if we haven't returned (from SYS_EXIT)
     queueTask(td);
     return 0;
 }
 
-int main() {
+int main()
+{
     initKernel();
     TaskDescriptor *task = NULL;
-    for(;;) {
+    for(;;)
+    {
         task = schedule();
         if (task == NULL) {
             break;
@@ -181,10 +210,10 @@ int main() {
             bwprintf(COM2, "Halt\n\r");
             break;
         }
-        request->type = INT_IRQ;
     }
     resetKernel();
     debug("No tasks scheduled; exiting...");
     bwputc(COM1, 0x61);
     return 0;
 }
+
