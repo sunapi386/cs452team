@@ -114,28 +114,30 @@ static void initKernel() {
     initTimer();
     initTrain();
 
-    //int create_ret = taskCreate(1, userTaskMessage, 0);
-    // int create_ret = taskCreate(1, userTaskHwiTester, 0);
+    //int create_ret = taskCreate(PRIORITY_INIT, userTaskMessage, 0);
+    int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, interruptRaiser, 0);
-    // int create_ret = taskCreate(1, userTaskK3, 0);
+    //int create_ret = taskCreate(0, userTaskK3, 0);
     // int create_ret = taskCreate(1, userTaskIdle, 31);
-    int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
+    //int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
 
     assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
 }
 
 static void resetKernel() {
+    bwputc(COM1, 0x61);
     resetTimer();
     resetInterrupts();
+    resetUART();
     disableCache();
 }
 
 int handleRequest(TaskDescriptor *td) {
+
     if (td->hwi)
     {
-        //bwprintf(COM2, "handleRequest\n\r");
         handleInterrupt();
         td->hwi = 0; //clearHwi();
     }
@@ -179,8 +181,11 @@ int handleRequest(TaskDescriptor *td) {
             td->ret = taskGetMyParentIndex(td);
             break;
         case SYS_PASS:
+            //debug("Pass task %x\n\r", td);
+            td->ret = 555;
             break;
         case SYS_EXIT:
+            //debug("Exit task %x\n\r", td);
             return 0;
         case SYS_HALT:
             return -1;
@@ -202,6 +207,7 @@ int main()
     for(;;) {
         task = schedule();
         if (task == NULL) {
+            debug("No tasks scheduled; exiting...");
             break;
         }
         kernelExit(task);
@@ -211,9 +217,6 @@ int main()
         }
     }
     resetKernel();
-    debug("No tasks scheduled; exiting...");
-    bwputc(COM1, 0x61);
-    resetUART();
     return 0;
 }
 

@@ -30,7 +30,7 @@ kernelExit:
     ldmfd r1, {r2, lr}
 
     # put user cpsr to spsr_svc
-    msr spsr, r2
+    msr spsr_c, r2
 
     # change to system mode
     msr cpsr_c, #0xdf
