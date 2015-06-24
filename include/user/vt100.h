@@ -37,6 +37,7 @@
 #define VT_CLOCK_COL            30
 #define VT_SENSOR_ROW           2
 #define VT_SENSOR_COL           1
+#define VT_SWITCH_ROW           20
 
 #define VT_PARSER_TOP           5
 #define VT_PARSER_BOT           10
