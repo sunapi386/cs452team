@@ -152,7 +152,6 @@ int DelayUntil(int ticks);
 
 /**
 Getc returns first unreturned character from the given UART.
-FIXME: Discuss in documentation: How transmission errors are handled is implementation-dependent.
 Getc is actually a wrapper for a send to the serial server.
 Returns.
 • character – success.
@@ -164,7 +163,6 @@ int Getc(int channel);
 Putc queues the given character for transmission by the given UART.
 On return the only guarantee is that the character has been queued.
 Whether it has been transmitted or received is not guaranteed.
-FIXME: Discuss in documentation: How configuration errors are handled is implementation-dependent.
 Putc is actually a wrapper for a send to the serial server.
 Returns.
 • 0 – success.

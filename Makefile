@@ -19,14 +19,16 @@ LD  = ld
 LDFLAGS = -init main -Map kernel.map -N -T linker.ld -L/u/wbcowan/gnuarm-4.0.2/lib/gcc/arm-elf/4.0.2
 
 # .PRECIOUS: if make is interrupted during execution, the target is not deleted.
+.DEFAULT_GOAL := deploy
 .PRECIOUS: %.s
-
 # .PHONY: make will run its recipe unconditionally
-.PHONY: clean
+.PHONY: clean deploy
 src_dirs = kernel user
 vpath %.h include include/kernel include/user
 vpath %.c $(src_dirs)
-sources := $(foreach sdir,$(src_dirs),$(wildcard $(sdir)/*.c))
+generated_sources = user/track_data.c
+generated_headers = include/user/track_data.h
+sources := $(foreach sdir,$(src_dirs),$(wildcard $(sdir)/*.c)) $(generated_sources)
 assembled_sources := $(patsubst %c,%s,$(sources))
 # hand_assemblies := $(filter-out $(assembled_sources),$(wildcard *.s))
 hand_assemblies := kernel/context_switch.s
@@ -37,6 +39,9 @@ deploy: kernel.elf
 
 kernel.elf: $(objects) linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lgcc
+
+user/track_data.c: track/parse_track.py track/tracka track/trackb
+	track/parse_track.py -C user/track_data.c -H include/user/track_data.h track/tracka track/trackb
 
 %.s: %.c
 	$(CC) -o $@ -S $(CFLAGS) $<
@@ -49,7 +54,7 @@ kernel.elf: $(objects) linker.ld
 	    $(CC) -MM $(CFLAGS) $< | sed 's,\($*\)\.o[ :]*,\1.s $@ : ,g' > $@;
 
 clean:
-	-rm -f kernel.elf $(objects) $(assembled_sources) $(sources:.c=.d) kernel.map
+	-rm -f kernel.elf $(objects) $(assembled_sources) $(sources:.c=.d) kernel.map $(generated_sources) $(generated_headers)
 
 prod: clean check
 	make CFLAGS="$(CFLAGS) -DPRODUCTION"
