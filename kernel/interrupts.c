@@ -118,6 +118,7 @@ void initInterrupts() {
         setICU(vic[i], VIC_INT_SELECT, 0);                      // select pl190 irq mode
     }
 
+    //enable(0, 1); // soft int
     //enable(1, UART1_OR_MASK); // uart1 OR
     //enable(0, UART2_RECV_MASK); // uart2 recv
     enable(0, UART2_XMIT_MASK); // uart2 xmit
@@ -302,6 +303,12 @@ void handleInterrupt() {
             queueTask(td);
             eventTable[UART2_XMIT_EVENT] = 0;
         }
+    }
+    // soft int
+    else if (vic1Status & 1)
+    {
+        bwprintf(COM2, "Clearing soft int\n\r");
+        *(unsigned int *)(VIC1 + VIC_SOFT_INT_CLEAR) = 1;
     }
     else
     {

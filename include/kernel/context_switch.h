@@ -2,7 +2,7 @@
 #define __CONTEXT_SWITCH_H
 
 struct TaskDescriptor;
-void kernelExit(struct TaskDescriptor *task);
+struct Syscall * kernelExit(struct TaskDescriptor *task);
 void kernelEnter();
 void irqEnter();
 

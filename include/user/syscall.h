@@ -24,9 +24,6 @@ struct Syscall {
     unsigned int type, arg1, arg2, arg3, arg4, arg5;
 } Syscall;
 
-#if (defined KERNEL_MAIN || defined SYSCALL_DENFS)
-Syscall * initSyscall();
-#endif
 
 /**
 Name. Create - instantiate a task.
