@@ -87,6 +87,25 @@ inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
     task->ret = ret;
 }
 
+static inline char * strncpy(char *dst, const char *src, unsigned n) {
+    // http://opensource.apple.com/source/Libc/Libc-262/ppc/gen/strncpy.c
+    char *s = dst;
+    while (n > 0 && *src != '\0') {
+        *s++ = *src++;
+        --n;
+    }
+    while (n > 0) {
+        *s++ = '\0';
+        --n;
+    }
+    return dst;
+}
+
+
+inline void taskSetName(TaskDescriptor *task, char *name) {
+    strncpy(task->name, name, TASK_MAX_NAME_SIZE);
+}
+
 TaskDescriptor *taskGetTDByIndex(int index) {
     if (index < 0 || index >= TASK_MAX_TASKS) {
         return NULL;

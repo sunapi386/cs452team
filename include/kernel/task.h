@@ -32,6 +32,8 @@
 #define TASK_STACK_LOW      (TASK_STACK_HIGH - \
                             TASK_MAX_TASKS * (TASK_STACK_SIZE + TASK_TRAP_SIZE))
 
+#define TASK_MAX_NAME_SIZE  20
+
 #define NULL 0
 
 
@@ -61,7 +63,6 @@ typedef enum {
     reply_block,   // task executed Send(), its message received, waiting on reply
 } Status;
 
-#define TASK_MAX_NAME_SIZE  20
 typedef struct TaskDescriptor {
     int id;
     int parent_id;
@@ -78,6 +79,7 @@ typedef struct TaskDescriptor {
 
 int taskCreate(int priority, void (*code)(void), int parent_id);
 void initTaskSystem();
+void taskSetName(TaskDescriptor *task, char *name);
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 int taskGetMyId(TaskDescriptor *task);
 int taskGetMyParentId(TaskDescriptor *task);
