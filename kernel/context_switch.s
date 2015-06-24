@@ -79,7 +79,7 @@ irqEnter:
     stmfd r1!, {r2, r3}
 
     # move r0 to r2
-    mov r0, r2
+    mov r2, r0
 
     # load r0 (*task)
     ldmfd sp!, {r0}

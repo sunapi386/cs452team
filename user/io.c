@@ -217,7 +217,7 @@ void monitorOutServer() {
     //RegisterAs("monitorOutServer");
 
     // Spawn notifier
-    int notifierTid = Create(PRIORITY_NOTIFIER, &monitorOutNotifier);
+    int notifierTid = Create(PRIORITY_MONITOR_OUT_NOTIFIER, &monitorOutNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));

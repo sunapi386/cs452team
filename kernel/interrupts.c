@@ -293,8 +293,6 @@ void handleInterrupt() {
         // turn interrupt off in UART
         setUARTCtrl(UART2_XMIT_EVENT, 0);
 
-        //bwprintf(COM2, "XMIT interrupt.\n\r");
-
         TaskDescriptor *td = eventTable[UART2_XMIT_EVENT];
         if (td != 0)
         {
