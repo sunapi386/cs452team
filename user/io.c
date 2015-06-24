@@ -49,6 +49,7 @@ int Putc(int channel, char c) {
     };
     int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
     int ret = Send(server_tid, &req, sizeof(req), 0, 0);
+    assert(ret >= 0);
     return (ret < 0) ? -1 : 0;
 }
 
@@ -186,15 +187,22 @@ void monitorInServer() {
     }
 }
 
+static int _pid = -1;
 static void monitorOutNotifier() {
     int pid = MyParentTid();
+    _pid = pid;
     IOReq req = {
         .type = NOTIFICATION
     };
 
     for (;;) {
         req.data = (unsigned int)AwaitEvent(UART2_XMIT_EVENT);
-        Send(pid, &req, sizeof(req), 0, 0);
+        assert(req.data == UART2_BASE + UART_DATA_OFFSET);
+
+        int ret = Send(pid, &req, sizeof(req), 0, 0);
+
+        assert(ret >= 0);
+        assert(pid == _pid);
     }
 }
 
@@ -212,16 +220,19 @@ void monitorOutServer() {
 
     // TODO: nameserver
     com2SendSrvTid = MyTid();
+    assert(com2SendSrvTid >= 0 && com2SendSrvTid < 10);
 
     // Register with name server
     //RegisterAs("monitorOutServer");
 
     // Spawn notifier
     int notifierTid = Create(PRIORITY_MONITOR_OUT_NOTIFIER, &monitorOutNotifier);
+    assert(notifierTid < 10 && notifierTid >= 0);
 
     for (;;) {
-        Receive(&tid, &req, sizeof(req));
-
+        int ret = Receive(&tid, &req, sizeof(req));
+        assert(ret >= 0);
+        assert(tid >= 0 && tid < 10);
         switch (req.type) {
         case NOTIFICATION:
             if(CBufferIsEmpty(&charBuffer)) {
@@ -229,25 +240,29 @@ void monitorOutServer() {
                 // mark that we've seen a xmit interrupt
                 // and block the notifier
                 sendAddr = (char *)(req.data);
+                assert(sendAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
             }
             else {
                 char ch = CBufferPop(&charBuffer);
-
+                assert(req.data == UART2_BASE + UART_DATA_OFFSET);
                 // write out char to volatile address
                 // this also clears the xmit interrupt
                 *((char *)req.data) = ch;
 
                 // unblock the notifier
-                Reply(tid, 0, 0);
+                ret = Reply(tid, 0, 0);
+                assert(ret == 0);
             }
             break;
         case PUTCHAR:
-            Reply(tid, 0, 0);
+            ret = Reply(tid, 0, 0);
+            assert(ret == 0);
 
             // We've seen a xmit but did not
             // have a char to send at the moment
             if (sendAddr != 0)
             {
+                assert(sendAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
                 // send the char directly
                 // also clears the xmit interrupt
                 *sendAddr = (char)(req.data);
@@ -255,7 +270,8 @@ void monitorOutServer() {
                 // unblock the notifier which will
                 // call AwaitEvent() which re-enables
                 // xmit interrupt
-                Reply(notifierTid, 0, 0);
+                ret = Reply(notifierTid, 0, 0);
+                assert(ret == 0);
 
                 // reset 'seen transmit int' state
                 sendAddr = 0;
@@ -292,6 +308,8 @@ void monitorOutServer() {
                 sendAddr = 0;
             }
         default:
+            bwprintf(COM2, "Invalid request type: %d\n\r", req.type);
+            assert(0);
             break;
         }
     }

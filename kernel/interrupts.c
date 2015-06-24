@@ -133,11 +133,14 @@ void resetInterrupts() {
 }
 
 int awaitInterrupt(TaskDescriptor *active, int event) {
-    //bwprintf(COM2, "Kernel AwaitEvent: %d\n\r", event);
+    assert(event >= TIMER_EVENT && event <= UART2_XMIT_EVENT);
     if (event < TIMER_EVENT ||
         event > UART2_XMIT_EVENT) {
         return -1;
     }
+    //for (int i =0; i < 5000; i++);
+
+    //bwprintf(COM2, "Kernel AwaitEvent: %d\n\r", event);
     // Turn on IO interrutpts
     // (selectively turned off in handleInterrupt)
     switch (event) {
@@ -311,7 +314,6 @@ void handleInterrupt() {
     else
     {
         // something is wrong here
-        //assert(0);
-        bwprintf(COM2, "handleInterrupt() when there is no interrupt.\n\r");
+        assert(0);
     }
 }

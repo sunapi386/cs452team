@@ -42,20 +42,22 @@ void disableCache()
 
 void idleProfiler()
 {
-    for (;;);
+    for (;;) {bwprintf(COM2, "i");}
     Exit();
 }
 
 void client()
 {
-    char *dataAddr = 0;
+    //char *dataAddr = 0;
     for (;;)
     {
+        /*
         dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
 
         assert(dataAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
 
-        *dataAddr = '*';
+        *dataAddr = '*'; */
+        Putc(COM2, '*');
     }
     Exit();
 }
@@ -71,7 +73,7 @@ void bootstrap()
     // Create IO Servers
     //Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
     //Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
-    //Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
+    Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
     //Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 
     // Create user task
