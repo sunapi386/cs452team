@@ -8,6 +8,8 @@ doxygen*
 *.sublime*
 sftp-config.json
 tags
+/user/track_data.c
+/include/user/track_data.h
 
 ### OSX ###
 .DS_Store
