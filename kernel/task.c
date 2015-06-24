@@ -32,6 +32,7 @@ void initTaskSystem() {
         for(unsigned j = 0; j < TASK_MAX_NAME_SIZE; j++) {
             task->name[j] = '\0';
         }
+        task->cpu_time_used = 0;
     }
 }
 
@@ -40,11 +41,12 @@ static char *status_name[4] = {"ready", "send_blocked", "receive_block", "reply_
 static void _printTask(TaskDescriptor *task) {
     if(task == NULL) return;
     bwprintf(COM2,
-        "id:%d: na:%s pr:%d st:%s\r\n",
+        "id:%d: na:%s pr:%d st:%s cpu:%d\r\n",
         taskGetIndex(task),
         task->name,
         taskGetPriority(task),
-        status_name[task->status]);
+        status_name[task->status],
+        task->cpu_time_used);
 }
 
 void taskDisplayAll() {
@@ -52,6 +54,21 @@ void taskDisplayAll() {
     for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
         _printTask(&global_task_table[i]);
     }
+}
+
+unsigned int taskIdleRatio() {
+    unsigned int idle_time = 0;
+    unsigned int busy_time = 0;
+    for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
+        if(global_task_table[i].id == 0) continue;
+        if(taskGetPriority(&global_task_table[i]) == 31) {
+            idle_time += global_task_table[i].cpu_time_used;
+        }
+        else {
+            busy_time += global_task_table[i].cpu_time_used;
+        }
+    }
+    return (100 * idle_time) / (idle_time + busy_time);
 }
 
 // IMPROVE: Implement recycling here

@@ -161,11 +161,17 @@ void clockNotifier()
     }
 }
 
+static unsigned int tick = 0;
+
+unsigned int clockServerGetTick() {
+    return tick;
+}
+
 void clockServerTask()
 {
     // Initialize variables
     int tid = 0;
-    unsigned int tick = 0;
+    tick = 0;
     ClockReq req;
     req.type = 0;
     req.data = 0;

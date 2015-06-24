@@ -42,11 +42,7 @@ void disableCache()
 
 void idleProfiler() {
     for (;;) {
-        //drawIdle(getIdlingRatio());
-        //bwprintf(COM2, "i");
-        //Putc(COM2, 'i');
-        //bwprintf(COM2, "i");
-        //bwprintf(COM2, "i2");
+        drawIdle(taskIdleRatio());
         Pass();
     }
     Exit();
@@ -234,8 +230,10 @@ int main()
     initKernel();
     TaskDescriptor *task = NULL;
     Syscall *request = NULL;
+    unsigned int task_begin_time;
     for(;;) {
         task = schedule();
+        task_begin_time = clockServerGetTick();
         if (task == NULL) {
             debug("No tasks scheduled; exiting...");
             break;
@@ -245,6 +243,7 @@ int main()
             debug("Halt");
             break;
         }
+        task->cpu_time_used += (clockServerGetTick() - task_begin_time);
     }
     resetKernel();
     return 0;
