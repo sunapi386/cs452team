@@ -6,7 +6,7 @@ static int global_next_unique_task_id;
 static unsigned int *global_current_stack_address;
 static TaskDescriptor global_task_table[TASK_MAX_TASKS];
 
-// FIXME: Implement recycling here
+// TODO: Implement recycling here
 static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
@@ -32,7 +32,7 @@ void initTaskSystem() {
     }
 }
 
-// IMPROVE: Implement recycling here
+// TODO: Implement recycling here
 static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
@@ -52,7 +52,7 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
         bwprintf( COM2, "FATAL: at low stack boundary 0x%x.\n\r", boundary );
         return -3; // stack out of bounds
     }
-    // IMPROVE: No recycling tasks ids
+    // TODO: No recycling tasks ids
     // Once all the TASK_MAX_TASKS been given out, will fail to create new tasks
     int unique_id = global_next_unique_task_id;
     int task_table_index = taskFindFreeTaskTableIndex();
