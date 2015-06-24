@@ -35,6 +35,25 @@ void initTaskSystem() {
     }
 }
 
+static char *status_name[4] = {"ready", "send_blocked", "receive_block", "reply_block"};
+
+static void _printTask(TaskDescriptor *task) {
+    if(task == NULL) return;
+    bwprintf(COM2,
+        "id:%d: na:%s pr:%d st:%s\r\n",
+        taskGetIndex(task),
+        task->name,
+        taskGetPriority(task),
+        status_name[task->status]);
+}
+
+void taskDisplayAll() {
+    bwprintf(COM2, "All tasks\r\n");
+    for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
+        _printTask(&global_task_table[i]);
+    }
+}
+
 // IMPROVE: Implement recycling here
 static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
@@ -49,7 +68,8 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
         bwprintf( COM2, "FATAL: too many tasks %d.\n\r", global_next_unique_task_id );
         return -2; // too many tasks
     }
-    unsigned int boundary = (unsigned int)(global_current_stack_address - TASK_STACK_SIZE - TASK_TRAP_SIZE);
+    unsigned int boundary = (unsigned int)
+        (global_current_stack_address - TASK_STACK_SIZE - TASK_TRAP_SIZE);
 
     if( boundary < TASK_STACK_LOW ){
         bwprintf( COM2, "FATAL: at low stack boundary 0x%x.\n\r", boundary );
@@ -104,6 +124,7 @@ static inline char * strncpy(char *dst, const char *src, unsigned n) {
 
 inline void taskSetName(TaskDescriptor *task, char *name) {
     strncpy(task->name, name, TASK_MAX_NAME_SIZE);
+    task->name[TASK_MAX_NAME_SIZE - 1] = '\0'; // ensure null terminated str
 }
 
 TaskDescriptor *taskGetTDByIndex(int index) {

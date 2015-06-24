@@ -56,20 +56,18 @@ A good rule-of-thumb is that values accessed only by the context switch can be
 on the stack of the user task; other values should be in the task descriptor.
 */
 
-typedef enum {
-    ready,         // ready to be activated
-    send_blocked,  // task executed Send(), waiting for it to be received
-    receive_block, // task executed Receive(), waiting for task to Send()
-    reply_block,   // task executed Send(), its message received, waiting on reply
-} Status;
-
 typedef struct TaskDescriptor {
     int id;
     int parent_id;
     int ret;
     unsigned int *sp;
     int hwi;
-    Status status;
+    enum {
+        ready,         // ready to be activated
+        send_blocked,  // task executed Send(), waiting for it to be received
+        receive_block, // task executed Receive(), waiting for task to Send()
+        reply_block,   // task executed Send(), its message received, waiting on reply
+    } status;
     int *send_id;
     void *send_buf, *recv_buf;
     unsigned int send_len, recv_len;
@@ -83,6 +81,7 @@ void taskSetName(TaskDescriptor *task, char *name);
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 int taskGetMyId(TaskDescriptor *task);
 int taskGetMyParentId(TaskDescriptor *task);
+void taskDisplayAll();
 
 /* Returns NULL on invalid task_id */
 TaskDescriptor *taskGetTDByIndex(int index);
