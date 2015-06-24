@@ -29,6 +29,9 @@ void initTaskSystem() {
         task->send_len = 0;
         task->recv_len = 0;
         task->next = NULL;
+        for(unsigned j = 0; j < TASK_MAX_NAME_SIZE; j++) {
+            task->name[j] = '\0';
+        }
     }
 }
 

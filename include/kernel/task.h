@@ -61,6 +61,7 @@ typedef enum {
     reply_block,   // task executed Send(), its message received, waiting on reply
 } Status;
 
+#define TASK_MAX_NAME_SIZE  20
 typedef struct TaskDescriptor {
     int id;
     int parent_id;
@@ -72,6 +73,7 @@ typedef struct TaskDescriptor {
     void *send_buf, *recv_buf;
     unsigned int send_len, recv_len;
     struct TaskDescriptor *next;
+    char name[TASK_MAX_NAME_SIZE];
 } TaskDescriptor;
 
 int taskCreate(int priority, void (*code)(void), int parent_id);
