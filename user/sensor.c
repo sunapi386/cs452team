@@ -6,26 +6,20 @@
 
 #define SENSOR_QUERY 133
 
-void intToString(unsigned int number, char *buf)
-{
+void intToString(unsigned int number, char *buf) {
     unsigned int n = 10, len = 1;
-    for (;;)
-    {
-        if (number < n)
-        {
+    for (;;) {
+        if (number < n) {
             break;
         }
-        else
-        {
+        else {
             ++len;
             n *= 10;
         }
     }
-
     buf[len] = '\0';
     int i;
-    for (i = len; i > 0; i--)
-    {
+    for (i = len; i > 0; i--) {
         buf[i-1] = (number % 10) + '0'; // Convert to ascii eq
         number /= 10;
     }
@@ -37,9 +31,7 @@ processData
     then use them to populate a buffer, which is then used to output recently
     fired sensor in a scrolling fashion
 */
-static inline void
-processData(CBuffer *b, const char replyCount, const char data)
-{
+static inline void processData(CBuffer *b, const char replyCount, const char data) {
     char name = 0, offset = replyCount % 2 == 0 ? 0 : 8;
 
     if      (replyCount < 2) name = 0;
