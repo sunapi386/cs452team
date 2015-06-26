@@ -9,6 +9,7 @@
 #include <kernel/interrupts.h>
 #include <kernel/context_switch.h>
 
+#define SOFT_INT_MASK   1
 #define UART1_RECV_MASK 1 << 23 // uart1 recv
 #define UART1_XMIT_MASK 1 << 24 // uart1 xmit
 #define UART1_OR_MASK   1 << 20 // uart1 OR
@@ -138,9 +139,7 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
         event > UART2_XMIT_EVENT) {
         return -1;
     }
-    //for (int i =0; i < 5000; i++);
 
-    //bwprintf(COM2, "Kernel AwaitEvent: %d\n\r", event);
     // Turn on IO interrutpts
     // (selectively turned off in handleInterrupt)
     switch (event) {
@@ -158,20 +157,14 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
 }
 
 void handleInterrupt() {
-    //bwprintf(COM2, "Kernel handleInterrupt, hwi: %d\n\r", _int_hwi);
-
-    //bwprintf(COM2, "[I]");
-
     static char ctsOn = -1;
     static char xmitRdy = -1;
     int vic1Status = getICU(VIC1, VIC_IRQ_STATUS);
     int vic2Status = getICU(VIC2, VIC_IRQ_STATUS);
 
     // Timer 3 underflow
-    if (vic2Status & TIMER3_MASK) {
-
-        //bwprintf(COM2, "[T]");
-
+    if (vic2Status & TIMER3_MASK)
+    {
         // Clear timer interrupt in timer
         clearTimerInterrupt();
 
@@ -249,7 +242,6 @@ void handleInterrupt() {
                     td->ret = (UART1_BASE + UART_DATA_OFFSET);
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
-                    //disableUART1ModemInterrupt();
                 }
             }
             // we are not CTS-clear.
@@ -280,8 +272,6 @@ void handleInterrupt() {
     // UART 2 receive
     else if (vic1Status & UART2_RECV_MASK)
     {
-        //bwprintf(COM2, "[R]");
-
         // Get the character
         char c = getUARTData(COM2);
 
@@ -313,7 +303,7 @@ void handleInterrupt() {
         }
     }
     // soft int
-    else if (vic1Status & 1)
+    else if (vic1Status & SOFT_INT_MASK)
     {
         //bwprintf(COM2, "Clearing soft int\n\r");
         *(unsigned int *)(VIC1 + VIC_SOFT_INT_CLEAR) = 1;

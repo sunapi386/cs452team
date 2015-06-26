@@ -114,12 +114,10 @@ int CBufferPush(CBuffer *b, char ch) {
         // Simply switch head and tail then proceed to insert like normal
         // since the data we have would be garbage anyways.
         // With a large buffer and regular commands it should not overflow.
-        //b->tail = b->head;
         b->tail = (b->tail + 1) % b->size;
         ret = -1;
     }
     b->data[b->tail] = ch;
-    //assert(b->tail < 1024);
     return ret;
 }
 
@@ -128,7 +126,6 @@ char CBufferPop(CBuffer *b) {
     {
         // If no underflow, update head
         b->head = (b->head + 1) % b->size;
-        //assert(b->head < 1024);
         return b->data[b->head];
     }
     else
