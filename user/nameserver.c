@@ -7,7 +7,7 @@
 #define NS_TID  2
 
 #define NS_MAX_NAME 16
-#define NS_MAX_REGIST_SIZE 256
+#define NS_MAX_REGIST_SIZE 64
 
 static const int SUCCESS = 0;
 static const int ERROR = -1;

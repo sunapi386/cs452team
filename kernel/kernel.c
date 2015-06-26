@@ -18,6 +18,7 @@
 #include <user/parser.h>
 #include <user/sensor.h>
 #include <user/train.h>
+#include <kernel/pl190.h>
 
 void enableCache()
 {
@@ -42,63 +43,174 @@ void disableCache()
 
 void idleProfiler()
 {
-    for (;;) {bwprintf(COM2, "i");}
+    for (;;) {}//bwprintf(COM2, "i");}
     Exit();
 }
+// static int _myTid = -1;
+// static int _myParentTid = -1;
 
-void client()
-{
-    //char *dataAddr = 0;
-    for (;;)
-    {
-        /*
-        dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
+// void client1()
+// {
+//     bwprintf(COM2, "client 1 started\n\r");
 
-        assert(dataAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
+//     //char *dataAddr = 0;
+//     _myTid = MyTid();
+//     _myParentTid = MyParentTid();
+//     for (;;)
+//     {
+//         /*
+//         dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
 
-        *dataAddr = '*'; */
-        Putc(COM2, '*');
-    }
-    Exit();
-}
+//         assert(dataAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
+
+//         *dataAddr = '*'; */
+//         //Putc(COM2, '~');
+//         int ret = MyTid();
+
+//         if (ret != _myTid)
+//         {
+//             bwprintf(COM2, "Mismatch mytid: %d, initial: %d\n\r", ret, _myTid);
+//             for (;;);
+//         }
+//     }
+//     Exit();
+// }
+
+// void client2()
+// {
+//     bwprintf(COM2, "client 2 started\n\r");
+
+//     //char *dataAddr = 0;
+//     _myParentTid = MyParentTid();
+//     for (;;)
+//     {
+//         /*
+//         dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
+
+//         assert(dataAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
+
+//         *dataAddr = '*'; */
+//         //Putc(COM2, '~');
+//         int ret = MyParentTid();
+
+//         if (ret != _myParentTid)
+//         {
+//             bwprintf(COM2, "Mismatch myParentTid: %d, initial: %d\n\r", ret, _myParentTid);
+//             for(;;);
+//         }
+//     }
+//     Exit();
+// }
+
+// void xmiter()
+// {
+//     bwprintf(COM2, "awaiter started\n\r");
+
+//     char *dataAddr = (char *)(UART2_BASE + UART_DATA_OFFSET);
+//     for (;;)
+//     {
+//         //dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
+//         AwaitEvent(UART2_XMIT_EVENT);
+//         //assert(dataAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
+
+//         *dataAddr = '~';
+//         //Putc(COM2, '~');
+//     }
+//     Exit();
+// }
+
+// void clocker()
+// {
+//     unsigned int n = 0;
+//     for (;;)
+//     {
+//         AwaitEvent(TIMER_EVENT);
+//         //Send(pid, &req, sizeof(ClockReq), 0, 0);
+//         n++;
+//     }
+// }
+
+
+// void hwier()
+// {
+//     for (;;)
+//     {
+//         //Delay(1);
+//         *(unsigned int *)(VIC1 + VIC_SOFT_INT) = 1;
+//         //bwprintf(COM2, "I");
+//     }
+//     Exit();
+// }
+
+// void client()
+// {
+//     for (;;)
+//     {
+//         Putc(COM2, '~');
+//     }
+// }
+
+// void notifier()
+// {
+//     for (;;)
+//     {
+//         //Send
+//     }
+// }
+
+
+// /*
+// void guy()
+// {
+//     for (;;)
+//     {
+//         Putc(COM2, '~');
+//     }
+//     Exit();
+// }
+
 
 void bootstrap()
 {
     // Create name server
-    //Create(PRIORITY_NAMESERVER, nameserverTask);
+    Create(PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
-    //Create(PRIORITY_CLOCK_SERVER, clockServerTask);
+    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
     // Create IO Servers
-    //Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
-    //Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
+    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
+    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
     Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
-    //Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
+    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 
     // Create user task
-    //Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
-    //Create(PRIORITY_PARSER, parserTask);
-    // Create(PRIORITY_SENSOR_TASK, sensorTask);
+    Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
+    Create(PRIORITY_PARSER, parserTask);
+    //Create(PRIORITY_SENSOR_TASK, sensorTask);
 
-    Create(PRIORITY_USERTASK, client);
-    //Create(PRIORITY_USERTASK, clientNotifier);
-    //Create(PRIORITY_USERTASK, client2);
+    //Create(PRIORITY_USERTASK, guy);
+
+    // Create(PRIORITY_USERTASK, client1);
+    // Create(PRIORITY_USERTASK, client2);
+    // Create(PRIORITY_USERTASK, hwier);
+    //Create(PRIORITY_CLOCK_SERVER, clocker);
+    //Create(PRIORITY_MONITOR_OUT_SERVER, xmiter);
+
+    //Create(PRIORITY_MONITOR_OUT_SERVER, miniOutServer);
 
     // Create idle task
     Create(PRIORITY_IDLE, idleProfiler);
-
-    //Create();
 
     // quit
     Exit();
 }
 
-static void initKernel() {
+static void initKernel(TaskQueue *sendQueues) {
     enableCache();
     initTaskSystem();
     initScheduler();
-    initMessagePassing();
+    initMessagePassing(sendQueues);
     initInterrupts();
     initUART();
     initTimer();
@@ -112,7 +224,7 @@ static void initKernel() {
     // int create_ret = taskCreate(1, userTaskIdle, 31);
     int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
 
-    assert(create_ret >= 0);
+    //assert(create_ret >= 0);
     queueTask(taskGetTDById(create_ret));
 }
 
@@ -124,12 +236,12 @@ static void resetKernel() {
     disableCache();
 }
 
-int handleRequest(TaskDescriptor *td, Syscall *request) {
+int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
 
     if (td->hwi)
     {
         handleInterrupt();
-        td->hwi = 0; //clearHwi();
+        td->hwi = 0;
     }
     else
     {
@@ -144,10 +256,10 @@ int handleRequest(TaskDescriptor *td, Syscall *request) {
             // we don't want rescheduling now that it's event blocked
             return 0;
         case SYS_SEND:
-            handleSend(td, request);
+            handleSend(sendQueues, td, request);
             return 0;
         case SYS_RECEIVE:
-            handleReceive(td, request);
+            handleReceive(sendQueues, td, request);
             return 0;
         case SYS_REPLY:
             handleReply(td, request);
@@ -191,7 +303,9 @@ int handleRequest(TaskDescriptor *td, Syscall *request) {
 
 int main()
 {
-    initKernel();
+    TaskQueue sendQueues[TASK_MAX_TASKS];
+
+    initKernel(sendQueues);
     TaskDescriptor *task = NULL;
     Syscall *request = NULL;
     for(;;) {
@@ -201,7 +315,7 @@ int main()
             break;
         }
         request = kernelExit(task);
-        if(handleRequest(task, request)) {
+        if(handleRequest(task, request, sendQueues)) {
             debug("Halt");
             break;
         }

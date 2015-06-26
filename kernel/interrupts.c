@@ -119,10 +119,10 @@ void initInterrupts() {
     }
 
     //enable(0, 1); // soft int
-    //enable(1, UART1_OR_MASK); // uart1 OR
-    //enable(0, UART2_RECV_MASK); // uart2 recv
+    enable(1, UART1_OR_MASK); // uart1 OR
+    enable(0, UART2_RECV_MASK); // uart2 recv
     enable(0, UART2_XMIT_MASK); // uart2 xmit
-    //enable(1, TIMER3_MASK); // enable timer 3
+    enable(1, TIMER3_MASK); // enable timer 3
 }
 
 void resetInterrupts() {
@@ -160,6 +160,8 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
 void handleInterrupt() {
     //bwprintf(COM2, "Kernel handleInterrupt, hwi: %d\n\r", _int_hwi);
 
+    //bwprintf(COM2, "[I]");
+
     static char ctsOn = -1;
     static char xmitRdy = -1;
     int vic1Status = getICU(VIC1, VIC_IRQ_STATUS);
@@ -167,6 +169,9 @@ void handleInterrupt() {
 
     // Timer 3 underflow
     if (vic2Status & TIMER3_MASK) {
+
+        //bwprintf(COM2, "[T]");
+
         // Clear timer interrupt in timer
         clearTimerInterrupt();
 
@@ -275,6 +280,8 @@ void handleInterrupt() {
     // UART 2 receive
     else if (vic1Status & UART2_RECV_MASK)
     {
+        //bwprintf(COM2, "[R]");
+
         // Get the character
         char c = getUARTData(COM2);
 
@@ -314,6 +321,7 @@ void handleInterrupt() {
     else
     {
         // something is wrong here
-        assert(0);
+        bwprintf(COM2, "Unable to handle unknown iterrupt.\n\r");
+        for (;;);
     }
 }

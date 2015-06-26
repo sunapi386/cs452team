@@ -20,7 +20,6 @@ static inline void initScheduler()
     }
     queueStatus = 0;
 }
-#define MAX_INT_32 2147483647
 
 static inline TaskDescriptor * schedule()
 {
@@ -47,19 +46,22 @@ static inline TaskDescriptor * schedule()
         return NULL;
     }
 
-    q->head = active->next;
-
-    if (q->head == NULL)
+    if (q->head == q->tail)
     {
+        q->head = NULL;
+        q->tail = NULL;
+
         // if queue becomes empty, set the tail to NULL and
         // clear the status bit
-        q->tail = NULL;
         queueStatus &= ~(1 << index);
     }
     else
     {
-        active->next = NULL;
+        q->head = active->next;
+        if (q->head == NULL) q->tail = NULL;
     }
+
+    active->next = NULL;
 
     return active;
 }

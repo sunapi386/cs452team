@@ -43,10 +43,9 @@ int Putc(int channel, char c) {
     if (channel != COM1 && channel != COM2) return -1;
 
     // Prepare request
-    IOReq req = {
-        .type = PUTCHAR,
-        .data = (unsigned int)c
-    };
+    IOReq req;
+    req.type = PUTCHAR;
+    req.data = (unsigned int)c;
     int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
     int ret = Send(server_tid, &req, sizeof(req), 0, 0);
     assert(ret >= 0);
@@ -77,8 +76,7 @@ void Printf(char* str, char *fmt, ... ) {
     PutString(&s);
 }
 
-
-static void monitorInNotifier() {
+void monitorInNotifier() {
     int pid = MyParentTid();
     IOReq req = {
         .type = NOTIFICATION
@@ -90,7 +88,7 @@ static void monitorInNotifier() {
     }
 }
 
-static void echoCourier() {
+void echoCourier() {
     IOReq echoReq = {
         .type = ECHO
     };
@@ -117,10 +115,9 @@ void monitorInServer() {
     CBufferInit(&taskBuffer, taskb, 128);
     CBufferInit(&charBuffer, charb, 1024);
 
-    IOReq req = {
-        .type = -1,
-        .data = '\0'
-    };
+    IOReq req;
+    req.type = -1;
+    req.data = '\0';
 
     // TODO: nameserver
     com2RecvSrvTid = MyTid();
@@ -136,7 +133,8 @@ void monitorInServer() {
     for (;;) {
         Receive(&tid, &req, sizeof(req));
 
-        switch (req.type) {
+        switch (req.type)
+        {
         // the notifier sent us a character
         case NOTIFICATION:
             // unblock notifier
@@ -187,82 +185,120 @@ void monitorInServer() {
     }
 }
 
-static int _pid = -1;
-static void monitorOutNotifier() {
-    int pid = MyParentTid();
-    _pid = pid;
-    IOReq req = {
-        .type = NOTIFICATION
-    };
+static int miniNotifierTid = -1;
 
-    for (;;) {
-        req.data = (unsigned int)AwaitEvent(UART2_XMIT_EVENT);
-        assert(req.data == UART2_BASE + UART_DATA_OFFSET);
-
-        int ret = Send(pid, &req, sizeof(req), 0, 0);
-
-        assert(ret >= 0);
-        assert(pid == _pid);
+void miniOutNotifier()
+{
+    miniNotifierTid = MyTid();
+    IOReq req;
+    req.type = NOTIFICATION;
+    int dummy = 0;
+    for (;;)
+    {
+    assert(req.type == NOTIFICATION);
+        AwaitEvent(UART2_XMIT_EVENT);
+    //assert(req.data == UART2_BASE + UART_DATA_OFFSET);
+        Send(com2SendSrvTid, &req, sizeof(req), &dummy, sizeof(dummy));
     }
 }
 
-void monitorOutServer() {
+void miniOutServer()
+{
+    int tid = 0;
+    IOReq req;
+
+    com2SendSrvTid = MyTid();
+
+    int notifierTid = Create(PRIORITY_MONITOR_OUT_NOTIFIER, &miniOutNotifier);
+    int dummy = 0;
+    for (;;)
+    {
+        int ret = Receive(&tid, &req, sizeof(req));
+        assert(ret == sizeof(req));
+
+        switch (req.type) {
+        case NOTIFICATION:
+        {
+            assert(tid == miniNotifierTid);
+            //assert(req.data == UART2_BASE + UART_DATA_OFFSET);
+            char *dataAddr = (char *)(UART2_BASE + UART_DATA_OFFSET);
+            *dataAddr = '~';
+            Reply(tid, &dummy, sizeof(dummy));
+            assert((notifierTid == tid) && (tid == miniNotifierTid));
+            break;
+        }
+        default:
+            assert(0);
+            break;
+        }
+    }
+}
+
+void monitorOutNotifier()
+{
+    int pid = MyParentTid();
+    IOReq req;
+    req.type = NOTIFICATION;
+
+    for (;;)
+    {
+        req.data = AwaitEvent(UART2_XMIT_EVENT);
+
+        Send(pid, &req, sizeof(req), 0, 0);
+    }
+}
+
+void monitorOutServer()
+{
     int tid = 0;
     char * sendAddr = 0;
     char charb[1024];
     CBuffer charBuffer;
-    CBufferInit(&charBuffer, charb, 1024);
+    CBufferInit(&charBuffer, charb, sizeof(charb));
 
-    IOReq req = {
-        .type = -1,
-        .data = '\0'
-    };
+    IOReq req;
+    req.type = -1;
+    req.data = '\0';
 
     // TODO: nameserver
     com2SendSrvTid = MyTid();
-    assert(com2SendSrvTid >= 0 && com2SendSrvTid < 10);
 
     // Register with name server
-    //RegisterAs("monitorOutServer");
+    RegisterAs("monitorOutServer");
 
     // Spawn notifier
     int notifierTid = Create(PRIORITY_MONITOR_OUT_NOTIFIER, &monitorOutNotifier);
-    assert(notifierTid < 10 && notifierTid >= 0);
 
     for (;;) {
-        int ret = Receive(&tid, &req, sizeof(req));
-        assert(ret >= 0);
-        assert(tid >= 0 && tid < 10);
+        Receive(&tid, &req, sizeof(req));
+
         switch (req.type) {
         case NOTIFICATION:
+        {
             if(CBufferIsEmpty(&charBuffer)) {
                 // nothing to send
                 // mark that we've seen a xmit interrupt
                 // and block the notifier
                 sendAddr = (char *)(req.data);
-                assert(sendAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
             }
             else {
                 char ch = CBufferPop(&charBuffer);
-                assert(req.data == UART2_BASE + UART_DATA_OFFSET);
+                //assert(req.data == UART2_BASE + UART_DATA_OFFSET);
                 // write out char to volatile address
                 // this also clears the xmit interrupt
                 *((char *)req.data) = ch;
 
                 // unblock the notifier
-                ret = Reply(tid, 0, 0);
-                assert(ret == 0);
+                Reply(tid, 0, 0);
             }
             break;
+        }
         case PUTCHAR:
-            ret = Reply(tid, 0, 0);
-            assert(ret == 0);
-
+        {
             // We've seen a xmit but did not
             // have a char to send at the moment
             if (sendAddr != 0)
             {
-                assert(sendAddr == (char *)(UART2_BASE + UART_DATA_OFFSET));
                 // send the char directly
                 // also clears the xmit interrupt
                 *sendAddr = (char)(req.data);
@@ -270,8 +306,7 @@ void monitorOutServer() {
                 // unblock the notifier which will
                 // call AwaitEvent() which re-enables
                 // xmit interrupt
-                ret = Reply(notifierTid, 0, 0);
-                assert(ret == 0);
+                Reply(notifierTid, 0, 0);
 
                 // reset 'seen transmit int' state
                 sendAddr = 0;
@@ -281,8 +316,13 @@ void monitorOutServer() {
             {
                 CBufferPush(&charBuffer, (char)(req.data));
             }
+
+            Reply(tid, 0, 0);
+
             break;
+        }
         case PUTSTR:
+        {
             // unblock caller
             Reply(tid, 0, 0);
 
@@ -307,9 +347,11 @@ void monitorOutServer() {
                 // reset 'seen transmit int' state
                 sendAddr = 0;
             }
+            break;
+        }
         default:
-            bwprintf(COM2, "Invalid request type: %d\n\r", req.type);
-            assert(0);
+            bwprintf(COM2, "[monitorOutServer]Invalid request type: %d\n\r", req.type);
+            for (;;);
             break;
         }
     }

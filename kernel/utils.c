@@ -1,4 +1,5 @@
 #include <utils.h>
+#include <debug.h>
 
 // NOTE: Insecure (does not detect overlapping memory)
 void memcpy(void *dest, const void *src, size_t n) {
@@ -36,6 +37,7 @@ void memcpy(void *dest, const void *src, size_t n) {
         : "r"(r_d), "r"(r_s), "r"(r_n) // input regs
         : "r3", "r4", "r5", "r6" // scratch
     );*/
+        /*
     register unsigned int i = 0;
     register unsigned int j = 0;
     for (;;)
@@ -48,7 +50,14 @@ void memcpy(void *dest, const void *src, size_t n) {
     {
         *((char *)dest + i + j) = *((char *)src + i + j);
         ++j;
-    }
+    }*/
+    if (n == 0) return;
+    const char *_src = src;
+    char *_dest = dest;
+
+    /* Simple, byte oriented memcpy. */
+    while (n--)
+        *_dest++ = *_src++;
 }
 
 int strcmp (const char * dst, const char * src) {
@@ -110,6 +119,7 @@ int CBufferPush(CBuffer *b, char ch) {
         ret = -1;
     }
     b->data[b->tail] = ch;
+    //assert(b->tail < 1024);
     return ret;
 }
 
@@ -118,6 +128,7 @@ char CBufferPop(CBuffer *b) {
     {
         // If no underflow, update head
         b->head = (b->head + 1) % b->size;
+        //assert(b->head < 1024);
         return b->data[b->head];
     }
     else
@@ -142,7 +153,7 @@ int CBufferPushStr(CBuffer *b, char *str)
     int ret = 0, counter = 0;
     while(*str)
     {
-        ret = CBufferPush(b, (char)*str);
+        ret = CBufferPush(b, *str);
         str++;
         counter++;
     }

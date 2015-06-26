@@ -7,4 +7,6 @@ void monitorOutServer();
 void trainInServer();
 void trainOutServer();
 
+void miniOutServer();
+
 #endif // __IO_H
