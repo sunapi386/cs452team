@@ -120,6 +120,10 @@ inline int taskGetMyParentId(TaskDescriptor *task) {
     return task->parent_id;
 }
 
+inline char *taskGetName(TaskDescriptor *task) {
+    return task->name;
+}
+
 inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
     task->ret = ret;
 }

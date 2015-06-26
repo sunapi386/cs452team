@@ -91,6 +91,7 @@ TaskDescriptor *taskGetTDById(int task_id);
 int taskGetMyParentIndex(TaskDescriptor *task);
 int taskGetUnique(TaskDescriptor *task);
 int taskGetMyParentUnique(TaskDescriptor *task);
+char *taskGetName(TaskDescriptor *task);
 
 static inline int isValidTaskIndex(int index)
 {

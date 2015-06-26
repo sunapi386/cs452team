@@ -35,8 +35,10 @@ static inline void sinit(String *s) {
 }
 
 void scopy(String *dst, const char *src);
+void scopystr(String *dst, String *src);
 void sputc(String *s, const char c);
 void sputstr(String *s, const char *str);
+void sconcat(String *dst, String *src);
 void sputuint(String *s, int num, unsigned short base);
 void sputint(String *s, int num, unsigned short base);
 void sformat(String *s, char *fmt, char * va);
