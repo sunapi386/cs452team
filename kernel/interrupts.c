@@ -82,20 +82,20 @@ static inline void stacktrace() {
     bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s() %x\n\r", fn_name, lr);
 }
 
-void undefined_instr() {
+__attribute__ ((interrupt ("UNDEF"))) void undefined_instr() {
     stacktrace();
     bwprintf(COM2, "*\n\r* UNDEFINED INSTRUCTION\n\r*\n\r");
     for(;;); // busy wait do not let kernel go
 }
 
-void abort_data() {
+__attribute__ ((interrupt ("ABORT"))) void abort_data() {
     stacktrace();
     bwprintf(COM2, "*\n\r* ABORT DATA\n\r*\n\r");
     for(;;); // busy wait do not let kernel go
 
 }
 
-void abort_prefetch() {
+__attribute__ ((interrupt ("ABORT"))) void abort_prefetch() {
     stacktrace();
     bwprintf(COM2, "*\n\r* ABORT PREFETCH\n\r*\n\r");
     for(;;); // busy wait do not let kernel go
@@ -153,7 +153,7 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
     return 0;
 }
 
-void handleInterrupt() {
+__attribute__ ((interrupt)) void handleInterrupt() {
     //bwprintf(COM2, "Kernel handleInterrupt, hwi: %d\n\r", _int_hwi);
 
     static char ctsOn = -1;

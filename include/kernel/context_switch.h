@@ -3,7 +3,7 @@
 
 struct TaskDescriptor;
 void kernelExit(struct TaskDescriptor *task);
-void kernelEnter();
-void irqEnter();
+void kernelEnter() __attribute__ ((interrupt ("SWI")));
+void irqEnter() __attribute__ ((interrupt ("IRQ")));
 
 #endif
