@@ -4,6 +4,7 @@
 #include <user/vt100.h>
 #include <user/syscall.h>
 #include <debug.h> // assert
+#include <user/train.h> // halting
 
 #define NUM_SENSORS     5
 #define SENSOR_RESET    192
@@ -52,7 +53,7 @@ static void _updateSensoryDisplay() {
 }
 
 
-static void _handleChar(char c) {
+static inline void _handleChar(char c) {
     char old = sensor_states[last_byte];
     sensor_states[last_byte] = c;
     char diff = ~old & c;
@@ -65,12 +66,19 @@ static void _handleChar(char c) {
 
             group = (group - 1 + NUM_RECENT_SENSORS) % NUM_RECENT_SENSORS;
 
+            // check if reading was what we should halt on
+            if(halt_reading.group == last_byte &&
+                halt_reading.offset == bit) {
+                trainSetSpeed(halt_train_number, 0);
+            }
+
             recent_sensors[group].group = 0;
             recent_sensors[group].offset = 0;
 
             _updateSensoryDisplay();
 
-            // TODO: notify the train controller of sensor trigger
+            // TODO: later, notify the train controller of sensor trigger
+
         }
     }
 
@@ -84,7 +92,6 @@ static void _sensorTask() {
             char c = Getc(COM1);
             if(c != 0) {
                 _handleChar(c);
-                // TODO: check if reading was what we should halt on
             }
         }
     }
