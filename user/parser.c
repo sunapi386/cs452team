@@ -4,35 +4,37 @@
 #include <user/vt100.h>
 #include <user/syscall.h> // Create
 #include <user/train.h>
-
-// Parser is a giant state machine
-// tr train_number train_speed
-// rv train_number
-// sw switch_number switch_direction
-// q
+#include <user/sensor.h> // SensorHalt
 
 typedef struct Parser {
     // state is the last character we've parsed
     enum State {
-        Error = -1,      // Any error
-        Empty,      // No input
-        TR_T,       // t
-        TR_R,       // r
-        TR_space_1,     // first space
-        TR_train_number,    // train_number
-        TR_space_2,     // second space
-        TR_speed,   // train_speed
-        RV_R,       // r
-        RV_V,       // v
-        RV_space,       // space
-        RV_train_number, // train_number
-        SW_S,       // s
-        SW_W,       // w
-        SW_space_1, // first space
-        SW_switch_number, // train_number
-        SW_space_2,     // second space
-        SW_switch_dir, // direction is S or C
-        Q_Q,      // quit
+        Error = -1,
+        Empty,
+        TR_T,       // tr train_number train_speed
+        TR_R,
+        TR_space_1,
+        TR_train_number,
+        TR_space_2,
+        TR_speed,
+        RV_R,       // rv train_number
+        RV_V,
+        RV_space,
+        RV_train_number,
+        SW_S,       // sw switch_number switch_direction
+        SW_W,
+        SW_space_1,
+        SW_switch_number,
+        SW_space_2,
+        SW_switch_dir,
+        H_H,        // h train_number sensor_group sensor_number
+        H_space_1,
+        H_train_number,
+        H_space_2,
+        H_sensor_group,
+        H_space_3,
+        H_sensor_number,
+        Q_Q,        // q
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -48,6 +50,11 @@ typedef struct Parser {
         struct Reverse { // RV data
             int train_number;
         } reverse;
+        struct SensorHalt {
+            int train_number;
+            int sensor_group;
+            int sensor_number;
+        } sensor_halt;
     } data;
 
 } Parser;
@@ -88,11 +95,56 @@ static bool parse(Parser *p, char c) {
                     case 'r': p->state = RV_R; break;
                     case 's': p->state = SW_S; break;
                     case 'q': p->state = Q_Q; break;
+                    case 'h': p->state = H_H; break;
                     default:  p->state = Error; break;
                 }
                 break;
             }
 
+            // ----------- h train_number sensor_group sensor_number ------- //
+            case H_H: {
+                REQUIRE(' ', H_space_1);
+                break;
+            }
+            case H_space_1: {
+                p->data.sensor_halt.train_number = 0;
+                p->state =  append_number(c, &(p->data.sensor_halt.train_number)) ?
+                            H_train_number :
+                            Error;
+                break;
+            }
+            case H_train_number: {
+                if(! append_number(c, &(p->data.sensor_halt.train_number))) {
+                    REQUIRE(' ', H_space_2);
+                }
+                break;
+            }
+            case H_space_2: {
+                p->data.sensor_halt.sensor_group = 0;
+                p->state =  append_number(c, &(p->data.sensor_halt.sensor_group)) ?
+                            H_sensor_group :
+                            Error;
+                break;
+            }
+            case H_sensor_group: {
+                if(! append_number(c, &(p->data.sensor_halt.sensor_group))) {
+                    REQUIRE(' ', H_space_3);
+                }
+                break;
+            }
+            case H_space_3: {
+                p->data.sensor_halt.sensor_number = 0;
+                p->state =  append_number(c, &(p->data.sensor_halt.sensor_number)) ?
+                            H_sensor_number :
+                            Error;
+                break;
+            }
+            case H_sensor_number: {
+                if(! append_number(c, &(p->data.sensor_halt.sensor_number))) {
+                    p->state = Error;
+                }
+                break;
+            }
             // ----------- tr train_number train_speed ----------- //
             case TR_T: {
                 REQUIRE('r', TR_R);
@@ -216,6 +268,26 @@ static bool parse(Parser *p, char c) {
         sputstr(&disp_msg, VT_RESET);
         // should be on an end state
         switch(p->state) {
+            case H_sensor_number: {
+                int train_number = p->data.sensor_halt.train_number;
+                int sensor_group = p->data.sensor_halt.sensor_group;
+                int sensor_number = p->data.sensor_halt.sensor_number;
+                // check each is valid
+                if(train_number < 0 || 80 < train_number) {
+                    sprintf(&disp_msg,
+                        "H: bad train_number %d, expects 0 to 80\r\n", train_number);
+                }
+                else if(sensor_group < 'a' || 'e' < sensor_group) {
+                    sprintf(&disp_msg,
+                        "H: bad sensor_group char, expects 'a' to 'e'\r\n");
+                }
+                else if(sensor_number < 1 || 16 < sensor_number) {
+                    sprintf(&disp_msg,
+                        "H: bad sensor_number %d, expects 1 to 16\r\n", sensor_number);
+                }
+                sensorHalt(train_number, sensor_group, sensor_number);
+                break;
+            }
             case TR_speed: {
                 // check train_number and train_speed
                 int train_number = p->data.speed.train_number;
