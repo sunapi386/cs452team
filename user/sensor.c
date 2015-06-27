@@ -20,26 +20,32 @@ static SensorReading recent_sensors[NUM_RECENT_SENSORS];
 
 static char sensor_states[2 * NUM_SENSORS];
 static int last_byte = 0;
+static int recently_read = 0;
 
 static int halt_train_number;
-static int halt_train_group;
-static int halt_train_sensor;
+static SensorReading halt_reading;
 
-
-static void _sensorFormat(String *s, char group, int offset) {
-    sprintf(s, "%c%d",
-        'A' + group,
-        offset
-        );
+static void _sensorFormat(String *s, SensorReading *sensorReading) {
+    // e.g. formats the SensorReading to "A10"
+    char alpha = sensorReading->group / 2;
+    char bit = sensorReading->offset;
+    // Mmm alphabit soup
+    sprintf(s, "%c%d", 'A' + alpha, bit);
 }
 
 static void _updateSensoryDisplay() {
     String s;
+    sinit(&s);
     sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
+    // TOOD: calc and determine where the actual row and col is, on gui
     vt_pos(&s, VT_SENSOR_ROW, VT_SENSOR_COL);
     sputstr(&s, VT_RESET);
 
-
+    for(int i = (recently_read + 1) % NUM_SENSORS;
+        recent_sensors[recently_read].offset != 0;
+        i = (i + 1) % NUM_RECENT_SENSORS) {
+        _sensorFormat(&s, &recent_sensors[i]);
+    }
 
     sprintf(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
     PutString(COM2, &s);
@@ -78,9 +84,14 @@ static void _sensorTask() {
             char c = Getc(COM1);
             if(c != 0) {
                 _handleChar(c);
+                // TODO: check if reading was what we should halt on
             }
         }
     }
+
+}
+
+static void drawSensorArea() {
 
 }
 
@@ -91,6 +102,7 @@ void initSensor() {
     for(int i = 0; i < 2 * NUM_SENSORS; i++) {
         sensor_states[i] = 0;
     }
+    last_byte = recently_read = 0;
     redrawTrackLayoutGraph('a');
     Putc(COM1, SENSOR_RESET);
     Create(PRIORITY_SENSOR_TASK, _sensorTask);
@@ -98,9 +110,24 @@ void initSensor() {
 
 void sensorHalt(int train_number, int sensor, int sensor_number) {
     // gets called by the parser
+
+    int group = (sensor - 'a') * 2;
+    if(sensor_number > 8 ) {
+        sensor_number -= 8;
+        group++;
+    }
+    int bit = 9 - sensor_number;
+
+    // debug:
+    // printf(COM2, "train #%d group %d offset %d\r\n", train_number, group, bit);
+
+    halt_train_number = train_number;
+    halt_reading.group = group;
+    halt_reading.offset = bit;
 }
 
-void redrawTrackLayoutGraph(char which_track) {
+
+void redrawTrackLayoutGraph(Track which_track) {
     assert(STR_MAX_LEN > strlen(trackA1));
     assert(STR_MAX_LEN > strlen(trackA2));
     assert(STR_MAX_LEN > strlen(trackA3));
@@ -115,15 +142,19 @@ void redrawTrackLayoutGraph(char which_track) {
     sputstr(&s, VT_RESET);
     PutString(COM2, &s);
 
-    if(which_track == 'a') {
-        printf(COM2, trackA1);
-        printf(COM2, trackA2);
-        printf(COM2, trackA3);
-    }
-    else if(which_track == 'b') {
-        printf(COM2, trackB1);
-        printf(COM2, trackB2);
-        printf(COM2, trackB3);
+    switch(which_track) {
+        case A:
+            printf(COM2, trackA1);
+            printf(COM2, trackA2);
+            printf(COM2, trackA3);
+            break;
+        case B:
+            printf(COM2, trackB1);
+            printf(COM2, trackB2);
+            printf(COM2, trackB3);
+            break;
+        default:
+            break;
     }
 
     sinit(&s);
