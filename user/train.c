@@ -22,7 +22,7 @@ void trainSetReverse(int train_number) {
     trainSetSpeed(train_number, speeds[train_number]);
 }
 
-void trainSetSwitch(int switch_number, bool curved) {
+void trainSetSwitch(int switch_number, int curved) {
     Putc(COM1, curved ? CURVED : STRAIGHT);
     Putc(COM1, switch_number);
     Putc(COM1, SOLENOID_OFF);

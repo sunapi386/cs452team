@@ -23,6 +23,7 @@ SECTIONS
     {
     _DataStart = . ;
     *(.data)
+    *(.data.rel.local)
     _DataEnd = . ;
     } >ram
 

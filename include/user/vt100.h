@@ -37,6 +37,8 @@
 #define VT_CLOCK_COL            68
 #define VT_SENSOR_ROW           10
 #define VT_SENSOR_COL           1
+#define VT_SWITCH_ROW           20
+#define VT_SWITCH_COL           1
 #define VT_TRACK_GRAPH_ROW      4
 #define VT_TRACK_GRAPH_COL      24
 
