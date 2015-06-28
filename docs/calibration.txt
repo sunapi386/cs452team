@@ -1,0 +1,14 @@
+CALIBRATION
+===========
+
+`track`: `train_num`
+
+Stopping at `sensor`
+-------------------------
+|   Front| Back   |
++--------+--------+
+| 510 mm | 610 mm |
+| 513 mm | 615 mm |
++--------+--------+
+| 512 mm | 611 mm |
+| 511 mm | 613 mm |
