@@ -39,7 +39,7 @@ static inline void clear(int vicID, unsigned int offset) {
     setICU(vic[vicID], VIC_INT_CLEAR, offset);
 }
 
-static inline void save() {
+__attribute__((always_inline)) static inline void save() {
     asm volatile(
         "stmfd sp!, {r0-r12}\n\t"   // store r0-r12 to stack
         "msr cpsr_c, #0xd0\n\t"
@@ -49,7 +49,7 @@ static inline void save() {
     );
 }
 
-static inline void dump() {
+__attribute__((always_inline)) static inline void dump() {
     bwprintf(COM2, "\r\nREGISTERS\r\n");
     for(int i = 13; i >= 0; i--) {
         bwprintf(COM2, "r%d:\t", i);
@@ -69,7 +69,7 @@ static inline void dump() {
 
 // stacktrace takes a memory address and then decreases this address
 // until it detects the bit-pattern of a function name and we’re done.
-static inline void stacktrace() {
+__attribute__((always_inline)) static inline void stacktrace() {
     save();
     unsigned int *lr;
     asm volatile("mov %0, lr\n\t" : "=r"(lr));
@@ -82,20 +82,20 @@ static inline void stacktrace() {
     bwprintf(COM2, "STACKTRACE FUNCTION NAME: %s() %x\n\r", fn_name, lr);
 }
 
-void undefined_instr() {
+__attribute__ ((interrupt ("UNDEF"), noreturn)) void undefined_instr() {
     stacktrace();
     bwprintf(COM2, "*\n\r* UNDEFINED INSTRUCTION\n\r*\n\r");
     for(;;); // busy wait do not let kernel go
 }
 
-void abort_data() {
+__attribute__ ((interrupt ("ABORT"), noreturn)) void abort_data() {
     stacktrace();
     bwprintf(COM2, "*\n\r* ABORT DATA\n\r*\n\r");
     for(;;); // busy wait do not let kernel go
 
 }
 
-void abort_prefetch() {
+__attribute__ ((interrupt ("ABORT"), noreturn)) void abort_prefetch() {
     stacktrace();
     bwprintf(COM2, "*\n\r* ABORT PREFETCH\n\r*\n\r");
     for(;;); // busy wait do not let kernel go
@@ -153,7 +153,7 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
     return 0;
 }
 
-void handleInterrupt() {
+__attribute__ ((interrupt)) void handleInterrupt() {
     //bwprintf(COM2, "Kernel handleInterrupt, hwi: %d\n\r", _int_hwi);
 
     static char ctsOn = -1;

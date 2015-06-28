@@ -83,7 +83,7 @@ Resources owned by the task, primarily its memory and task descriptor are not re
 Returns. Exit does not return. If a point occurs where all tasks have exited the
 kernel should return cleanly to RedBoot.
 */
-void Exit( );
+void Exit( ) __attribute__((noreturn));
 
 /**
 Send - send a message

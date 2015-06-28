@@ -41,9 +41,10 @@ void Pass() {
     swi(&s);
 }
 
-void Exit() {
+__attribute__((noreturn)) void Exit() {
     s.type = SYS_EXIT;
     swi(&s);
+    while(1); // to silence gcc's "warning: ‘noreturn’ function does return"
 }
 
 int Send(int tid, void *msg, unsigned int msglen, void *reply, unsigned int replylen)
