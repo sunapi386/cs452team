@@ -13,43 +13,4 @@ void sensorHalt(int train_number, int sensor, int sensor_number);
 typedef enum {A, B, None} Track;
 void redrawTrackLayoutGraph(Track which_track);
 
-// putting the tracks here to not pollute .c file
-
-static char *trackA1 =
-"=========S===S===================================\\\r\n"
-"=======S/   /  ==========S========S============\\  \\\r\n"
-"======/    S==/           \\   |  /              \\  \\\r\n"
-"          /                \\  |S/                \\==S\r\n";
-
-static char *trackA2 =
-"         |                  \\S|                     |\r\n"
-"         |                    |S\\                   |\r\n"
-"          \\                 /S|  \\               /==S\r\n"
-"           S==\\            /  |   \\             /  /\r\n";
-
-static char *trackA3 =
-"========\\   \\  ==========S=========S===========/  /\r\n"
-"=========S\\  \\=========S============S============/\r\n"
-"===========S\\           \\          /\r\n"
-"=============S===========S========S============\r\n";
-
-
-static char *trackB1 =
-"=========S===S===================================\\\r\n"
-"=======S/   /  ==========S========S============\\  \\\r\n"
-"      /    S==/           \\   |  /              \\  \\\r\n"
-"   /=/    /                \\  |S/                \\==S\r\n";
-
-static char *trackB2 =
-"   |     |                  \\S|                     |\r\n"
-"   |     |                    |S\\                   |\r\n"
-"   \\=     \\                 /S|  \\               /==S\r\n"
-"     \\=\\   S==\\            /  |   \\             /  /\r\n";
-
-static char *trackB3 =
-"        \\   \\  ==========S=========S===========/  /\r\n"
-"=========S\\  \\=========S============S============/\r\n"
-"===========S\\           \\          /\r\n"
-"=============S===========S========S============\r\n";
-
 #endif

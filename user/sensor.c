@@ -9,8 +9,40 @@
 #define NUM_SENSORS     5
 #define SENSOR_RESET    192
 #define SENSOR_QUERY    (128 + NUM_SENSORS)
-
 #define NUM_RECENT_SENSORS    8
+
+static char *trackA1 =
+"=========S===S===================================\\\r\n"
+"=======S/   /  ==========S========S============\\  \\\r\n"
+"======/    S==/           \\   |  /              \\  \\\r\n"
+"          /                \\  |S/                \\==S\r\n";
+static char *trackA2 =
+"         |                  \\S|                     |\r\n"
+"         |                    |S\\                   |\r\n"
+"          \\                 /S|  \\               /==S\r\n"
+"           S==\\            /  |   \\             /  /\r\n";
+static char *trackA3 =
+"========\\   \\  ==========S=========S===========/  /\r\n"
+"=========S\\  \\=========S============S============/\r\n"
+"===========S\\           \\          /\r\n"
+"=============S===========S========S============\r\n";
+
+static char *trackB1 =
+"=========S===S===================================\\\r\n"
+"=======S/   /  ==========S========S============\\  \\\r\n"
+"      /    S==/           \\   |  /              \\  \\\r\n"
+"   /=/    /                \\  |S/                \\==S\r\n";
+static char *trackB2 =
+"   |     |                  \\S|                     |\r\n"
+"   |     |                    |S\\                   |\r\n"
+"   \\=     \\                 /S|  \\               /==S\r\n"
+"     \\=\\   S==\\            /  |   \\             /  /\r\n";
+static char *trackB3 =
+"        \\   \\  ==========S=========S===========/  /\r\n"
+"=========S\\  \\=========S============S============/\r\n"
+"===========S\\           \\          /\r\n"
+"=============S===========S========S============\r\n";
+
 
 typedef struct SensorReading {
     char group;
@@ -31,15 +63,29 @@ static void _sensorFormat(String *s, SensorReading *sensorReading) {
     char alpha = sensorReading->group / 2;
     char bit = sensorReading->offset;
     // Mmm alphabit soup
-    sprintf(s, "%c%d", 'A' + alpha, bit);
+    sprintf(s, "%c%d\r\n", 'A' + alpha, bit);
+}
+
+static void drawSensorArea() {
+    String s;
+    sinit(&s);
+    sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
+    vt_pos(&s, VT_SENSOR_ROW, VT_SENSOR_COL);
+    sputstr(&s, VT_RESET);
+    sprintf(&s, "-- RECENT SENSORS --\r\n");
+    for(int i = 1; i <= NUM_RECENT_SENSORS; i++) {
+        sprintf(&s, "%d. A10\r\n", i);
+    }
+    sprintf(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    PutString(COM2, &s);
 }
 
 static void _updateSensoryDisplay() {
     String s;
     sinit(&s);
     sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
-    // TOOD: calc and determine where the actual row and col is, on gui
-    vt_pos(&s, VT_SENSOR_ROW, VT_SENSOR_COL);
+    // TODO: calc and determine where the actual row and col is, on gui
+    vt_pos(&s, VT_SENSOR_ROW + 1, VT_SENSOR_COL + sizeof("0. "));
     sputstr(&s, VT_RESET);
 
     for(int i = (recently_read + 1) % NUM_SENSORS;
@@ -98,10 +144,6 @@ static void _sensorTask() {
 
 }
 
-static void drawSensorArea() {
-
-}
-
 void initSensor() {
     for(int i = 0; i < NUM_RECENT_SENSORS; i++) {
         recent_sensors[i].group = recent_sensors[i].offset = 0;
@@ -110,6 +152,7 @@ void initSensor() {
         sensor_states[i] = 0;
     }
     last_byte = recently_read = 0;
+    drawSensorArea();
     redrawTrackLayoutGraph('a');
     Putc(COM1, SENSOR_RESET);
     Create(PRIORITY_SENSOR_TASK, _sensorTask);
