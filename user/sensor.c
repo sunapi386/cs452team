@@ -1,190 +1,213 @@
+#include <user/sensor.h>
 #include <utils.h>
 #include <priority.h>
 #include <user/vt100.h>
-#include <user/sensor.h>
 #include <user/syscall.h>
+#include <debug.h> // assert
+#include <user/train.h> // halting
 
-#define SENSOR_QUERY 133
+#define NUM_SENSORS     5
+#define SENSOR_RESET    192
+#define SENSOR_QUERY    (128 + NUM_SENSORS)
+#define NUM_RECENT_SENSORS    8
 
-void intToString(unsigned int number, char *buf)
-{
-    unsigned int n = 10, len = 1;
-    for (;;)
-    {
-        if (number < n)
-        {
-            break;
-        }
-        else
-        {
-            ++len;
-            n *= 10;
-        }
-    }
+static char *trackA1 =
+"=========S===S===================================\\\r\n"
+"=======S/   /  ==========S========S============\\  \\\r\n"
+"======/    S==/           \\   |  /              \\  \\\r\n"
+"          /                \\  |S/                \\==S\r\n";
+static char *trackA2 =
+"         |                  \\S|                     |\r\n"
+"         |                    |S\\                   |\r\n"
+"          \\                 /S|  \\               /==S\r\n"
+"           S==\\            /  |   \\             /  /\r\n";
+static char *trackA3 =
+"========\\   \\  ==========S=========S===========/  /\r\n"
+"=========S\\  \\=========S============S============/\r\n"
+"===========S\\           \\          /\r\n"
+"=============S===========S========S============\r\n";
 
-    buf[len] = '\0';
-    int i;
-    for (i = len; i > 0; i--)
-    {
-        buf[i-1] = (number % 10) + '0'; // Convert to ascii eq
-        number /= 10;
-    }
+static char *trackB1 =
+"=========S===S===================================\\\r\n"
+"=======S/   /  ==========S========S============\\  \\\r\n"
+"      /    S==/           \\   |  /              \\  \\\r\n"
+"   /=/    /                \\  |S/                \\==S\r\n";
+static char *trackB2 =
+"   |     |                  \\S|                     |\r\n"
+"   |     |                    |S\\                   |\r\n"
+"   \\=     \\                 /S|  \\               /==S\r\n"
+"     \\=\\   S==\\            /  |   \\             /  /\r\n";
+static char *trackB3 =
+"        \\   \\  ==========S=========S===========/  /\r\n"
+"=========S\\  \\=========S============S============/\r\n"
+"===========S\\           \\          /\r\n"
+"=============S===========S========S============\r\n";
+
+
+typedef struct SensorReading {
+    char group;
+    char offset;
+} SensorReading;
+
+static SensorReading recent_sensors[NUM_RECENT_SENSORS];
+
+static char sensor_states[2 * NUM_SENSORS];
+static int last_byte = 0;
+static int recently_read = 0;
+
+static int halt_train_number;
+static SensorReading halt_reading;
+
+static void _sensorFormat(String *s, SensorReading *sensorReading) {
+    // e.g. formats the SensorReading to "A10"
+    char alpha = sensorReading->group / 2;
+    char bit = sensorReading->offset;
+    // Mmm alphabit soup
+    sprintf(s, "%c%d\r\n", 'A' + alpha, bit);
 }
 
-/**
-processData
-    Encode a received sensor data into bytes that represents sensor status,
-    then use them to populate a buffer, which is then used to output recently
-    fired sensor in a scrolling fashion
-*/
-static inline void
-processData(CBuffer *b, const char replyCount, const char data)
-{
-    char name = 0, offset = replyCount % 2 == 0 ? 0 : 8;
+static void drawSensorArea() {
+    String s;
+    sinit(&s);
+    sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
+    vt_pos(&s, VT_SENSOR_ROW, VT_SENSOR_COL);
+    sputstr(&s, VT_RESET);
+    sprintf(&s, "-- RECENT SENSORS --\r\n");
+    for(int i = 1; i <= NUM_RECENT_SENSORS; i++) {
+        sprintf(&s, "%d. A10\r\n", i);
+    }
+    sprintf(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    PutString(COM2, &s);
+}
 
-    if      (replyCount < 2) name = 0;
-    else if (replyCount < 4) name = 1;
-    else if (replyCount < 6) name = 2;
-    else if (replyCount < 8) name = 3;
-    else                     name = 4;
+static void _updateSensoryDisplay() {
+    String s;
+    sinit(&s);
+    sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
+    // TODO: calc and determine where the actual row and col is, on gui
+    vt_pos(&s, VT_SENSOR_ROW + 1, VT_SENSOR_COL + sizeof("0. "));
+    sputstr(&s, VT_RESET);
 
-    char i, index;
-    for (i = 0, index = 8; i < 8; i++, index--)
-    {
-        if ((1 << i) & data)
-        {
-            if ((b->tail + 1) % b->size == b->head)
-            {
-                // prevent wrap around: dequeue size/2 items
-                // this is needed for scrolling behavior
-                b->head = (b->head + b->size/2) % b->size;
+    for(int i = (recently_read + 1) % NUM_SENSORS;
+        recent_sensors[recently_read].offset != 0;
+        i = (i + 1) % NUM_RECENT_SENSORS) {
+        _sensorFormat(&s, &recent_sensors[i]);
+    }
+
+    sprintf(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    PutString(COM2, &s);
+}
+
+
+static inline void _handleChar(char c) {
+    char old = sensor_states[last_byte];
+    sensor_states[last_byte] = c;
+    char diff = ~old & c;
+    int group = 0;
+    // make sensor reading for each different (changed) bit
+    for(int bit = 1; diff; diff >>= 1, bit++) {
+        if(diff & 1) {
+            recent_sensors[group].group = last_byte;
+            recent_sensors[group].offset = bit;
+
+            group = (group - 1 + NUM_RECENT_SENSORS) % NUM_RECENT_SENSORS;
+
+            // check if reading was what we should halt on
+            if(halt_reading.group == last_byte &&
+                halt_reading.offset == bit) {
+                trainSetSpeed(halt_train_number, 0);
             }
-            // index + offset: 00001 - 10000
-            CBufferPush(b, (name << 5) | (index + offset));
+
+            recent_sensors[group].group = 0;
+            recent_sensors[group].offset = 0;
+
+            _updateSensoryDisplay();
+
+            // TODO: later, notify the train controller of sensor trigger
+
         }
     }
-}
-/*
-static inline void
-putStatus(const char status)
-{
-    // Decode sensor status
-    // first 3 byte: A-E, last 5 bytes: 1-16
-    unsigned char name = status >> 5; // get upper 3 bits
-    unsigned char index = status & 31; // get lower 5 bits (& 11111)
-    char indexStr[3];
-    intToString(index, indexStr);
 
-    // Output status
-    Putc(COM2, 'A' + name);
-    PutStr(indexStr);
+    last_byte = (last_byte + 1) % (2 * NUM_SENSORS);
 }
 
-static inline void
-draw(const CBuffer *b)
-{
-    unsigned int head = b->head;
-    unsigned int tail = b->tail;
-    size_t size = b->size;
-    char *buffer = b->data;
-
-    // Go to the correct cursor position
-    PutStr("\33[s");
-    int i;
-    for (i = 0; i < 11; i++)
-    {
-        if (tail == head)
-        {
-            break;
+static void _sensorTask() {
+    while(1) {
+        Putc(COM1, SENSOR_QUERY);
+        for(int i = 0; i < (2 * NUM_SENSORS); i++) {
+            char c = Getc(COM1);
+            if(c != 0) {
+                _handleChar(c);
+            }
         }
-        char *pos;
-        switch (i)
-        {
-        case 0:
-            pos = "\33[7;25H\33[K";
+    }
+
+}
+
+void initSensor() {
+    for(int i = 0; i < NUM_RECENT_SENSORS; i++) {
+        recent_sensors[i].group = recent_sensors[i].offset = 0;
+    }
+    for(int i = 0; i < 2 * NUM_SENSORS; i++) {
+        sensor_states[i] = 0;
+    }
+    last_byte = recently_read = 0;
+    drawSensorArea();
+    redrawTrackLayoutGraph('a');
+    Putc(COM1, SENSOR_RESET);
+    Create(PRIORITY_SENSOR_TASK, _sensorTask);
+}
+
+void sensorHalt(int train_number, int sensor, int sensor_number) {
+    // gets called by the parser
+
+    int group = (sensor - 'a') * 2;
+    if(sensor_number > 8 ) {
+        sensor_number -= 8;
+        group++;
+    }
+    int bit = 9 - sensor_number;
+
+    // debug:
+    // printf(COM2, "train #%d group %d offset %d\r\n", train_number, group, bit);
+
+    halt_train_number = train_number;
+    halt_reading.group = group;
+    halt_reading.offset = bit;
+}
+
+
+void redrawTrackLayoutGraph(Track which_track) {
+    assert(STR_MAX_LEN > strlen(trackA1));
+    assert(STR_MAX_LEN > strlen(trackA2));
+    assert(STR_MAX_LEN > strlen(trackA3));
+    assert(STR_MAX_LEN > strlen(trackB1));
+    assert(STR_MAX_LEN > strlen(trackB2));
+    assert(STR_MAX_LEN > strlen(trackB3));
+
+    String s;
+    sinit(&s);
+    sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
+    vt_pos(&s, VT_TRACK_GRAPH_ROW, VT_TRACK_GRAPH_COL);
+    sputstr(&s, VT_RESET);
+    PutString(COM2, &s);
+
+    switch(which_track) {
+        case A:
+            printf(COM2, trackA1);
+            printf(COM2, trackA2);
+            printf(COM2, trackA3);
             break;
-        case 1:
-            pos = "\33[8;25H\33[K";
-            break;
-        case 2:
-            pos = "\33[9;25H\33[K";
-            break;
-        case 3:
-            pos = "\33[10;25H\33[K";
-            break;
-        case 4:
-            pos = "\33[11;25H\33[K";
-            break;
-        case 5:
-            pos = "\33[12;25H\33[K";
-            break;
-        case 6:
-            pos = "\33[13;25H\33[K";
-            break;
-        case 7:
-            pos = "\33[14;25H\33[K";
-            break;
-        case 8:
-            pos = "\33[15;25H\33[K";
-            break;
-        case 9:
-            pos = "\33[16;25H\33[K";
-            break;
-        case 10:
-            pos = "\33[17;25H\33[K";
+        case B:
+            printf(COM2, trackB1);
+            printf(COM2, trackB2);
+            printf(COM2, trackB3);
             break;
         default:
-            pos = "\33[18;25H\33[K";
             break;
-        }
-        PutStr(pos);
-        putStatus(buffer[tail]);
-        tail = tail == 0 ? size - 1 : tail - 1;
     }
-    PutStr("\33[u");
-}
-*/
-void printStatus(char replyCount, char data)
-{
-    char i, index, name = 0, offset = replyCount % 2 == 0 ? 0 : 8;
 
-    if      (replyCount < 2) name = 0;
-    else if (replyCount < 4) name = 1;
-    else if (replyCount < 6) name = 2;
-    else if (replyCount < 8) name = 3;
-    else                     name = 4;
-
-    for (i = 0, index = 8; i < 8; i++, index--)
-    {
-        if ((1 << i) & data)
-        {
-            printf(COM2, "%c%d\n\r", 'A' + name, index + offset);
-        }
-    }
-}
-
-void sensorTask()
-{
-    char sb[512];
-    CBuffer sensorStatus;
-    CBufferInit(&sensorStatus, sb, 512);
-
-    for (;;)
-    {
-        // Query for data
-        Putc(COM1, SENSOR_QUERY);
-
-        // Grab 10 replies
-        char i;
-        for (i = 0; i < 10; i++)
-        {
-            char c = Getc(COM1);
-            if (c != 0)
-            {
-                //processData(&sensorStatus, i, c);
-                //draw(&sensorStatus);
-                printStatus(i, c);
-            }
-        }
-    }
+    sinit(&s);
+    sprintf(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    PutString(COM2, &s);
 }

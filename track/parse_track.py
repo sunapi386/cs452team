@@ -295,7 +295,8 @@ if errors > 0:
 maxidx = max([len(tracks[function].nodes) for function in tracks])
 fh = open(options.h, 'w')
 fh.write('''/* THIS FILE IS GENERATED CODE -- DO NOT EDIT */
-
+#ifndef __TRACK_DATA_H
+#define __TRACK_DATA_H
 #include "track_node.h"
 
 // The track initialization functions expect an array of this size.
@@ -304,6 +305,7 @@ fh.write('''/* THIS FILE IS GENERATED CODE -- DO NOT EDIT */
 ''' % maxidx)
 for fun in tracks:
   fh.write("void %s(track_node *track);\n" % fun)
+fh.write("#endif\n")
 fh.close()
 
 ########################################################################

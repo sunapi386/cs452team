@@ -2,6 +2,7 @@
 #define __VT100_H
 
 // http://www.vt100.net/docs/vt100-ug/chapter3.html
+// http://www.termsys.demon.co.uk/vtansi.htm#colors
 
 #define ESC 27
 
@@ -17,9 +18,6 @@
 #define VT_CLEAR_LINE              VT_CSI "2K"
 #define VT_CLEAR_SCREEN            VT_CSI "2J"
 
-
-// COLORS
-// http://www.termsys.demon.co.uk/vtansi.htm#colors
 #define VT_RESET                 VT_CSI "0m"
 #define VT_BLACK                 VT_CSI "30m"
 #define VT_RED                   VT_CSI "31m"
@@ -33,17 +31,19 @@
 #define VT_CARRIAGE_RETURN      0x0d
 
 // Display positions
-#define VT_CLOCK_ROW            1
-#define VT_CLOCK_COL            30
-#define VT_SENSOR_ROW           2
-#define VT_SENSOR_COL           1
-#define VT_SWITCH_ROW           20
-#define VT_SWITCH_COL           1
+// refer to gui_track{A,B}.txt for layouts
 
-#define VT_PARSER_TOP           5
-#define VT_PARSER_BOT           10
-#define VT_PARSER_ROW           11
-#define VT_PARSER_COL           0
+#define VT_CLOCK_ROW            1
+#define VT_CLOCK_COL            68
+#define VT_SENSOR_ROW           10
+#define VT_SENSOR_COL           1
+#define VT_TRACK_GRAPH_ROW      4
+#define VT_TRACK_GRAPH_COL      24
+
+#define VT_PARSER_TOP           18
+#define VT_PARSER_BOT           20
+#define VT_PARSER_ROW           21
+#define VT_PARSER_COL           1
 
 #define VT_LOG_ROW              18
 #define VT_LOG_COL              1
