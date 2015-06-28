@@ -9,7 +9,7 @@ void initInterrupts();
 // puts a task onto interrupt table to wait for interruptID
 int awaitInterrupt(struct TaskDescriptor *active, unsigned int event);
 // reschedules tasks that were waiting on interrupts
-void handleInterrupt() __attribute__ ((interrupt));
+void handleInterrupt();
 // resets PL190
 void resetInterrupts();
 

@@ -71,7 +71,6 @@ void bootstrap()
     // Create idle task
     Create(PRIORITY_IDLE, idleProfiler);
 
-    // Quit
     Exit();
 }
 
@@ -192,7 +191,6 @@ int main()
         task_begin_time = clockServerGetTick();
         request = kernelExit(task);
         task->cpu_time_used += (clockServerGetTick() - task_begin_time);
-
         if(handleRequest(task, request, sendQueues)) {
             debug("Halt");
             break;

@@ -145,7 +145,7 @@ char *taskGetName(TaskDescriptor *task) {
     return task->name;
 }
 
-inline void taskSetName(TaskDescriptor *task, char *name) {
+void taskSetName(TaskDescriptor *task, char *name) {
     strncpy(task->name, name, TASK_MAX_NAME_SIZE);
     task->name[TASK_MAX_NAME_SIZE - 1] = '\0'; // ensure null terminated str
 }

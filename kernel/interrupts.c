@@ -24,7 +24,7 @@
 
 extern void queueTask(struct TaskDescriptor *td);
 
-static TaskDescriptor *eventTable[5]; // 64 interrupt types
+static TaskDescriptor *eventTable[NUM_EVENTS];
 static inline void setICU(unsigned int base, unsigned int offset, unsigned int val) {
     *(volatile unsigned int *)(base + offset) = val;
 }
@@ -105,7 +105,7 @@ void initInterrupts()
     *(unsigned int *)(0x28) = (unsigned int)(&kernelEnter);      // soft int
     *(unsigned int *)(0x38) = (unsigned int)(&irqEnter);         // hard int
 
-    for(int i = 0; i < 64; i++) {
+    for(int i = 0; i < 5; i++) {
         eventTable[i] = 0;
     }
 

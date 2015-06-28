@@ -79,7 +79,6 @@ typedef struct TaskDescriptor {
 int taskCreate(int priority, void (*code)(void), int parent_id);
 void initTaskSystem();
 void taskSetName(TaskDescriptor *task, char *name);
-void taskSetReturnValue(TaskDescriptor *task, int ret);
 int taskGetMyId(TaskDescriptor *task);
 int taskGetMyParentId(TaskDescriptor *task);
 void taskDisplayAll();
