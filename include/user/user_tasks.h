@@ -6,7 +6,7 @@ void userTaskRip();
 void userTaskK3();
 void userTaskIdle();
 
-void hwiTesterTask();
+void userTaskHwiTester();
 void clockServerTesterTask();
 void undefinedInstructionTesterTask();
 void drawIdle(unsigned int diff);

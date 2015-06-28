@@ -8,7 +8,6 @@ rom : ORIGIN = 0x60000000, LENGTH = 8M
 
 SECTIONS
 {
-
     text 0x218000 : /* The actual instructions. */
     {
     *(.text)
@@ -24,8 +23,6 @@ SECTIONS
     {
     _DataStart = . ;
     *(.data)
-    *(.data.rel.ro.local)
-    *(.data.rel.local)
     _DataEnd = . ;
     } >ram
 
@@ -33,7 +30,6 @@ SECTIONS
     {
     _BssStart = . ;
     *(.bss)
-    *(COMMON)
     _BssEnd = . ;
     } >ram
 }

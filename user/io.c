@@ -42,10 +42,9 @@ int Putc(int channel, char c) {
     if (channel != COM1 && channel != COM2) return -1;
 
     // Prepare request
-    IOReq req = {
-        .type = PUTCHAR,
-        .data = (unsigned int)c
-    };
+    IOReq req;
+    req.type = PUTCHAR;
+    req.data = (unsigned int)c;
     int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
     int ret = Send(server_tid, &req, sizeof(req), 0, 0);
     return (ret < 0) ? -1 : 0;
@@ -71,7 +70,7 @@ int PutStr(int channel, char *str)
     return (ret < 0) ? -1 : 0;
 }
 
-static void monitorInNotifier() {
+void monitorInNotifier() {
     int pid = MyParentTid();
     IOReq req = {
         .type = NOTIFICATION
@@ -83,7 +82,7 @@ static void monitorInNotifier() {
     }
 }
 
-static void echoCourier() {
+void echoCourier() {
     IOReq echoReq = {
         .type = ECHO
     };
@@ -110,10 +109,9 @@ void monitorInServer() {
     CBufferInit(&taskBuffer, taskb, 128);
     CBufferInit(&charBuffer, charb, 1024);
 
-    IOReq req = {
-        .type = -1,
-        .data = '\0'
-    };
+    IOReq req;
+    req.type = -1;
+    req.data = '\0';
 
     // TODO: nameserver
     com2RecvSrvTid = MyTid();
@@ -129,7 +127,8 @@ void monitorInServer() {
     for (;;) {
         Receive(&tid, &req, sizeof(req));
 
-        switch (req.type) {
+        switch (req.type)
+        {
         // the notifier sent us a character
         case NOTIFICATION:
             // unblock notifier
@@ -180,44 +179,47 @@ void monitorInServer() {
     }
 }
 
-static void monitorOutNotifier() {
+void monitorOutNotifier()
+{
     int pid = MyParentTid();
-    IOReq req = {
-        .type = NOTIFICATION
-    };
+    IOReq req;
+    req.type = NOTIFICATION;
 
-    for (;;) {
-        req.data = (unsigned int)AwaitEvent(UART2_XMIT_EVENT);
+    for (;;)
+    {
+        req.data = AwaitEvent(UART2_XMIT_EVENT);
+
         Send(pid, &req, sizeof(req), 0, 0);
     }
 }
 
-void monitorOutServer() {
+void monitorOutServer()
+{
     int tid = 0;
     char * sendAddr = 0;
     char charb[1024];
     CBuffer charBuffer;
-    CBufferInit(&charBuffer, charb, 1024);
+    CBufferInit(&charBuffer, charb, sizeof(charb));
 
-    IOReq req = {
-        .type = -1,
-        .data = '\0'
-    };
+    IOReq req;
+    req.type = -1;
+    req.data = '\0';
 
     // TODO: nameserver
     com2SendSrvTid = MyTid();
 
     // Register with name server
-    //RegisterAs("monitorOutServer");
+    RegisterAs("monitorOutServer");
 
     // Spawn notifier
-    int notifierTid = Create(PRIORITY_NOTIFIER, &monitorOutNotifier);
+    int notifierTid = Create(PRIORITY_MONITOR_OUT_NOTIFIER, &monitorOutNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
 
         switch (req.type) {
         case NOTIFICATION:
+        {
             if(CBufferIsEmpty(&charBuffer)) {
                 // nothing to send
                 // mark that we've seen a xmit interrupt
@@ -226,7 +228,7 @@ void monitorOutServer() {
             }
             else {
                 char ch = CBufferPop(&charBuffer);
-
+                //assert(req.data == UART2_BASE + UART_DATA_OFFSET);
                 // write out char to volatile address
                 // this also clears the xmit interrupt
                 *((char *)req.data) = ch;
@@ -235,9 +237,9 @@ void monitorOutServer() {
                 Reply(tid, 0, 0);
             }
             break;
+        }
         case PUTCHAR:
-            Reply(tid, 0, 0);
-
+        {
             // We've seen a xmit but did not
             // have a char to send at the moment
             if (sendAddr != 0)
@@ -259,8 +261,13 @@ void monitorOutServer() {
             {
                 CBufferPush(&charBuffer, (char)(req.data));
             }
+
+            Reply(tid, 0, 0);
+
             break;
+        }
         case PUTSTR:
+        {
             // unblock caller
             Reply(tid, 0, 0);
 
@@ -285,6 +292,8 @@ void monitorOutServer() {
                 // reset 'seen transmit int' state
                 sendAddr = 0;
             }
+            break;
+        }
         default:
             break;
         }

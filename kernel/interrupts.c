@@ -24,19 +24,18 @@
 
 extern void queueTask(struct TaskDescriptor *td);
 
-static int vic[2];  // for iterating
-static TaskDescriptor *eventTable[64]; // 64 interrupt types
+static TaskDescriptor *eventTable[5]; // 64 interrupt types
 static inline void setICU(unsigned int base, unsigned int offset, unsigned int val) {
     *(volatile unsigned int *)(base + offset) = val;
 }
 static inline unsigned int getICU(unsigned base, unsigned int offset) {
     return *(volatile unsigned int *)(base + offset);
 }
-static inline void enable(unsigned int vicID, unsigned int offset) {
-    setICU(vic[vicID], VIC_INT_ENABLE, offset);
+static inline void enable(unsigned int vic, unsigned int offset) {
+    setICU(vic, VIC_INT_ENABLE, offset);
 }
-static inline void clear(int vicID, unsigned int offset) {
-    setICU(vic[vicID], VIC_INT_CLEAR, offset);
+static inline void clear(unsigned int vic, unsigned int offset) {
+    setICU(vic, VIC_INT_CLEAR, offset);
 }
 
 __attribute__((always_inline)) static inline void save() {
@@ -99,44 +98,40 @@ __attribute__ ((interrupt ("ABORT"), noreturn)) void abort_prefetch() {
     stacktrace();
     bwprintf(COM2, "*\n\r* ABORT PREFETCH\n\r*\n\r");
     for(;;); // busy wait do not let kernel go
-
 }
 
-void initInterrupts() {
-    // ldr  pc, [pc, #0x18] ; 0xe590f018 is the binary encoding
-    *(unsigned int *)(0x24) = (unsigned int)(&undefined_instr);  // undef_instr
+void initInterrupts()
+{
     *(unsigned int *)(0x28) = (unsigned int)(&kernelEnter);      // soft int
-    *(unsigned int *)(0x2c) = (unsigned int)(&abort_prefetch);   // abort_prefetch
-    *(unsigned int *)(0x30) = (unsigned int)(&abort_data);       // abort_data
     *(unsigned int *)(0x38) = (unsigned int)(&irqEnter);         // hard int
-    vic[0] = VIC1;
-    vic[1] = VIC2;
+
     for(int i = 0; i < 64; i++) {
         eventTable[i] = 0;
     }
-    for(int i = 0; i < 2; i++) {
-        setICU(vic[i], VIC_INT_SELECT, 0);                      // select pl190 irq mode
-    }
 
-    //enable(1, UART1_OR_MASK); // uart1 OR
-    //enable(0, UART2_RECV_MASK); // uart2 recv
-    enable(0, UART2_XMIT_MASK); // uart2 xmit
-    //enable(1, TIMER3_MASK); // enable timer 3
+    setICU(VIC1, VIC_INT_SELECT, 0);
+    setICU(VIC2, VIC_INT_SELECT, 0);
+
+    //enable(VIC1, 1); // soft int
+    enable(VIC2, UART1_OR_MASK);   // uart1 OR
+    enable(VIC1, UART2_RECV_MASK); // uart2 recv
+    enable(VIC1, UART2_XMIT_MASK); // uart2 xmit
+    enable(VIC2, TIMER3_MASK);     // enable timer 3
 }
 
 void resetInterrupts() {
-    clear(1, UART1_OR_MASK);   // uart1 OR
-    clear(0, UART2_RECV_MASK); // uart2 recv
-    clear(0, UART2_XMIT_MASK); // uart2 xmit
-    clear(1, TIMER3_MASK);     // disable timer 3
+    clear(VIC2, UART1_OR_MASK);   // uart1 OR
+    clear(VIC1, UART2_RECV_MASK); // uart2 recv
+    clear(VIC1, UART2_XMIT_MASK); // uart2 xmit
+    clear(VIC2, TIMER3_MASK);     // disable timer 3
 }
 
-int awaitInterrupt(TaskDescriptor *active, int event) {
-    //bwprintf(COM2, "Kernel AwaitEvent: %d\n\r", event);
-    if (event < TIMER_EVENT ||
-        event > UART2_XMIT_EVENT) {
+int awaitInterrupt(TaskDescriptor *active, unsigned int event) {
+    if (event > UART2_XMIT_EVENT)
+    {
         return -1;
     }
+
     // Turn on IO interrutpts
     // (selectively turned off in handleInterrupt)
     switch (event) {
@@ -153,9 +148,8 @@ int awaitInterrupt(TaskDescriptor *active, int event) {
     return 0;
 }
 
-__attribute__ ((interrupt)) void handleInterrupt() {
-    //bwprintf(COM2, "Kernel handleInterrupt, hwi: %d\n\r", _int_hwi);
-
+void handleInterrupt()
+{
     static char ctsOn = -1;
     static char xmitRdy = -1;
     int vic1Status = getICU(VIC1, VIC_IRQ_STATUS);
@@ -163,13 +157,16 @@ __attribute__ ((interrupt)) void handleInterrupt() {
 
     // Timer 3 underflow
     if (vic2Status & TIMER3_MASK) {
+
         // Clear timer interrupt in timer
         clearTimerInterrupt();
 
         // Queue task if there's a task waiting
         TaskDescriptor *td = eventTable[TIMER_EVENT];
-        if (td != 0) {
-            td->ret = 0;
+        if (td != 0)
+        {
+            taskSetRet(td, 0);
+            //td->ret = 0;
             queueTask(td);
             eventTable[TIMER_EVENT] = 0;
         }
@@ -214,7 +211,8 @@ __attribute__ ((interrupt)) void handleInterrupt() {
                 TaskDescriptor *td = eventTable[UART1_XMIT_EVENT];
                 if (td != 0)
                 {
-                    td->ret = (UART1_BASE + UART_DATA_OFFSET);
+                    //td->ret = (UART1_BASE + UART_DATA_OFFSET);
+                    taskSetRet(td, UART1_BASE + UART_DATA_OFFSET);
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
                 }
@@ -237,10 +235,9 @@ __attribute__ ((interrupt)) void handleInterrupt() {
                 TaskDescriptor *td = eventTable[UART1_XMIT_EVENT];
                 if (td != 0)
                 {
-                    td->ret = (UART1_BASE + UART_DATA_OFFSET);
+                    taskSetRet(td, UART1_BASE + UART_DATA_OFFSET);
                     queueTask(td);
                     eventTable[UART1_XMIT_EVENT] = 0;
-                    //disableUART1ModemInterrupt();
                 }
             }
             // we are not CTS-clear.
@@ -259,7 +256,8 @@ __attribute__ ((interrupt)) void handleInterrupt() {
             if (td != 0)
             {
                 // unblock notifier
-                td->ret = c;
+                //td->ret = c;
+                taskSetRet(td, c);
                 queueTask(td);
                 eventTable[UART1_RECV_EVENT] = 0;
 
@@ -278,7 +276,8 @@ __attribute__ ((interrupt)) void handleInterrupt() {
         if (td != 0)
         {
             // unblock notifier
-            td->ret = c;
+            //td->ret = c;
+            taskSetRet(td, c);
             queueTask(td);
             eventTable[UART2_RECV_EVENT] = 0;
 
@@ -292,21 +291,24 @@ __attribute__ ((interrupt)) void handleInterrupt() {
         // turn interrupt off in UART
         setUARTCtrl(UART2_XMIT_EVENT, 0);
 
-        //bwprintf(COM2, "XMIT interrupt.\n\r");
-
         TaskDescriptor *td = eventTable[UART2_XMIT_EVENT];
         if (td != 0)
         {
             // unblock notifier
-            td->ret = (UART2_BASE + UART_DATA_OFFSET);
+            taskSetRet(td, UART2_BASE + UART_DATA_OFFSET);
             queueTask(td);
             eventTable[UART2_XMIT_EVENT] = 0;
         }
     }
+    // soft int
+    else if (vic1Status & 1)
+    {
+        *(unsigned int *)(VIC1 + VIC_SOFT_INT_CLEAR) = 1;
+    }
     else
     {
         // something is wrong here
-        //assert(0);
-        bwprintf(COM2, "handleInterrupt() when there is no interrupt.\n\r");
+        bwprintf(COM2, "Unable to handle unknown iterrupt.\n\r");
+        for (;;);
     }
 }

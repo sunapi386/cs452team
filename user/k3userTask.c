@@ -58,7 +58,7 @@ void userTaskK3() {
     }
     // create clock server
     debug("creating clockServerTask");
-    ret = Create(1, &clockServerTask);
+    //ret = Create(1, &clockServerTask);
     if(ret < 1) {
         debug("Expected create clockServerTask >= 1, got %d", ret);
         Exit();

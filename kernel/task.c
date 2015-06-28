@@ -16,12 +16,10 @@ void initTaskSystem() {
     global_current_stack_address = (unsigned int *) TASK_STACK_HIGH;
 
     for( int i = 1; i < TASK_MAX_TASKS; i++ ) {
-        TaskDescriptor *task = global_task_table + i;
+        TaskDescriptor *task = &(global_task_table[i]);
         task->id = 0;
         task->parent_id = 0;
-        task->ret = 0;
         task->sp = NULL;
-        task->hwi = 0;
         task->status = ready;
         task->send_id = NULL;
         task->send_buf = NULL;
@@ -56,11 +54,11 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
     // Once all the TASK_MAX_TASKS been given out, will fail to create new tasks
     int unique_id = global_next_unique_task_id;
     int task_table_index = taskFindFreeTaskTableIndex();
-    TaskDescriptor *new_task = &global_task_table[task_table_index];
+    TaskDescriptor *new_task = &(global_task_table[task_table_index]);
     global_next_unique_task_id++;
     new_task->id = makeId( task_table_index, priority, unique_id );
     new_task->parent_id = parent_id;
-    new_task->ret = 0;
+    //new_task->ret = 0;
     new_task->sp = global_current_stack_address - TASK_TRAP_SIZE;
     new_task->next = NULL;
     global_current_stack_address -= (TASK_TRAP_SIZE + TASK_STACK_SIZE);
@@ -80,23 +78,23 @@ inline int taskGetMyParentId(TaskDescriptor *task) {
     return task->parent_id;
 }
 
-inline void taskSetReturnValue(TaskDescriptor *task, int ret) {
-    task->ret = ret;
+void taskSetRet(TaskDescriptor *task, int ret) {
+    *(task->sp + 2) = ret;
 }
 
 TaskDescriptor *taskGetTDByIndex(int index) {
-    if (index < 0 || index >= TASK_MAX_TASKS) {
+    if (index <= 0 || index >= TASK_MAX_TASKS) {
         return NULL;
     }
-    return global_task_table + index;
+    return &(global_task_table[index]);
 }
 
 TaskDescriptor *taskGetTDById(int task_id) {
     int index = task_id & TASK_INDEX_MASK;
-    if( index < 0 || index >= TASK_MAX_TASKS ) {
+    if( index <= 0 || index >= TASK_MAX_TASKS ) {
         return NULL;
     }
-    return global_task_table + index;
+    return &(global_task_table[index]);
 }
 
 int taskGetMyParentIndex(TaskDescriptor *task) {
@@ -110,4 +108,3 @@ int taskGetUnique(TaskDescriptor *task) {
 int taskGetMyParentUnique(TaskDescriptor *task) {
     return (TASK_UNIQUE_MASK & task->parent_id) >> TASK_UNIQUE_OFFSET;
 }
-

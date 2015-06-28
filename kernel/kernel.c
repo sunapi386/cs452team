@@ -1,8 +1,8 @@
 #define KERNEL_MAIN
 #include <kernel/scheduler.h>
 #include <kernel/message_passing.h>
-#include <user/syscall.h>
 #undef KERNEL_MAIN
+#include <user/syscall.h>
 #include <kernel/interrupts.h>
 #include <kernel/context_switch.h>
 #include <kernel/uart.h>
@@ -18,8 +18,7 @@
 #include <user/parser.h>
 #include <user/sensor.h>
 #include <user/train.h>
-
-static Syscall *request = NULL;
+#include <kernel/pl190.h>
 
 void enableCache()
 {
@@ -40,36 +39,10 @@ void disableCache()
         "mcr p15, 0, r0, c1, c0, 0\n\t"
     );
 }
-#include <ts7200.h>
 
-void idleProfiler() {
-    for (;;) {
-        //drawIdle(getIdlingRatio());
-        //bwprintf(COM2, "i");
-        //Putc(COM2, 'i');
-        //bwprintf(COM2, "i");
-        //bwprintf(COM2, "i2");
-        Pass();
-    }
-    Exit();
-}
-
-void client()
+void idleProfiler()
 {
-    char *dataAddr = 0;
-    for (;;)
-    {
-        dataAddr = (char *)(AwaitEvent(UART2_XMIT_EVENT));
-
-        if (dataAddr != (char *)(UART2_BASE + UART_DATA_OFFSET))
-        {
-            bwprintf(COM2, "gg %x", dataAddr);
-            break;
-        }
-
-        *dataAddr = '*';
-        //Putc(COM2, '*');
-    }
+    for (;;) {}
     Exit();
 }
 
@@ -82,100 +55,102 @@ void bootstrap()
     //Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
     // Create IO Servers
-    //Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
-    //Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
+    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
+    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
     Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
-    //Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
+    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 
     // Create user task
-    //Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
-    //Create(PRIORITY_PARSER, parserTask);
-    // Create(PRIORITY_SENSOR_TASK, sensorTask);
-
-    Create(PRIORITY_USERTASK, client);
-    //Create(PRIORITY_USERTASK, client2);
+    Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
+    Create(PRIORITY_PARSER, parserTask);
+    //Create(PRIORITY_SENSOR_TASK, sensorTask);
 
     // Create idle task
     Create(PRIORITY_IDLE, idleProfiler);
 
-    // quit
+    // Quit
     Exit();
 }
 
-static void initKernel() {
+static void initKernel(TaskQueue *sendQueues) {
     enableCache();
     initTaskSystem();
     initScheduler();
-    initMessagePassing();
-    request = initSyscall();
+    initMessagePassing(sendQueues);
     initInterrupts();
     initUART();
     initTimer();
     initTrain();
 
-
-    //int create_ret = taskCreate(1, userTaskMessage, 0);
-    // int create_ret = taskCreate(1, userTaskHwiTester, 0);
+    //int create_ret = taskCreate(PRIORITY_INIT, userTaskMessage, 0);
+    //int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
     // int create_ret = taskCreate(1, runBenchmarkTask, 0);
     // int create_ret = taskCreate(1, interruptRaiser, 0);
-    // int create_ret = taskCreate(1, userTaskK3, 0);
+    //int create_ret = taskCreate(0, userTaskK3, 0);
     // int create_ret = taskCreate(1, userTaskIdle, 31);
     int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
 
-    assert(create_ret >= 0);
+    //int create_ret = taskCreate(PRIORITY_INIT, msg_stress, 0);
+
     queueTask(taskGetTDById(create_ret));
 }
 
 static void resetKernel() {
+    bwputc(COM1, 0x61);
     resetTimer();
     resetInterrupts();
+    resetUART();
     disableCache();
 }
 
-int handleRequest(TaskDescriptor *td) {
-    if (td->hwi)
+int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
+
+    if (request == NULL)
     {
         handleInterrupt();
-        td->hwi = 0; //clearHwi();
     }
     else
     {
-        switch (request->type) {
+        switch (request->type)
+        {
         case SYS_AWAIT_EVENT:
             if (awaitInterrupt(td, request->arg1) == -1)
             {
-                // we want rescheduling
-                td->ret = -1;
+                taskSetRet(td, -1);
                 break;
             }
             // we don't want rescheduling now that it's event blocked
             return 0;
         case SYS_SEND:
-            handleSend(td, request);
+            handleSend(sendQueues, td, request);
             return 0;
         case SYS_RECEIVE:
-            handleReceive(td, request);
+            handleReceive(sendQueues, td, request);
             return 0;
         case SYS_REPLY:
             handleReply(td, request);
             return 0;
-        case SYS_CREATE: {
+        case SYS_CREATE:
+        {
             int create_ret = taskCreate(request->arg1,
                 (void*)(request->arg2),
                 taskGetIndex(td));
-            if (create_ret >= 0) {
-                td->ret = taskGetIndexById(create_ret);
+            if (create_ret >= 0)
+            {
+                taskSetRet(td, taskGetIndexById(create_ret));
                 queueTask(taskGetTDById(create_ret));
-            } else {
-                td->ret = create_ret;
+            }
+            else
+            {
+                taskSetRet(td, create_ret);
             }
             break;
         }
         case SYS_MY_TID:
-            td->ret = taskGetIndex(td);
+            taskSetRet(td, taskGetIndex(td));
             break;
         case SYS_MY_PARENT_TID:
-            td->ret = taskGetMyParentIndex(td);
+            taskSetRet(td, taskGetMyParentIndex(td));
             break;
         case SYS_PASS:
             break;
@@ -196,24 +171,24 @@ int handleRequest(TaskDescriptor *td) {
 
 int main()
 {
-    initKernel();
+    TaskQueue sendQueues[TASK_MAX_TASKS];
+
+    initKernel(sendQueues);
     TaskDescriptor *task = NULL;
+    Syscall *request = NULL;
     for(;;)
     {
         task = schedule();
         if (task == NULL) {
+            debug("No tasks scheduled; exiting...");
             break;
         }
-        kernelExit(task);
-        if(handleRequest(task)) {
-            bwprintf(COM2, "Halt\n\r");
+        request = kernelExit(task);
+        if(handleRequest(task, request, sendQueues)) {
+            debug("Halt");
             break;
         }
     }
     resetKernel();
-    debug("No tasks scheduled; exiting...");
-    bwputc(COM1, 0x61);
-    resetUART();
     return 0;
 }
-

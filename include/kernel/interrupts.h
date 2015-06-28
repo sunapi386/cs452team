@@ -7,7 +7,7 @@ struct TaskDescriptor;
 
 void initInterrupts();
 // puts a task onto interrupt table to wait for interruptID
-int awaitInterrupt(struct TaskDescriptor *active, int interruptID);
+int awaitInterrupt(struct TaskDescriptor *active, unsigned int event);
 // reschedules tasks that were waiting on interrupts
 void handleInterrupt() __attribute__ ((interrupt));
 // resets PL190

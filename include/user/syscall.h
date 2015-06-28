@@ -24,9 +24,6 @@ struct Syscall {
     unsigned int type, arg1, arg2, arg3, arg4, arg5;
 } Syscall;
 
-#if (defined KERNEL_MAIN || defined SYSCALL_DENFS)
-Syscall * initSyscall();
-#endif
 
 /**
 Name. Create - instantiate a task.
@@ -83,7 +80,7 @@ Resources owned by the task, primarily its memory and task descriptor are not re
 Returns. Exit does not return. If a point occurs where all tasks have exited the
 kernel should return cleanly to RedBoot.
 */
-void Exit( ) __attribute__((noreturn));
+void Exit( );
 
 /**
 Send - send a message

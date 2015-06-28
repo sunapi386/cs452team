@@ -8,8 +8,8 @@
 // sp + 11 = r12
 // sp + 12 = lr
 
-#define TASK_TRAP_SIZE      14
-#define TASK_BITS           8   // 2^8 = 128
+#define TASK_TRAP_SIZE      15
+#define TASK_BITS           7   // 2^8 = 128
 #define TASK_PRIORITY_BITS  5   // 2^5 = 32  Warning: Brujin table is 32.
 
 #define TASK_MAX_TASKS      (1<<TASK_BITS)
@@ -27,8 +27,8 @@
 #define TASK_UNIQUE_MASK    ((TASK_MAX_UNIQUES - 1) << TASK_UNIQUE_OFFSET)
 
 // each task has own trapframe and stack
-#define TASK_STACK_SIZE     4096
-#define TASK_STACK_HIGH     0x600000
+#define TASK_STACK_SIZE     12000
+#define TASK_STACK_HIGH     0x1f00000
 #define TASK_STACK_LOW      (TASK_STACK_HIGH - \
                             TASK_MAX_TASKS * (TASK_STACK_SIZE + TASK_TRAP_SIZE))
 
@@ -56,7 +56,7 @@ on the stack of the user task; other values should be in the task descriptor.
 
 typedef enum {
     ready,         // ready to be activated
-    send_blocked,  // task executed Send(), waiting for it to be received
+    send_block,  // task executed Send(), waiting for it to be received
     receive_block, // task executed Receive(), waiting for task to Send()
     reply_block,   // task executed Send(), its message received, waiting on reply
 } Status;
@@ -64,9 +64,7 @@ typedef enum {
 typedef struct TaskDescriptor {
     int id;
     int parent_id;
-    int ret;
     unsigned int *sp;
-    int hwi;
     Status status;
     int *send_id;
     void *send_buf, *recv_buf;
@@ -86,10 +84,11 @@ TaskDescriptor *taskGetTDById(int task_id);
 int taskGetMyParentIndex(TaskDescriptor *task);
 int taskGetUnique(TaskDescriptor *task);
 int taskGetMyParentUnique(TaskDescriptor *task);
+void taskSetRet(TaskDescriptor *task, int ret);
 
 static inline int isValidTaskIndex(int index)
 {
-    return index > 0 && index < TASK_MAX_TASKS;
+    return (index > 0) && (index < TASK_MAX_TASKS);
 }
 
 // Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS

@@ -91,8 +91,11 @@ char getUARTData(int port)
 
 void resetUART()
 {
-    *(int *)(UART1_BASE + UART_CTLR_OFFSET) = 0;
-    *(int *)(UART2_BASE + UART_CTLR_OFFSET) = 0;
+    setUARTCtrl(UART1_RECV_EVENT, 0);
+    setUARTCtrl(UART1_XMIT_EVENT, 0);
+    setUARTCtrl(UART2_RECV_EVENT, 0);
+    setUARTCtrl(UART2_XMIT_EVENT, 0);
+    disableUART1ModemInterrupt();
 }
 
 /*
