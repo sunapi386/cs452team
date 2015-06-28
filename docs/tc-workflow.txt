@@ -1,0 +1,49 @@
+TRAIN CONTROL WORKFLOW
+======================
+Example of what a move-to command looks like.
+Right arrow -> means a Send, and left arrow <- means a Reply.
+
+
+Human -> Controller:
+    Train `t`, currently at `here`, move it to `there`.
+
+Controller:
+    Ack.
+    Let me tell engineer `t`.
+    Engineer doesn't exist.
+        I will create engineer `t`, and tell him he is at `here`.
+    Engineer exits, but is busy.
+        Fail the command. Unless you would like to abort his mission.
+    Engineer exists, not busy.
+        Tell him he is at `here` and to go `there`.
+
+Engineer:
+    Ack. Control, I am alive.
+    Planning a path to `there`.
+    Loop until reaching `there:
+        Tell controller the next set of track nodes I expect to pass through.
+        (In the future: acquire lock on those nodes.)
+        Calculate minimum time `mintime` required to next turnout and sensor.
+        Tell controller my time estimate to the next turnout.
+        Tell controller when I expect to hit the next sensor.
+        Drive the train at speed I used to calculate the above.
+        Delay for that minimum amount of time, before looping again.
+
+Engineer -> Timer:
+    Wake me up after `mintime`.
+
+Sensor -> Controller:
+   Sensor A10 hit. Do what you will with this info.
+
+Controller -> Messenger -> Engineer:
+    Lookup which engineer expects that sensor to trigger.
+    Tell the respective engineer the time his sensor had triggered.
+
+Timer -> Engineer:
+    Time to wake up.
+
+Engineer -> Controller:
+    Update controller where we are now.
+
+Controller:
+    Update train position on screen.
