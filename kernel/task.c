@@ -1,6 +1,7 @@
 #include <kernel/task.h>
 #include <cpsr.h>
 #include <bwio.h>
+#include <utils.h>
 
 static int global_next_unique_task_id;
 static unsigned int *global_current_stack_address;
@@ -34,23 +35,41 @@ void initTaskSystem() {
     }
 }
 
-static char *status_name[4] = {"ready", "send_block", "receive_block", "reply_block"};
+static void printTask(TaskDescriptor *task) {
+    if (task == NULL) return;
 
-static void _printTask(TaskDescriptor *task) {
-    if(task == NULL) return;
+    char *statusName = NULL;
+
+    switch (task->status) {
+    case ready:
+        statusName = "ready";
+        break;
+    case send_block:
+        statusName = "send_block";
+        break;
+    case receive_block:
+        statusName = "receive_block";
+        break;
+    case reply_block:
+        statusName = "reply_block";
+        break;
+    default:
+        return;
+    }
+
     bwprintf(COM2,
         "id:%d: na:%s pr:%d st:%s cpu:%d\r\n",
         taskGetIndex(task),
         task->name,
         taskGetPriority(task),
-        status_name[task->status],
+        statusName,
         task->cpu_time_used);
 }
 
 void taskDisplayAll() {
     bwprintf(COM2, "All tasks\r\n");
     for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
-        _printTask(&global_task_table[i]);
+        printTask(&global_task_table[i]);
     }
 }
 
@@ -120,25 +139,11 @@ inline int taskGetMyParentId(TaskDescriptor *task) {
 
 void taskSetRet(TaskDescriptor *task, int ret) {
     *(task->sp + 2) = ret;
+}
 
 char *taskGetName(TaskDescriptor *task) {
     return task->name;
 }
-
-static inline char * strncpy(char *dst, const char *src, unsigned n) {
-    // http://opensource.apple.com/source/Libc/Libc-262/ppc/gen/strncpy.c
-    char *s = dst;
-    while (n > 0 && *src != '\0') {
-        *s++ = *src++;
-        --n;
-    }
-    while (n > 0) {
-        *s++ = '\0';
-        --n;
-    }
-    return dst;
-}
-
 
 inline void taskSetName(TaskDescriptor *task, char *name) {
     strncpy(task->name, name, TASK_MAX_NAME_SIZE);

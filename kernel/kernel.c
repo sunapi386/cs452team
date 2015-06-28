@@ -55,7 +55,7 @@ void bootstrap()
     Create(PRIORITY_NAMESERVER, nameserverTask);
 
     // Create clock server
-    //Create(PRIORITY_CLOCK_SERVER, clockServerTask);
+    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
     // Create IO Servers
     Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
