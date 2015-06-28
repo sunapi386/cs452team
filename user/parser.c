@@ -4,6 +4,7 @@
 #include <user/vt100.h>
 #include <user/syscall.h> // Create
 #include <user/train.h>
+#include <kernel/task.h> // to call taskDisplayAll()
 
 // Parser is a giant state machine
 // tr train_number train_speed
@@ -33,6 +34,7 @@ typedef struct Parser {
         SW_space_2,     // second space
         SW_switch_dir, // direction is S or C
         Q_Q,      // quit
+        DB_TASK,    // taskDisplayAll()
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -88,6 +90,7 @@ static bool parse(Parser *p, char c) {
                     case 'r': p->state = RV_R; break;
                     case 's': p->state = SW_S; break;
                     case 'q': p->state = Q_Q; break;
+                    case 'd': p->state = DB_TASK; break;
                     default:  p->state = Error; break;
                 }
                 break;
@@ -200,6 +203,11 @@ static bool parse(Parser *p, char c) {
                 break;
             }
 
+            // ---------- print task ---- //
+            case DB_TASK: {
+                p->state = Error;
+                break;
+            }
             default:
                 break;
         } // switch
@@ -268,6 +276,10 @@ static bool parse(Parser *p, char c) {
                 sputstr(&disp_msg, "Quit\r\n");
                 run = false;
                 Halt();
+                break;
+            }
+            case DB_TASK: {
+                taskDisplayAll();
                 break;
             }
             default: {

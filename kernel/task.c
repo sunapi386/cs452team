@@ -27,10 +27,49 @@ void initTaskSystem() {
         task->send_len = 0;
         task->recv_len = 0;
         task->next = NULL;
+        for(unsigned j = 0; j < TASK_MAX_NAME_SIZE; j++) {
+            task->name[j] = '\0';
+        }
+        task->cpu_time_used = 0;
     }
 }
 
-// TODO: Implement recycling here
+static char *status_name[4] = {"ready", "send_block", "receive_block", "reply_block"};
+
+static void _printTask(TaskDescriptor *task) {
+    if(task == NULL) return;
+    bwprintf(COM2,
+        "id:%d: na:%s pr:%d st:%s cpu:%d\r\n",
+        taskGetIndex(task),
+        task->name,
+        taskGetPriority(task),
+        status_name[task->status],
+        task->cpu_time_used);
+}
+
+void taskDisplayAll() {
+    bwprintf(COM2, "All tasks\r\n");
+    for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
+        _printTask(&global_task_table[i]);
+    }
+}
+
+unsigned int taskIdleRatio() {
+    unsigned int idle_time = 0;
+    unsigned int busy_time = 0;
+    for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
+        if(global_task_table[i].id == 0) continue;
+        if(taskGetPriority(&global_task_table[i]) == 31) {
+            idle_time += global_task_table[i].cpu_time_used;
+        }
+        else {
+            busy_time += global_task_table[i].cpu_time_used;
+        }
+    }
+    return (100 * idle_time) / (idle_time + busy_time);
+}
+
+// IMPROVE: Implement recycling here
 static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
 }
@@ -44,7 +83,8 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
         bwprintf( COM2, "FATAL: too many tasks %d.\n\r", global_next_unique_task_id );
         return -2; // too many tasks
     }
-    unsigned int boundary = (unsigned int)(global_current_stack_address - TASK_STACK_SIZE - TASK_TRAP_SIZE);
+    unsigned int boundary = (unsigned int)
+        (global_current_stack_address - TASK_STACK_SIZE - TASK_TRAP_SIZE);
 
     if( boundary < TASK_STACK_LOW ){
         bwprintf( COM2, "FATAL: at low stack boundary 0x%x.\n\r", boundary );
@@ -80,6 +120,29 @@ inline int taskGetMyParentId(TaskDescriptor *task) {
 
 void taskSetRet(TaskDescriptor *task, int ret) {
     *(task->sp + 2) = ret;
+
+char *taskGetName(TaskDescriptor *task) {
+    return task->name;
+}
+
+static inline char * strncpy(char *dst, const char *src, unsigned n) {
+    // http://opensource.apple.com/source/Libc/Libc-262/ppc/gen/strncpy.c
+    char *s = dst;
+    while (n > 0 && *src != '\0') {
+        *s++ = *src++;
+        --n;
+    }
+    while (n > 0) {
+        *s++ = '\0';
+        --n;
+    }
+    return dst;
+}
+
+
+inline void taskSetName(TaskDescriptor *task, char *name) {
+    strncpy(task->name, name, TASK_MAX_NAME_SIZE);
+    task->name[TASK_MAX_NAME_SIZE - 1] = '\0'; // ensure null terminated str
 }
 
 TaskDescriptor *taskGetTDByIndex(int index) {

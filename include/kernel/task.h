@@ -32,6 +32,8 @@
 #define TASK_STACK_LOW      (TASK_STACK_HIGH - \
                             TASK_MAX_TASKS * (TASK_STACK_SIZE + TASK_TRAP_SIZE))
 
+#define TASK_MAX_NAME_SIZE  20
+
 #define NULL 0
 
 
@@ -70,13 +72,18 @@ typedef struct TaskDescriptor {
     void *send_buf, *recv_buf;
     unsigned int send_len, recv_len;
     struct TaskDescriptor *next;
+    char name[TASK_MAX_NAME_SIZE];
+    unsigned int cpu_time_used;
 } TaskDescriptor;
 
 int taskCreate(int priority, void (*code)(void), int parent_id);
 void initTaskSystem();
+void taskSetName(TaskDescriptor *task, char *name);
 void taskSetReturnValue(TaskDescriptor *task, int ret);
 int taskGetMyId(TaskDescriptor *task);
 int taskGetMyParentId(TaskDescriptor *task);
+void taskDisplayAll();
+unsigned int taskIdleRatio();
 
 /* Returns NULL on invalid task_id */
 TaskDescriptor *taskGetTDByIndex(int index);
@@ -85,6 +92,7 @@ int taskGetMyParentIndex(TaskDescriptor *task);
 int taskGetUnique(TaskDescriptor *task);
 int taskGetMyParentUnique(TaskDescriptor *task);
 void taskSetRet(TaskDescriptor *task, int ret);
+char *taskGetName(TaskDescriptor *task);
 
 static inline int isValidTaskIndex(int index)
 {

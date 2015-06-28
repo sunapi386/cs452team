@@ -166,6 +166,12 @@ void scopy(String *dst, const char *src) {
     strncpy(dst->buf, src, n);
 }
 
+void scopystr(String *dst, String *src) {
+    sinit(dst);
+    size_t n = src->len;
+    strncpy(dst->buf, src->buf, n);
+}
+
 void sputc(String *s, const char c) {
     assert(s->len < STR_MAX_LEN);
     s->buf[s->len++] = c;
@@ -173,6 +179,13 @@ void sputc(String *s, const char c) {
 
 void sputstr(String *s, const char *str) {
     for( ; *str != '\0' ; sputc(s, *(str++)) );
+}
+
+void sconcat(String *dst, String *src) {
+    assert(dst->len + src->len < STR_MAX_LEN);
+    for(unsigned i = 0; i < src->len; i++) {
+        sputc(dst, src->buf[i]);
+    }
 }
 
 void sputuint(String *s, int num, unsigned short base) {

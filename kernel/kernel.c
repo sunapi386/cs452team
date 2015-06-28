@@ -42,7 +42,10 @@ void disableCache()
 
 void idleProfiler()
 {
-    for (;;) {}
+    for (;;)
+    {
+        drawIdle(taskIdleRatio());
+    }
     Exit();
 }
 
@@ -176,6 +179,8 @@ int main()
     initKernel(sendQueues);
     TaskDescriptor *task = NULL;
     Syscall *request = NULL;
+
+    unsigned int task_begin_time;
     for(;;)
     {
         task = schedule();
@@ -183,7 +188,11 @@ int main()
             debug("No tasks scheduled; exiting...");
             break;
         }
+
+        task_begin_time = clockServerGetTick();
         request = kernelExit(task);
+        task->cpu_time_used += (clockServerGetTick() - task_begin_time);
+
         if(handleRequest(task, request, sendQueues)) {
             debug("Halt");
             break;
