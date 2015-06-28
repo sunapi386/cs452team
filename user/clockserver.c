@@ -151,22 +151,16 @@ void clockNotifier()
 {
     // Initialize variabels
     int pid = MyParentTid();
-    int ret = 0;
     ClockReq req;
     req.type = NOTIFICATION;
     req.data = 0xdeadbeaf;
     for (;;)
     {
-        //debug("Calling AwaitEvent()");
         AwaitEvent(TIMER_EVENT);
-        //debug("original size of req: %d", sizeof(req));
-        //debug("original req->type = %x, req->data = %x", req.type, req.data);
-        ret = Send(pid, &req, sizeof(req), 0, 0);
-        //assert(ret == 0);
+        Send(pid, &req, sizeof(req), 0, 0);
     }
 }
 
-static int ret = -1;
 void clockServerTask()
 {
     // Initialize variables
@@ -187,10 +181,7 @@ void clockServerTask()
     // Main loop for serving requests
     for (;;)
     {
-        ret = Receive(&tid, &req, sizeof(req));
-        //debug("Receive returned: %d, size of req: %d", ret, sizeof(req));
-        //debug("Tid: %d, create return: %d", tid, notifierTid);
-        assert(ret == sizeof(req));
+        Receive(&tid, &req, sizeof(req));
 
         switch (req.type)
         {
@@ -200,22 +191,18 @@ void clockServerTask()
             removeExpiredTasks(&q, tick);
             break;
         case TIME:
-            assert(0);
             Reply(tid, &tick, sizeof(tick));
             break;
         case DELAY:
             insertDelayedTask(&q, tid, req.data + tick);
             break;
         case DELAY_UNTIL:
-            //assert(0);
             insertDelayedTask(&q, tid, req.data);
             break;
         default:
-            //assert(0);
             bwprintf(COM2, "[Clockserver] Invalid request type: %d\n\r", req.type);
             for (;;);
             break;
         }
-        // assert(ret == 0);
     }
 }

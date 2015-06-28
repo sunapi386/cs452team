@@ -5,6 +5,7 @@
 
 #include <kernel/task.h>
 #include <kernel/task_queue.h>
+#include <debug.h>
 
 static unsigned int queueStatus = 0;
 static TaskQueue readyQueues[32];
@@ -40,11 +41,7 @@ static inline TaskDescriptor * schedule()
     TaskQueue *q = &readyQueues[index];
     TaskDescriptor *active = q->head;
 
-    if (q->head == NULL &&
-        queueStatus == 0)
-    {
-        return NULL;
-    }
+    assert(q->head != NULL);
 
     if (q->head == q->tail)
     {
@@ -74,13 +71,13 @@ void queueTask(TaskDescriptor *task)
     int priority = taskGetPriority((TaskDescriptor *)task);
     TaskQueue *q = &readyQueues[priority];
 
+    task->next = NULL;
     if (q->tail == NULL)
     {
         // set up head and tail to the same task; task->next should be NULL;
         // set the bit in queue status to 1 to indicate queue not empty
         q->head = (TaskDescriptor *)task;
         q->tail = (TaskDescriptor *)task;
-        task->next = NULL;
         queueStatus |= 1 << priority;
     }
     else

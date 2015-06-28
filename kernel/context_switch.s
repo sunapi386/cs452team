@@ -12,10 +12,7 @@ kernelExit:
     msr cpsr_c, #0xdf
 
     # load task->sp into sp
-    ldr sp, [r0, #12]
-
-    # load task->ret into r0
-    ldr r0, [r0, #8]
+    ldr sp, [r0, #8]
 
     # move sp into r1
     mov r1, sp
@@ -36,7 +33,7 @@ kernelExit:
     msr cpsr_c, #0xdf
 
     # load stored user regs from user stack
-    ldmfd sp!, {r1-r12, lr}
+    ldmfd sp!, {r0-r12, lr}
 
     # change to supervisor mode
     msr cpsr_c, #0xd3
@@ -53,7 +50,7 @@ irqEnter:
     msr cpsr_c, #0xdf
 
     # store r1-r12 user registers to user stack
-    stmfd sp!, {r1-r12, lr}
+    stmfd sp!, {r0-r12, lr}
 
     # put user sp in r1
     mov r1, sp
@@ -78,21 +75,14 @@ irqEnter:
     # store r2 (user cpsr), r3 (user pc) to user stack
     stmfd r1!, {r2, r3}
 
-    # move r0 to r2
-    mov r2, r0
-
     # load r0 (*task)
     ldmfd sp!, {r0}
 
-    # store r2 (r0) in task->ret
-    str r2, [r0, #8]
-
     # store r1 (user sp) in task->sp
-    str r1, [r0, #12]
+    str r1, [r0, #8]
 
-    # set task->hwi to 1
-    mov r2, #1
-    str r2, [r0, #16]
+    # set syscall ptr to NULL to indicate hwi
+    mov r0, #0
 
     # load the rest of the kernel registers from stack
     ldmfd sp!, {r1-r12, pc}
@@ -109,7 +99,7 @@ kernelEnter:
     msr cpsr_c, #0xdf
 
     # store all user registers to user stack
-    stmfd sp!, {r1-r12, lr}
+    stmfd sp!, {r0-r12, lr}
 
     # put user sp in r1
     mov r1, sp
@@ -130,7 +120,7 @@ kernelEnter:
     ldmfd sp!, {r2}
 
     # store r1 (user sp) in task->sp
-    str r1, [r2, #12]
+    str r1, [r2, #8]
 
     # 1) load the rest of the kernel registers from stack
     ldmfd sp!, {r1-r12, pc}

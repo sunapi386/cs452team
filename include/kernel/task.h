@@ -8,7 +8,7 @@
 // sp + 11 = r12
 // sp + 12 = lr
 
-#define TASK_TRAP_SIZE      14
+#define TASK_TRAP_SIZE      15
 #define TASK_BITS           7   // 2^8 = 128
 #define TASK_PRIORITY_BITS  5   // 2^5 = 32  Warning: Brujin table is 32.
 
@@ -64,9 +64,7 @@ typedef enum {
 typedef struct TaskDescriptor {
     int id;
     int parent_id;
-    int ret;
     unsigned int *sp;
-    unsigned int hwi;
     Status status;
     int *send_id;
     void *send_buf, *recv_buf;
@@ -86,10 +84,11 @@ TaskDescriptor *taskGetTDById(int task_id);
 int taskGetMyParentIndex(TaskDescriptor *task);
 int taskGetUnique(TaskDescriptor *task);
 int taskGetMyParentUnique(TaskDescriptor *task);
+void taskSetRet(TaskDescriptor *task, int ret);
 
 static inline int isValidTaskIndex(int index)
 {
-    return index > 0 && index < TASK_MAX_TASKS;
+    return (index > 0) && (index < TASK_MAX_TASKS);
 }
 
 // Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS

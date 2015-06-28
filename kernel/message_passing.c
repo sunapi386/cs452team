@@ -18,10 +18,6 @@ void initMessagePassing(TaskQueue *sendQueues)
 
 void handleSend(TaskQueue *sendQueues, TaskDescriptor *sendingTask, Syscall *request)
 {
-    // assert(sendQueues != NULL);
-    // assert(sendingTask != NULL);
-    // assert(request != NULL);
-
     int tid = (int)request->arg1;
     void *msg = (void *)request->arg2;
     unsigned int msglen = request->arg3;
@@ -59,25 +55,15 @@ void handleSend(TaskQueue *sendQueues, TaskDescriptor *sendingTask, Syscall *req
     // copy msg from here to receiving task's stack
     if (receivingTask->status == receive_block)
     {
-        bwprintf(COM2, "S1 ");
-        // debug("\tsender msglen: %u", msglen);
-        // debug("\tsetting receiver's sender tid: %u", taskGetIndex(sendingTask));
-
-        //bwprintf(1, "send() case 1: receiver receive_block\n\r");
         // copy message over
         unsigned int copiedLen = msglen < receivingTask->recv_len ?
             msglen : receivingTask->recv_len;
         memcpy(receivingTask->recv_buf, msg, copiedLen);
 
-        // debug("\tcopied len: %u", copiedLen);
-
         // set *tid of sending task
         *(receivingTask->send_id) = taskGetIndex(sendingTask);
 
-        //assert(isValidTaskIndex(taskGetIndex(sendingTask)));
-
         // set return value of receivingTask
-        //receivingTask->ret = msglen;
         taskSetRet(receivingTask, msglen);
 
         receivingTask->recv_buf = NULL;
@@ -95,8 +81,6 @@ void handleSend(TaskQueue *sendQueues, TaskDescriptor *sendingTask, Syscall *req
     // queue sending_task to send_queue of receiving_task
     else
     {
-        bwprintf(COM2, "S2 ");
-
         assert(sendingTask->status != send_block);
         sendingTask->status = send_block;
 
@@ -124,10 +108,6 @@ void handleSend(TaskQueue *sendQueues, TaskDescriptor *sendingTask, Syscall *req
 
 void handleReceive(TaskQueue *sendQueues, TaskDescriptor *receivingTask, Syscall *request)
 {
-    //assert(sendQueues != NULL);
-    //assert(receivingTask != NULL);
-    //assert(request != NULL);
-
     int *tid = (int *)request->arg1;
     void *msg = (void *)request->arg2;
     unsigned int msglen = request->arg3;
@@ -147,7 +127,6 @@ void handleReceive(TaskQueue *sendQueues, TaskDescriptor *receivingTask, Syscall
     {
         // dequeue the first sending task
         TaskDescriptor *sendingTask = q->head;
-        bwprintf(COM2, "%x ", sendingTask);
         if (q->tail == sendingTask)
         {
             // that was the only task in the queue
