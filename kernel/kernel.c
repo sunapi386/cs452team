@@ -72,13 +72,6 @@ void bootstrap()
     Exit();
 }
 
-void msg_stress()
-{
-    Create(PRIORITY_MONITOR_IN_SERVER, srv);
-    Create(PRIORITY_IDLE, idleProfiler);
-    Exit();
-}
-
 static void initKernel(TaskQueue *sendQueues) {
     enableCache();
     initTaskSystem();
