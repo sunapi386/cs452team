@@ -114,7 +114,6 @@ static void turnoutTask() {
 
     while(1) {
         Send(controller_id, 0, 0, &controller_reply, sizeof(controller_reply));
-        assert(controller_reply.type == sensor);
 
         int turnout_number = controller_reply.data.turnout.turnout_number;
         bool is_straight = controller_reply.data.turnout.direction == Straight;

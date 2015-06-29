@@ -9,7 +9,7 @@ void sensorTrigger(char group, int offset)
     SensorData sd;
     sd.group = group;
     sd.offset = offset;
-    Send();
+    //Send();
 }
 
 void trackController()
@@ -24,6 +24,8 @@ void trackController()
         // Receive the message
         Receive(&tid, data, sizeof(data));
         ControllerData *ctrlData = (ControllerData *)data;
+
+        Reply(tid, 0, 0);
 
         // switch on the type of the message
         switch (ctrlData->type)
