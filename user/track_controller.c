@@ -1,3 +1,4 @@
+#include <priority.h>
 #include <user/syscall.h>
 #include <user/nameserver.h>
 #include <user/track_controller.h>
@@ -12,7 +13,7 @@ void sensorTrigger(char group, int offset)
     //Send();
 }
 
-void trackController()
+void trackControllerTask()
 {
     int tid;
     void *data[DATA_BUF_SIZE] = {0, 0, 0, 0}; // 16 byte, 4 ints
@@ -39,4 +40,8 @@ void trackController()
         }
     }
     Exit();
+}
+
+void initController() {
+    Create(PRIORITY_TRACK_CONTROLLER_TASK, trackControllerTask);
 }

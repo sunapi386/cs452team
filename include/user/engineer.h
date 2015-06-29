@@ -15,6 +15,6 @@ We have defined 1 tick = 10 ms, thus 5000 um/10 ms = 5000 um/tick.
 
 */
 
-void engineer(int train_number);
+void engineerCreate(int train_number);
 
 #endif

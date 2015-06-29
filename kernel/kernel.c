@@ -7,93 +7,22 @@
 #include <kernel/context_switch.h>
 #include <kernel/uart.h>
 #include <kernel/timer.h>
-#include <user/user_tasks.h>
-#include <user/io.h>
 #include <debug.h>
-#include <events.h>
-#include <user/clockserver.h>
-#include <user/nameserver.h>
 #include <priority.h>
-#include <user/clock_drawer.h>
-#include <user/parser.h>
-#include <user/sensor.h>
-#include <user/train.h>
-#include <kernel/pl190.h>
-
-void enableCache()
-{
-    asm volatile(
-        "mrc p15, 0, r0, c1, c0, 0\n\t"
-        "ldr r1, =0x00001004\n\t"
-        "orr r0, r0, r1\n\t"
-        "mcr p15, 0, r0, c1, c0, 0\n\t"
-    );
-}
-
-void disableCache()
-{
-    asm volatile(
-        "mrc p15, 0, r0, c1, c0, 0\n\t"
-        "ldr r1, =0xffffeffb\n\t"
-        "and r0, r0, r1\n\t"
-        "mcr p15, 0, r0, c1, c0, 0\n\t"
-    );
-}
-
-void idleProfiler()
-{
-    for (;;)
-    {
-        drawIdle(taskIdleRatio());
-    }
-    Exit();
-}
-
-void bootstrap()
-{
-    // Create name server
-    Create(PRIORITY_NAMESERVER, nameserverTask);
-
-    // Create clock server
-    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
-
-    // Create IO Servers
-    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
-    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
-    Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
-    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
-
-    // Create user task
-    Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
-    Create(PRIORITY_PARSER, parserTask);
-    //Create(PRIORITY_SENSOR_TASK, sensorTask);
-
-    // Create idle task
-    Create(PRIORITY_IDLE, idleProfiler);
-
-    Exit();
-}
+#include <kernel/bootstrap.h>
+#include <kernel/cache.h>
+#include <user/clockserver.h>
 
 static void initKernel(TaskQueue *sendQueues) {
-    enableCache();
+    cacheEnable();
     initTaskSystem();
     initScheduler();
     initMessagePassing(sendQueues);
     initInterrupts();
     initUART();
     initTimer();
-    initTrain();
 
-    //int create_ret = taskCreate(PRIORITY_INIT, userTaskMessage, 0);
-    //int create_ret = taskCreate(PRIORITY_INIT, userTaskHwiTester, 0);
-    // int create_ret = taskCreate(1, runBenchmarkTask, 0);
-    // int create_ret = taskCreate(1, interruptRaiser, 0);
-    //int create_ret = taskCreate(0, userTaskK3, 0);
-    // int create_ret = taskCreate(1, userTaskIdle, 31);
-    int create_ret = taskCreate(PRIORITY_INIT, bootstrap, 0);
-
-    //int create_ret = taskCreate(PRIORITY_INIT, msg_stress, 0);
-
+    int create_ret = taskCreate(PRIORITY_INIT, bootstrapTask, 0);
     queueTask(taskGetTDById(create_ret));
 }
 
@@ -102,7 +31,7 @@ static void resetKernel() {
     resetTimer();
     resetInterrupts();
     resetUART();
-    disableCache();
+    cacheDisable();
 }
 
 int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {

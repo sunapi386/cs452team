@@ -1,5 +1,6 @@
 #include <debug.h>
 #include <utils.h>
+#include <kernel/task.h> // taskIdleRatio
 #include <user/vt100.h>
 #include <user/syscall.h>
 #include <user/user_tasks.h>
@@ -54,17 +55,12 @@ inline void drawIdle(unsigned int diff) {
     PutString(COM2, &s);
 }
 
-void userTaskIdle() {
-    unsigned int last_woke = Time();
-    unsigned int now, diff;
+void idleProfiler() {
     for (;;) {
-        now = Time();
-        diff = now - last_woke;
-        drawIdle(diff);
-        last_woke = now;
-        Pass();
+        drawIdle(taskIdleRatio());
     }
 }
+
 
 void undefinedInstructionTesterTask() {
 // Use online disassembler https://www.onlinedisassembler.com/odaweb/uSE7Vq1w/0

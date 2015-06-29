@@ -29,6 +29,8 @@ typedef struct {
 void sensorTrigger(char group, int offset);
 
 // track controller server
-void trackController();
+void trackControllerTask();
+
+void initController();
 
 #endif  //__TRACK_CONTROLLER_H
