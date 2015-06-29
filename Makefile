@@ -2,7 +2,7 @@
 # Makefile for kernel-side
 #
 CC     = gcc
-CFLAGS  = -O2 -c -fPIC -fno-builtin -Wall -Wextra -mcpu=arm920t -msoft-float -mpoke-function-name -std=gnu99 -I. -Iinclude
+CFLAGS  = -O2 -c -fPIC -fno-builtin -Wall -Wextra -mcpu=arm920t -msoft-float -std=gnu99 -I. -Iinclude
 # -c: only compile
 # -mcpu=arm920t: generate code for the 920t architecture
 # -fpic: emit position-independent code
@@ -40,8 +40,8 @@ deploy: kernel.elf
 kernel.elf: $(objects) linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(filter-out linker.ld,$^) -lgcc
 
-user/track_data.c: track/parse_track.py track/tracka track/trackb
-	track/parse_track.py -C user/track_data.c -H include/user/track_data.h track/tracka track/trackb
+user/track_data.c: track/parse_track.py track/new/tracka_new track/new/trackb_new
+	track/parse_track.py -C user/track_data.c -H include/user/track_data.h track/new/tracka_new track/new/trackb_new
 
 %.s: %.c
 	$(CC) -o $@ -S $(CFLAGS) $<
