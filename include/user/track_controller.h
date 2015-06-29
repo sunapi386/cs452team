@@ -3,14 +3,14 @@
 
 // list of data formats that are accepted by the track controller
 
+typedef enum {
+    tag_sensor = 9,
+} TrackDataTag;
+
 typedef struct {
     char sensor;
     char number;
 } SensorData;
-
-typedef enum {
-    sensor,
-} TrackDataTag;
 
 typedef struct {
     TrackDataTag tag;
