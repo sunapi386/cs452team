@@ -13,9 +13,9 @@ void trackController()
         ControllerData *ctrlData = (ControllerData *)data;
 
         // switch on the type of the message
-        switch (ctrlData->tag)
+        switch (ctrlData->type)
         {
-        case tag_sensor:
+        case sensor:
             break;
         default:
             break;

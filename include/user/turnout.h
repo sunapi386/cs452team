@@ -1,12 +1,12 @@
-#ifndef __SWITCHES_H
-#define __SWITCHES_H
+#ifndef __TURNOUT_H
+#define __TURNOUT_H
 #include <utils.h> // bool
-// handles switches manipulation, and draws onto screen
+// handles turnout manipulation, and draws onto screen
 
-void initSwitches();
-// sets the switch curved or straight
-void switchesSetCurved(int location);
-void switchesSetStraight(int location);
-bool switchesIsCurved(int switch_number);
+void initTurnout();
+// sets the turnout curved or straight
+
+void turnoutSet(int turnout_number, bool desire_curved);
+bool turnoutIsCurved(int turnout_number);
 
 #endif
