@@ -23,7 +23,7 @@ bool CBufferIsEmpty(const CBuffer *b);
 void CBufferClean(CBuffer *b);
 int CBufferPushStr(CBuffer *b, char *str);
 
-#define STR_MAX_LEN 255
+#define STR_MAX_LEN 511
 
 typedef struct String {
     unsigned int len;
