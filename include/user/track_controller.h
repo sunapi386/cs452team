@@ -8,8 +8,8 @@ typedef enum {
 } TrackDataTag;
 
 typedef struct {
-    char sensor;
-    char number;
+    char group;
+    int offset;
 } SensorData;
 
 typedef struct {
@@ -18,6 +18,10 @@ typedef struct {
         SensorData data;
     };
 } ControllerData;
+
+
+// Called by sensor task to update the controller on latest fired sensor
+void sensorTrigger(char group, int offset);
 
 // track controller server
 void trackController();

@@ -1,10 +1,25 @@
 #include <user/syscall.h>
+#include <user/nameserver.h>
 #include <user/track_controller.h>
+
+#define DATA_BUF_SIZE 4
+
+
+
+void sensorTrigger(char group, int offset)
+{
+    SensorData sd;
+    sd.group = group;
+    sd.offset = offset;
+    Send();
+}
 
 void trackController()
 {
     int tid;
-    void *data[4] = {0, 0, 0, 0}; // 16 byte, 4 ints
+    void *data[DATA_BUF_SIZE] = {0, 0, 0, 0}; // 16 byte, 4 ints
+
+    RegisterAs("trackController");
 
     for (;;)
     {
@@ -16,6 +31,8 @@ void trackController()
         switch (ctrlData->tag)
         {
         case tag_sensor:
+            // get the sensor data
+
             break;
         default:
             break;
