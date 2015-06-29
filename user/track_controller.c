@@ -4,8 +4,6 @@
 
 #define DATA_BUF_SIZE 4
 
-
-
 void sensorTrigger(char group, int offset)
 {
     SensorData sd;
@@ -28,11 +26,11 @@ void trackController()
         ControllerData *ctrlData = (ControllerData *)data;
 
         // switch on the type of the message
-        switch (ctrlData->tag)
+        switch (ctrlData->type)
         {
-        case tag_sensor:
-            // get the sensor data
-
+        case type_sensor:
+            break;
+        case type_turnout:
             break;
         default:
             break;

@@ -22,6 +22,7 @@ void trainSetReverse(int train_number) {
     trainSetSpeed(train_number, speeds[train_number]);
 }
 
+// DEPRECATED, only used by turnout.c
 void trainSetSwitch(int switch_number, int curved) {
     Putc(COM1, curved ? CURVED : STRAIGHT);
     Putc(COM1, switch_number);

@@ -3,20 +3,25 @@
 
 // list of data formats that are accepted by the track controller
 
-typedef enum {
-    tag_sensor = 9,
-} TrackDataTag;
-
 typedef struct {
     char group;
     int offset;
 } SensorData;
 
 typedef struct {
-    TrackDataTag tag;
+    int turnout_number;
+    enum {Curved, Straight} direction;
+} TurnoutData;
+
+typedef struct {
+    enum {
+        type_sensor,
+        type_turnout,
+    } type;
     union {
-        SensorData data;
-    };
+        SensorData sensor;
+        TurnoutData turnout;
+    } data;
 } ControllerData;
 
 

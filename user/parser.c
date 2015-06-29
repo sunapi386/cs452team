@@ -3,13 +3,14 @@
 #include <utils.h>
 #include <user/vt100.h>
 #include <user/syscall.h> // Create
-#include <user/train.h>
+#include <user/turnout.h> // to handle sw
+#include <user/train.h> // to handle sw
 #include <kernel/task.h> // to call taskDisplayAll()
 
 // Parser is a giant state machine
 // tr train_number train_speed
 // rv train_number
-// sw switch_number switch_direction
+// sw turnout_number turnout_direction
 // q
 #include <user/sensor.h> // SensorHalt
 
@@ -28,12 +29,12 @@ typedef struct Parser {
         RV_V,
         RV_space,
         RV_train_number,
-        SW_S,       // sw switch_number switch_direction
+        SW_S,       // sw turnout_number turnout_direction
         SW_W,
         SW_space_1,
-        SW_switch_number,
+        SW_turnout_number,
         SW_space_2,
-        SW_switch_dir,
+        SW_turnout_dir,
         H_H,        // h train_number sensor_group sensor_number
         H_space_1,
         H_train_number,
@@ -52,7 +53,7 @@ typedef struct Parser {
             int train_speed;
         } speed;
         struct Junction { // SW commands
-            int switch_number;
+            int turnout_number;
             bool curved;
         } junction;
         struct Reverse { // RV data
@@ -213,7 +214,7 @@ static bool parse(Parser *p, char c) {
                 break;
             } // RV_train_number
 
-            // sw switch_number switch_direction ----------- //
+            // sw turnout_number turnout_direction ----------- //
             case SW_S: {
                 REQUIRE('w', SW_W);
                 break;
@@ -223,14 +224,14 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case SW_space_1: {
-                p->data.junction.switch_number = 0;
-                p->state =  append_number(c, &(p->data.junction.switch_number)) ?
-                            SW_switch_number :
+                p->data.junction.turnout_number = 0;
+                p->state =  append_number(c, &(p->data.junction.turnout_number)) ?
+                            SW_turnout_number :
                             Error;
                 break;
             }
-            case SW_switch_number: {
-                if(! append_number(c, &(p->data.junction.switch_number))) {
+            case SW_turnout_number: {
+                if(! append_number(c, &(p->data.junction.turnout_number))) {
                     REQUIRE(' ', SW_space_2);
                 }
                 break;
@@ -239,18 +240,18 @@ static bool parse(Parser *p, char c) {
                 switch(c) { // either 'c' or 's'
                 case 'c':
                     p->data.junction.curved = true;
-                    p->state = SW_switch_dir;
+                    p->state = SW_turnout_dir;
                     break;
                 case 's':
                     p->data.junction.curved = false;
-                    p->state = SW_switch_dir;
+                    p->state = SW_turnout_dir;
                     break;
                 default:
                     p->state = Error;
                 }
                 break;
             }
-            case SW_switch_dir: {
+            case SW_turnout_dir: {
                 p->state = Error;
                 break;
             }
@@ -333,19 +334,19 @@ static bool parse(Parser *p, char c) {
 
                 break;
             }
-            case SW_switch_dir: {
-                // check switch_number
-                int switch_number = p->data.junction.switch_number;
-                if(   (1 <= switch_number && switch_number <= 18) ||
-                    (153 <= switch_number && switch_number <= 156)) {
-                    bool curved = p->data.junction.curved;
+            case SW_turnout_dir: {
+                // check turnout_number
+                int turnout_number = p->data.junction.turnout_number;
+                if(   (1 <= turnout_number && turnout_number <= 18) ||
+                    (153 <= turnout_number && turnout_number <= 156)) {
+                    bool is_curved = p->data.junction.curved;
                     sprintf(&disp_msg, "SW: %d %c\r\n",
-                        switch_number, (curved ? 'C' : 'S'));
-                    trainSetSwitch(switch_number, curved);
+                        turnout_number, (is_curved ? 'C' : 'S'));
+                    turnoutSet(turnout_number, is_curved);
                 }
                 else {
                     sputstr(&disp_msg,
-                        "SW: bad switch_number\r\n");
+                        "SW: bad turnout_number\r\n");
                 }
 
                 break;
