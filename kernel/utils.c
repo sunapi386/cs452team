@@ -131,7 +131,8 @@ void scopystr(String *dst, String *src) {
 
 void sputc(String *s, const char c) {
     if(s->len >= STR_MAX_LEN) {
-        debug("sputc overflow: \"%s\" while inserting '%c'", s->buf, c);
+        debug("sputc overflow: \"%s\" while inserting '%c' %u==%u",
+            s->buf, c, s->len, strlen(s->buf));
     }
     assert(s->len < STR_MAX_LEN);
     s->buf[s->len++] = c;
