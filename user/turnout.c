@@ -2,7 +2,6 @@
 #include <user/vt100.h>
 #include <user/syscall.h> // sending to screen
 #include <utils.h> // printf, bool, string
-#include <debug.h> // assert
 #include <user/track_controller.h> // shared reply structure
 #include <priority.h>
 #include <user/train.h>
@@ -134,9 +133,12 @@ static void turnoutTask() {
 
     while(1) {
         Send(controller_id, 0, 0, &controller_reply, sizeof(controller_reply));
-
         int turnout_number = controller_reply.data.turnout.turnout_number;
         bool is_straight = controller_reply.data.turnout.direction == Straight;
+
+        assert(turnout_number >= 153 && turnout_number <= 156 ||
+                1 <= turnout_number && turnout_number <= 18);
+        assert(is_straight == true || is_straight == false);
 
         if(is_straight) {
             _setTurnout(turnout_number, STRAIGHT, VT_GREEN, 's');
