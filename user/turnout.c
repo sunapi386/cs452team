@@ -1,10 +1,11 @@
 #include <user/turnout.h>
-#include <user/vt100.h>
-#include <user/syscall.h> // sending to screen
+#include <debug.h> // assert
 #include <utils.h> // printf, bool, string
-#include <user/track_controller.h> // shared reply structure
 #include <priority.h>
+#include <user/syscall.h> // sending to screen
+#include <user/vt100.h>
 #include <user/train.h>
+#include <user/track_controller.h> // shared reply structure
 
 #define SOLENOID_OFF 32
 #define STRAIGHT 33
@@ -40,6 +41,7 @@ static inline void _set_bitmap(int turnout_number, char direction) {
 
 static void _setTurnout(int turnout_number, char curvature, char *color, char symbol) {
     // updates the screen for where the turnout_number is
+    debug("_setTurnout %d", turnout_number);
     _set_bitmap(turnout_number, curvature);
     int bit_address = _to_bit_address(turnout_number);
     int row = 0, col = 0;
@@ -65,6 +67,7 @@ static void _setTurnout(int turnout_number, char curvature, char *color, char sy
 }
 
 static void _updateTurnoutDisplay(int turnout_number, bool is_straight) {
+    debug("_updateTurnoutDisplay %d", turnout_number);
     int bit_address = _to_bit_address(turnout_number);
     int row, col;
     switch(bit_address) {
@@ -136,8 +139,8 @@ static void turnoutTask() {
         int turnout_number = controller_reply.data.turnout.turnout_number;
         bool is_straight = controller_reply.data.turnout.direction == Straight;
 
-        assert(turnout_number >= 153 && turnout_number <= 156 ||
-                1 <= turnout_number && turnout_number <= 18);
+        assert((153 <= turnout_number && turnout_number <= 156) ||
+                 (1 <= turnout_number && turnout_number <= 18));
         assert(is_straight == true || is_straight == false);
 
         if(is_straight) {
