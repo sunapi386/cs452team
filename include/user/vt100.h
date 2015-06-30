@@ -53,7 +53,6 @@
 #define VT_LOG_COL              1
 
 struct String;
-void vt_init();
 void vt_pos(struct String *s, int row, int col);
 
 #endif

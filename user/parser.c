@@ -375,13 +375,19 @@ static bool parse(Parser *p, char c) {
 
 
 void parserTask() {
-    vt_init();
+    String s;
+    // sinit(&s);
+    // sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
+    // // set scrolling region
+    // sprintf(&s, "%s%d;%dr", VT_CSI, 18, 20);
+    // sprintf(&s, "%s%s", VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    // PutString(COM2, &s);
+
     Parser p;
     p.state = Empty;
     bool run = true; // set to false when we detect quit command
 
     // draw the parsing window, etc
-    String s;
     sinit(&s);
     vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
     sputstr(&s, "> ");
