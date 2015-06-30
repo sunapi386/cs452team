@@ -77,6 +77,7 @@ void taskDisplayAll() {
 unsigned int taskIdleRatio() {
     unsigned int idle_time = 0;
     unsigned int busy_time = 0;
+    unsigned int max = 0;
     for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
         if(global_task_table[i].id == 0) continue;
         if(taskGetPriority(&global_task_table[i]) == PRIORITY_IDLE) {
@@ -85,6 +86,16 @@ unsigned int taskIdleRatio() {
         else {
             busy_time += global_task_table[i].cpu_time_used;
         }
+        if(global_task_table[i].cpu_time_used > max) {
+            max = global_task_table[i].cpu_time_used;
+        }
+    }
+    if(max > 10000) {
+        // reset the cpu_time_used for the next time slice
+        for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
+            global_task_table[i].cpu_time_used = 0;
+        }
+        max = 0;
     }
     return (100 * idle_time) / (idle_time + busy_time);
 }

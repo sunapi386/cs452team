@@ -26,7 +26,7 @@ void trackControllerTask()
         // Receive the message
         Receive(&tid, data, sizeof(data));
         ControllerData *ctrlData = (ControllerData *)data;
-        debug("train controller Received from tid %d", tid);
+        // debug("train controller Received from tid %d", tid);
         // Reply(tid, 0, 0);
 
         // switch on the type of the message

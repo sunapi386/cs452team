@@ -53,8 +53,12 @@ inline void drawIdle(unsigned int diff) {
 }
 
 void idleProfiler() {
+    int i = 0;
     for (;;) {
-        drawIdle(taskIdleRatio());
+        if(i++ % 500000 == 0) {
+            drawIdle(taskIdleRatio());
+        }
+        Pass();
     }
 }
 

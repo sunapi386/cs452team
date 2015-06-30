@@ -8,6 +8,5 @@ void idleProfiler();
 void userTaskHwiTester();
 void clockServerTesterTask();
 void undefinedInstructionTesterTask();
-void drawIdle(unsigned int diff);
 
 #endif
