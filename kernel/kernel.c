@@ -86,6 +86,7 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
         case SYS_PASS:
             break;
         case SYS_EXIT:
+            taskExit(td);
             return 0;
         case SYS_HALT:
             return -1;

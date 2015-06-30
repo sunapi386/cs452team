@@ -141,6 +141,24 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
     return new_task->id;
 }
 
+void taskExit(TaskDescriptor *task) {
+    task->id = 0;
+    task->parent_id = 0;
+    task->sp = NULL;
+    task->status = ready;
+    task->send_id = NULL;
+    task->send_buf = NULL;
+    task->recv_buf = NULL;
+    task->send_len = 0;
+    task->recv_len = 0;
+    task->next = NULL;
+    for(unsigned j = 0; j < TASK_MAX_NAME_SIZE; j++) {
+        task->name[j] = '\0';
+    }
+    task->cpu_time_used = 0;
+    // TODO: task recycling requires re-marking the exited task's stacks as free
+}
+
 inline int taskGetMyId(TaskDescriptor *task) {
     return task->id;
 }
