@@ -121,7 +121,6 @@ static void turnoutTask() {
     sputstr(&s, "6:x 12:x 18:x\r\n");
     sprintf(&s, "%s%s", VT_CURSOR_SHOW, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
-    debug ("I RAN");
 
     for (int i = 1; i <= 18; ++i) {
         _setTurnout(i, CURVED, VT_CYAN, 'c');
