@@ -102,6 +102,10 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
     return 0;
 }
 
+#define TIMER4_ENABLE   0x100;
+#define TIMER4_VAL      ((volatile unsigned int *) 0x80810060)
+#define TIMER4_CRTL     ((volatile unsigned int *) 0x80810064)
+
 int main()
 {
     TaskQueue sendQueues[TASK_MAX_TASKS];
@@ -111,6 +115,8 @@ int main()
     Syscall *request = NULL;
 
     unsigned int task_begin_time;
+    *TIMER4_CRTL = TIMER4_ENABLE;
+
     for(;;)
     {
         task = schedule();
@@ -118,10 +124,11 @@ int main()
             debug("No tasks scheduled; exiting...");
             break;
         }
-
-        task_begin_time = clockServerGetTick();
+        task_begin_time = *TIMER4_VAL;
         request = kernelExit(task);
-        task->cpu_time_used += (clockServerGetTick() - task_begin_time);
+        int diff = (*TIMER4_VAL - task_begin_time);
+        task->cpu_time_used += diff;
+        // bwprintf(COM2, "%d ticks have elapsed\r\n", diff);
         if(handleRequest(task, request, sendQueues)) {
             debug("Halt");
             break;
