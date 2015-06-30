@@ -108,7 +108,27 @@ static void _updateTurnoutDisplay(int turnout_number, bool is_straight) {
 
 static int controller_id;
 static void turnoutTask() {
-    controller_id = WhoIs("trackController");
+    struct String s;
+    sinit(&s);
+    vt_pos(&s, VT_TURNOUT_ROW, VT_TURNOUT_COL);
+    sputstr(&s, "--   TURNOUTES    --\r\n");
+    sputstr(&s, "1:x  7:x 13:x 153:x\r\n");
+    sputstr(&s, "2:x  8:x 14:x 154:x\r\n");
+    sputstr(&s, "3:x  9:x 15:x 155:x\r\n");
+    sputstr(&s, "4:x 10:x 16:x 156:x\r\n");
+    sputstr(&s, "5:x 11:x 17:x\r\n");
+    sputstr(&s, "6:x 12:x 18:x\r\n");
+    PutString(COM2, &s);
+
+    for (int i = 1; i <= 18; ++i) {
+        _setTurnout(i, CURVED, VT_CYAN, 'c');
+    }
+
+    for (int i = 153; i <= 156; ++i) {
+        _setTurnout(i, CURVED, VT_CYAN, 'c');
+    }
+
+    controller_id = WhoIs("controller");
     assert(controller_id >= 0);
     ControllerData controller_reply;
 
@@ -150,26 +170,5 @@ bool turnoutIsCurved(int turnout_number) {
 }
 
 void initTurnout() {
-    struct String s;
-
-    sinit(&s);
-    vt_pos(&s, VT_TURNOUT_ROW, VT_TURNOUT_COL);
-    sputstr(&s, "--   TURNOUTES    --\r\n");
-    sputstr(&s, "1:x  7:x 13:x 153:x\r\n");
-    sputstr(&s, "2:x  8:x 14:x 154:x\r\n");
-    sputstr(&s, "3:x  9:x 15:x 155:x\r\n");
-    sputstr(&s, "4:x 10:x 16:x 156:x\r\n");
-    sputstr(&s, "5:x 11:x 17:x\r\n");
-    sputstr(&s, "6:x 12:x 18:x\r\n");
-    PutString(COM2, &s);
-
-    for (int i = 1; i <= 18; ++i) {
-        turnoutSet(i, true);
-    }
-
-    for (int i = 153; i <= 156; ++i) {
-        turnoutSet(i, true);
-    }
-
     Create(PRIORITY_TURNOUT_TASK, turnoutTask);
 }

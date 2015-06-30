@@ -18,7 +18,7 @@ void trackControllerTask()
     int tid;
     void *data[DATA_BUF_SIZE] = {0, 0, 0, 0}; // 16 byte, 4 ints
 
-    RegisterAs("trackController");
+    RegisterAs("controller");
 
     for (;;)
     {
