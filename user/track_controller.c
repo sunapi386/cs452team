@@ -1,3 +1,4 @@
+#include <debug.h>
 #include <priority.h>
 #include <user/syscall.h>
 #include <user/nameserver.h>
@@ -25,8 +26,8 @@ void trackControllerTask()
         // Receive the message
         Receive(&tid, data, sizeof(data));
         ControllerData *ctrlData = (ControllerData *)data;
-
-        Reply(tid, 0, 0);
+        debug("train controller Received from tid %d", tid);
+        // Reply(tid, 0, 0);
 
         // switch on the type of the message
         switch (ctrlData->type)
