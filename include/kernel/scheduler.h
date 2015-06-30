@@ -87,6 +87,26 @@ void queueTask(TaskDescriptor *task)
         q->tail = (TaskDescriptor *)task;
     }
 }
+
+void addToFront(TaskDescriptor *task)
+{
+    int priority = taskGetPriority((TaskDescriptor *)task);
+    TaskQueue *q = &readyQueues[priority];
+
+    if (q->head == NULL)
+    {
+        q->head = task;
+        q->tail = task;
+        task->next = NULL;
+        queueStatus |= 1 << priority;
+    }
+    else
+    {
+        task->next = q->head;
+        q->head = task;
+    }
+}
+
 #endif // KERNEL_MAIN
 
 #endif

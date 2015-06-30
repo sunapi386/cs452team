@@ -39,6 +39,8 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
     if (request == NULL)
     {
         handleInterrupt();
+        // add the task back to the front of the ready queue
+        addToFront(td);
     }
     else
     {
@@ -94,10 +96,9 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
             debug("Invalid syscall %u!", request->type);
             break;
         }
+        // requeue the task if we haven't returned (from SYS_EXIT)
+        queueTask(td);
     }
-
-    // requeue the task if we haven't returned (from SYS_EXIT)
-    queueTask(td);
     return 0;
 }
 
