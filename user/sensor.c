@@ -10,38 +10,37 @@
 #define SENSOR_RESET    192
 #define SENSOR_QUERY    (128 + NUM_SENSORS)
 #define NUM_RECENT_SENSORS    8
+#define POS                     "\033[4;24H"
+#define POS1                    "\033[;24H"
 
-static char *trackA1 =
-"=========S===S===================================\\\r\n"
-"=======S/   /  ==========S========S============\\  \\\r\n"
-"======/    S==/           \\   |  /              \\  \\\r\n"
-"          /                \\  |S/                \\==S\r\n";
-static char *trackA2 =
-"         |                  \\S|                     |\r\n"
-"         |                    |S\\                   |\r\n"
-"          \\                 /S|  \\               /==S\r\n"
-"           S==\\            /  |   \\             /  /\r\n";
-static char *trackA3 =
-"========\\   \\  ==========S=========S===========/  /\r\n"
-"=========S\\  \\=========S============S============/\r\n"
-"===========S\\           \\          /\r\n"
-"=============S===========S========S============\r\n";
 
-static char *trackB1 =
-"=========S===S===================================\\\r\n"
-"=======S/   /  ==========S========S============\\  \\\r\n"
-"      /    S==/           \\   |  /              \\  \\\r\n"
-"   /=/    /                \\  |S/                \\==S\r\n";
-static char *trackB2 =
-"   |     |                  \\S|                     |\r\n"
-"   |     |                    |S\\                   |\r\n"
-"   \\=     \\                 /S|  \\               /==S\r\n"
-"     \\=\\   S==\\            /  |   \\             /  /\r\n";
-static char *trackB3 =
-"        \\   \\  ==========S=========S===========/  /\r\n"
-"=========S\\  \\=========S============S============/\r\n"
-"===========S\\           \\          /\r\n"
-"=============S===========S========S============\r\n";
+static char *trackA =
+"\033[4;24H"    "=========S===S===================================\\"
+"\033[5;24H"    "=======S/   /  ==========S========S============\\  \\"
+"\033[6;24H"    "======/    S==/           \\   |  /              \\  \\"
+"\033[7;24H"    "          /                \\  |S/                \\==S"
+"\033[8;24H"    "         |                  \\S|                     |"
+"\033[9;24H"    "         |                    |S\\                   |"
+"\033[10;24H"   "          \\                 /S|  \\               /==S"
+"\033[11;24H"   "           S==\\            /  |   \\             /  /"
+"\033[12;24H"   "========\\   \\  ==========S=========S===========/  /"
+"\033[13;24H"   "=========S\\  \\=========S============S============/"
+"\033[14;24H"   "===========S\\           \\          /"
+"\033[15;24H"   "=============S===========S========S============";
+
+static char *trackB =
+"\033[4;24H"    "=========S===S===================================\\"
+"\033[5;24H"    "=======S/   /  ==========S========S============\\  \\"
+"\033[6;24H"    "      /    S==/           \\   |  /              \\  \\"
+"\033[7;24H"    "   /=/    /                \\  |S/                \\==S"
+"\033[8;24H"    "   |     |                  \\S|                     |"
+"\033[9;24H"    "   |     |                    |S\\                   |"
+"\033[10;24H"   "   \\=     \\                 /S|  \\               /==S"
+"\033[11;24H"   "     \\=\\   S==\\            /  |   \\             /  /"
+"\033[12;24H"   "        \\   \\  ==========S=========S===========/  /"
+"\033[13;24H"   "=========S\\  \\=========S============S============/"
+"\033[14;24H"   "===========S\\           \\          /"
+"\033[15;24H"   "=============S===========S========S============";
 
 
 typedef struct SensorReading {
@@ -132,6 +131,17 @@ static inline void _handleChar(char c) {
 }
 
 static void _sensorTask() {
+    for(int i = 0; i < NUM_RECENT_SENSORS; i++) {
+        recent_sensors[i].group = recent_sensors[i].offset = 0;
+    }
+    for(int i = 0; i < 2 * NUM_SENSORS; i++) {
+        sensor_states[i] = 0;
+    }
+    last_byte = recently_read = 0;
+    drawSensorArea();
+    drawTrackLayoutGraph(A);
+    Putc(COM1, SENSOR_RESET);
+
     while(1) {
         Putc(COM1, SENSOR_QUERY);
         for(int i = 0; i < (2 * NUM_SENSORS); i++) {
@@ -145,16 +155,11 @@ static void _sensorTask() {
 }
 
 void initSensor() {
-    for(int i = 0; i < NUM_RECENT_SENSORS; i++) {
-        recent_sensors[i].group = recent_sensors[i].offset = 0;
-    }
-    for(int i = 0; i < 2 * NUM_SENSORS; i++) {
-        sensor_states[i] = 0;
-    }
-    last_byte = recently_read = 0;
-    drawSensorArea();
-    redrawTrackLayoutGraph('a');
-    Putc(COM1, SENSOR_RESET);
+    debug("strlen %d", strlen(trackA) );
+    debug("strlen %d", strlen(trackB) );
+    assert(STR_MAX_LEN > strlen(trackA));
+    assert(STR_MAX_LEN > strlen(trackB));
+
     Create(PRIORITY_SENSOR_TASK, _sensorTask);
 }
 
@@ -177,37 +182,15 @@ void sensorHalt(int train_number, int sensor, int sensor_number) {
 }
 
 
-void redrawTrackLayoutGraph(Track which_track) {
-    assert(STR_MAX_LEN > strlen(trackA1));
-    assert(STR_MAX_LEN > strlen(trackA2));
-    assert(STR_MAX_LEN > strlen(trackA3));
-    assert(STR_MAX_LEN > strlen(trackB1));
-    assert(STR_MAX_LEN > strlen(trackB2));
-    assert(STR_MAX_LEN > strlen(trackB3));
-
+void drawTrackLayoutGraph(Track which_track) {
     String s;
     sinit(&s);
     sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
     vt_pos(&s, VT_TRACK_GRAPH_ROW, VT_TRACK_GRAPH_COL);
     sputstr(&s, VT_RESET);
-    PutString(COM2, &s);
-
-    switch(which_track) {
-        case A:
-            printf(COM2, trackA1);
-            printf(COM2, trackA2);
-            printf(COM2, trackA3);
-            break;
-        case B:
-            printf(COM2, trackB1);
-            printf(COM2, trackB2);
-            printf(COM2, trackB3);
-            break;
-        default:
-            break;
-    }
-
-    sinit(&s);
-    sprintf(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    sputstr(&s, which_track == A ? trackA : trackB);
+    sputstr(&s, VT_RESET);
+    sputstr(&s, VT_CURSOR_RESTORE);
+    sputstr(&s, VT_CURSOR_SHOW);
     PutString(COM2, &s);
 }

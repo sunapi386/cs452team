@@ -7,7 +7,7 @@ typedef enum { false, true } bool;
 void memcpy(void *dest, const void *src, size_t n);
 int strcmp (const char * dst, const char * src);
 char * strncpy(char *dst, const char *src, size_t n);
-size_t strlen(const char *str);
+size_t strlen(const char *str); // does not count null terminator
 int countLeadingZeroes(const unsigned int mask);
 
 
@@ -23,7 +23,7 @@ bool CBufferIsEmpty(const CBuffer *b);
 void CBufferClean(CBuffer *b);
 int CBufferPushStr(CBuffer *b, char *str);
 
-#define STR_MAX_LEN 511
+#define STR_MAX_LEN 1024
 
 typedef struct String {
     unsigned int len;
@@ -33,7 +33,9 @@ typedef struct String {
 static inline void sinit(String *s) {
     s->len = 0;
 }
-
+static inline unsigned int slen(String *s) {
+    return s->len;
+}
 void scopy(String *dst, const char *src);
 void scopystr(String *dst, String *src);
 void sputc(String *s, const char c);

@@ -11,6 +11,6 @@ void initSensor();
 // e.g. sensorHalt(42, 'a', 3);
 void sensorHalt(int train_number, int sensor, int sensor_number);
 typedef enum {A, B, None} Track;
-void redrawTrackLayoutGraph(Track which_track);
+void drawTrackLayoutGraph(Track which_track);
 
 #endif
