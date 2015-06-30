@@ -37,9 +37,9 @@
 #define VT_CLOCK_COL            68
 #define VT_IDLE_ROW             1
 #define VT_IDLE_COL             1
-#define VT_SENSOR_ROW           10
+#define VT_SENSOR_ROW           9
 #define VT_SENSOR_COL           1
-#define VT_TURNOUT_ROW          20
+#define VT_TURNOUT_ROW          2
 #define VT_TURNOUT_COL          1
 #define VT_TRACK_GRAPH_ROW      4
 #define VT_TRACK_GRAPH_COL      24
@@ -49,7 +49,7 @@
 #define VT_PARSER_ROW           21
 #define VT_PARSER_COL           1
 
-#define VT_LOG_ROW              18
+#define VT_LOG_ROW              26
 #define VT_LOG_COL              1
 
 struct String;
