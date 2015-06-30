@@ -45,6 +45,7 @@ typedef struct Parser {
         H_sensor_number,
         Q_Q,        // q
         P,          // p for printing the graph
+        O,          // o for printing the turnouts
         DB_TASK,    // db
     } state;
 
@@ -109,6 +110,7 @@ static bool parse(Parser *p, char c) {
                     case 'd': p->state = DB_TASK; break;
                     case 'h': p->state = H_H; break;
                     case 'p': p->state = P; break;
+                    case 'o': p->state = O; break;
                     default:  p->state = Error; break;
                 }
                 break;
@@ -355,11 +357,18 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case DB_TASK: {
+                sputstr(&disp_msg, "Debug task!\r\n");
                 taskDisplayAll();
                 break;
             }
             case P: {
+                sputstr(&disp_msg, "Drawing track!\r\n");
                 drawTrackLayoutGraph(A);
+                break;
+            }
+            case O: {
+                sputstr(&disp_msg, "Drawing turnouts!\r\n");
+                printResetTurnouts();
                 break;
             }
             default: {
