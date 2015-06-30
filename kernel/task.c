@@ -36,7 +36,7 @@ void initTaskSystem() {
 }
 
 static void printTask(TaskDescriptor *task) {
-    if (task == NULL) return;
+    if (task->id == 0) return;
 
     char *statusName = NULL;
 
