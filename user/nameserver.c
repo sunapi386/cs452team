@@ -65,9 +65,9 @@ void nameserverTask() {
                         Reply(sender_tid, &(registrations[i].tid), sizeof(int));
                         break; // resolved whois name to a tid
                     }
-                    // no registered tid for that name
-                    Reply(sender_tid, (void *)&NO_TASK, sizeof(int));
                 }
+                // no registered tid for that name
+                Reply(sender_tid, (void *)&NO_TASK, sizeof(int));
 
                 break; // WHO_IS
 
