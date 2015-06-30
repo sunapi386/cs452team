@@ -105,7 +105,7 @@ static void _setTurnout(int turnout_number, char curvature, char *color) {
 void printResetTurnouts() {
     String s;
     sinit(&s);
-    sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
+    sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_TURNOUT_ROW, VT_TURNOUT_COL);
     sputstr(&s, "--   TURNOUTES    --\r\n");
     sputstr(&s, "1:x  7:x 13:x 153:x\r\n");
@@ -114,7 +114,6 @@ void printResetTurnouts() {
     sputstr(&s, "4:x 10:x 16:x 156:x\r\n");
     sputstr(&s, "5:x 11:x 17:x\r\n");
     sputstr(&s, "6:x 12:x 18:x\r\n");
-    sputstr(&s, VT_CURSOR_SHOW);
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 

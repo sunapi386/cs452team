@@ -1,14 +1,13 @@
 #include <utils.h>
 #include <priority.h>           // init
-#include <user/vt100.h>              // constants
+#include <user/vt100.h>         // constants
 #include <user/syscall.h>       // Create
 
 static void draw(int time) {
     String s;
     sinit(&s);
-    sprintf(&s, "%c7", ESC); // SAVE CURSOR
+    sprintf(&s, VT_CURSOR_SAVE); // SAVE CURSOR
     vt_pos(&s, VT_CLOCK_ROW, VT_CLOCK_COL);
-    sprintfstr(&s, "%c[?25l", ESC); // HIDE CURSOR
     sputc(&s, '0' + time / 3600000);
     sputc(&s, '0' + (time % 3600000) / 360000);
     sputc(&s, ':');
@@ -19,8 +18,7 @@ static void draw(int time) {
     sputc(&s, '0' + (time % 1000) / 100);
     sputc(&s, '.');
     sputc(&s, '0' + (time % 100) / 10);
-    sprintfstr(&s, "%c[?25h", ESC); // SHOW CURSOR
-    sprintfstr(&s, "%c8", ESC); // LOAD CURSOR
+    sputstr(&s, VT_CURSOR_RESTORE); // RESTORE CURSOR
     PutString(COM2, &s);
 }
 

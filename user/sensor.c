@@ -68,21 +68,21 @@ static void _sensorFormat(String *s, SensorReading *sensorReading) {
 static void drawSensorArea() {
     String s;
     sinit(&s);
-    sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
+    sprintf(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_SENSOR_ROW, VT_SENSOR_COL);
     sputstr(&s, VT_RESET);
     sprintfstr(&s, "-- RECENT SENSORS --\r\n");
     for(int i = 1; i <= NUM_RECENT_SENSORS; i++) {
         sprintfstr(&s, "%d. A10\r\n", i);
     }
-    sprintfstr(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    sprintfstr(&s, "%s%s", VT_RESET, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
 static void _updateSensoryDisplay() {
     String s;
     sinit(&s);
-    sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
+    sprintf(&s, VT_CURSOR_SAVE);
     // TODO: calc and determine where the actual row and col is, on gui
     vt_pos(&s, VT_SENSOR_ROW + 1, VT_SENSOR_COL + sizeof("0. "));
     sputstr(&s, VT_RESET);
@@ -93,7 +93,7 @@ static void _updateSensoryDisplay() {
         _sensorFormat(&s, &recent_sensors[i]);
     }
 
-    sprintfstr(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    sprintfstr(&s, "%s%s", VT_RESET, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
@@ -182,12 +182,11 @@ void sensorHalt(int train_number, int sensor, int sensor_number) {
 void drawTrackLayoutGraph(Track which_track) {
     String s;
     sinit(&s);
-    sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
+    sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_TRACK_GRAPH_ROW, VT_TRACK_GRAPH_COL);
     sputstr(&s, VT_RESET);
     sputstr(&s, which_track == A ? trackA : trackB);
     sputstr(&s, VT_RESET);
     sputstr(&s, VT_CURSOR_RESTORE);
-    sputstr(&s, VT_CURSOR_SHOW);
     PutString(COM2, &s);
 }
