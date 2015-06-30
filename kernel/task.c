@@ -97,7 +97,7 @@ unsigned int taskIdleRatio() {
         }
         max = 0;
     }
-    return (100 * idle_time) / (idle_time + busy_time);
+    return (100 * 100 * idle_time) / (idle_time + busy_time);
 }
 
 // IMPROVE: Implement recycling here

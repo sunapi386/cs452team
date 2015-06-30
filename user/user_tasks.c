@@ -41,6 +41,7 @@ void userTaskMessage() {
     Exit();
 }
 
+#define BASE10  10
 // Create this with lowest priority of 31
 // monitor performance statistics: task queue lengths, task CPU usage
 inline void drawIdle(unsigned int diff) {
@@ -48,17 +49,20 @@ inline void drawIdle(unsigned int diff) {
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_IDLE_ROW, VT_IDLE_COL);
-    sputuint(&s, diff, 10);
+    sputuint(&s, diff / 100, BASE10);
+    sputc(&s, '.');
+    sputuint(&s, diff % 100, BASE10);
+    sputc(&s, '%');
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
 void idleProfiler() {
-    // int i = 0;
+    int i = 0;
     for (;;) {
-        // if(i++ % 500000 == 0) {
-            // drawIdle(taskIdleRatio());
-        // }
+        if(i++ % 500000 == 0) {
+            drawIdle(taskIdleRatio());
+        }
     }
 }
 
