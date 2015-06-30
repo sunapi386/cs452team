@@ -16,7 +16,7 @@
 // setting it to 1 means it is curved, 0 means straight
 static int track_bitmap = 0;
 
-static inline int _to_bit_address(int turnout_number) {
+static int _to_bit_address(int turnout_number) {
     int bit_address;
     if(turnout_number >= 153 && turnout_number <= 156) {
         bit_address = turnout_number - 135; // range is 18 to 21 inclusive
@@ -28,7 +28,7 @@ static inline int _to_bit_address(int turnout_number) {
     return bit_address;
 }
 
-static inline void _set_bitmap(int turnout_number, char direction) {
+static void _set_bitmap(int turnout_number, char direction) {
     int bit_address = _to_bit_address(turnout_number);
     int value = (direction == CURVED) ? 1 : 0;
     // https://stackoverflow.com/questions/47981
@@ -65,7 +65,7 @@ static void _updateTurnoutDisplay(int turnout_number, bool is_straight, char *co
         case 19: row = 2; col = 18; break;
         case 20: row = 3; col = 18; break;
         case 21: row = 4; col = 18; break;
-        default: assert(0);
+        default: debug("error bit_address %d", bit_address); assert(0);
     }
     row += VT_TURNOUT_ROW;
     col += VT_TURNOUT_COL;
@@ -105,7 +105,8 @@ static void _setTurnout(int turnout_number, char curvature, char *color) {
 void printResetTurnouts() {
     String s;
     sinit(&s);
-    sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
+    sputstr(&s, VT_CURSOR_SAVE);
+    sputstr(&s, VT_CURSOR_HIDE);
     vt_pos(&s, VT_TURNOUT_ROW, VT_TURNOUT_COL);
     sputstr(&s, "--   TURNOUTES    --\r\n");
     sputstr(&s, "1:x  7:x 13:x 153:x\r\n");

@@ -6,9 +6,9 @@
 static void draw(int time) {
     String s;
     sinit(&s);
-    sprintf(&s, "%c7", ESC); // SAVE CURSOR
+    sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_CLOCK_ROW, VT_CLOCK_COL);
-    sprintfstr(&s, "%c[?25l", ESC); // HIDE CURSOR
+    sputstr(&s, VT_CURSOR_HIDE);
     sputc(&s, '0' + time / 3600000);
     sputc(&s, '0' + (time % 3600000) / 360000);
     sputc(&s, ':');
@@ -19,8 +19,8 @@ static void draw(int time) {
     sputc(&s, '0' + (time % 1000) / 100);
     sputc(&s, '.');
     sputc(&s, '0' + (time % 100) / 10);
-    sprintfstr(&s, "%c[?25h", ESC); // SHOW CURSOR
-    sprintfstr(&s, "%c8", ESC); // LOAD CURSOR
+    sputstr(&s, VT_CURSOR_SHOW);
+    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
