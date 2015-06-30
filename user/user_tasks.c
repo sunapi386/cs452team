@@ -48,7 +48,7 @@ inline void drawIdle(unsigned int diff) {
     sinit(&s);
     sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
     vt_pos(&s, VT_IDLE_ROW, VT_IDLE_COL);
-    sprintf(&s, "[%u %%]%s%s", diff, VT_CURSOR_SHOW, VT_CURSOR_RESTORE);
+    sprintf(&s, "%u %% idle%s%s", diff, VT_CURSOR_SHOW, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 

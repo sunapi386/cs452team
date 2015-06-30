@@ -4,12 +4,16 @@
 #include <utils.h>
 #include <priority.h>
 #include <ts7200.h>
+#include <kernel/task.h> // TASK_MAX_TASKS
 
 #define NOTIFICATION 0
 #define PUTCHAR      1
 #define PUTSTR       2
 #define GETCHAR      3
 #define ECHO         4
+
+#define MONITOR_BUFFER_SIZE 2048
+#define TRAIN_BUFFER_SIZE   512
 
 typedef
 struct IOReq {
@@ -102,12 +106,12 @@ void echoCourier() {
 void monitorInServer() {
     char c = 0;
     int tid = 0, courierTid = 0;
-    char taskb[128];
-    char charb[1024];
+    char taskb[TASK_MAX_TASKS];
+    char charb[MONITOR_BUFFER_SIZE];
     CBuffer taskBuffer;
     CBuffer charBuffer;
-    CBufferInit(&taskBuffer, taskb, 128);
-    CBufferInit(&charBuffer, charb, 1024);
+    CBufferInit(&taskBuffer, taskb, TASK_MAX_TASKS);
+    CBufferInit(&charBuffer, charb, MONITOR_BUFFER_SIZE);
 
     IOReq req;
     req.type = -1;
@@ -197,7 +201,7 @@ void monitorOutServer()
 {
     int tid = 0;
     char * sendAddr = 0;
-    char charb[1024];
+    char charb[MONITOR_BUFFER_SIZE];
     CBuffer charBuffer;
     CBufferInit(&charBuffer, charb, sizeof(charb));
 
@@ -315,12 +319,12 @@ static void trainInNotifier() {
 void trainInServer() {
     char c = 0;
     int tid = 0;
-    char taskb[128];
-    char charb[1024];
+    char taskb[TASK_MAX_TASKS];
+    char charb[TRAIN_BUFFER_SIZE];
     CBuffer taskBuffer;
     CBuffer charBuffer;
-    CBufferInit(&taskBuffer, taskb, 128);
-    CBufferInit(&charBuffer, charb, 1024);
+    CBufferInit(&taskBuffer, taskb, TASK_MAX_TASKS);
+    CBufferInit(&charBuffer, charb, TRAIN_BUFFER_SIZE);
 
     IOReq req = {
         .type = -1,
@@ -393,9 +397,9 @@ static void trainOutNotifier() {
 void trainOutServer() {
     int tid = 0;
     char * sendAddr = 0;
-    char charb[1024];
+    char charb[TRAIN_BUFFER_SIZE];
     CBuffer charBuffer;
-    CBufferInit(&charBuffer, charb, 1024);
+    CBufferInit(&charBuffer, charb, TRAIN_BUFFER_SIZE);
 
     IOReq req = {
         .type = -1,
