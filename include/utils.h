@@ -32,6 +32,9 @@ typedef struct String {
 
 static inline void sinit(String *s) {
     s->len = 0;
+    for(int i = 0; i < STR_MAX_LEN; i++) {
+        s->buf[i] = '\0';
+    }
 }
 static inline unsigned int slen(String *s) {
     return s->len;
