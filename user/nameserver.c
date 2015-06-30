@@ -3,11 +3,13 @@
 #include <bwio.h>
 #include <utils.h>
 #include <user/syscall.h>
+#include <utils.h> // strlen
+#include <debug.h> // assert
 
 #define NS_TID  2
 
-#define NS_MAX_NAME 16
-#define NS_MAX_REGIST_SIZE 64
+#define NS_MAX_NAME 32
+#define NS_MAX_REGIST_SIZE 32
 
 static const int SUCCESS = 0;
 static const int ERROR = -1;
@@ -78,6 +80,7 @@ void nameserverTask() {
 }
 
 int RegisterAs(char *name) {
+    assert(strlen(name) < NS_MAX_NAME);
     NSRequest request;
     request.type = REGISTER_AS;
     strncpy(request.name, name, NS_MAX_NAME);
@@ -88,6 +91,7 @@ int RegisterAs(char *name) {
 }
 
 int WhoIs(char *name) {
+    assert(strlen(name) < NS_MAX_NAME);
     NSRequest request;
     request.type = WHO_IS;
     strncpy(request.name, name, NS_MAX_NAME);
