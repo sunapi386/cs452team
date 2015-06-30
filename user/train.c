@@ -23,8 +23,9 @@ void trainSetReverse(int train_number) {
 }
 
 // DEPRECATED, only used by turnout.c
-void trainSetSwitch(int switch_number, int curved) {
-    Putc(COM1, curved ? CURVED : STRAIGHT);
+void trainSetSwitch(int switch_number, char direction) {
+    char operation = (direction == 'c' || direction == 'C') ? CURVED : STRAIGHT;
+    Putc(COM1, operation);
     Putc(COM1, switch_number);
     Putc(COM1, SOLENOID_OFF);
 }

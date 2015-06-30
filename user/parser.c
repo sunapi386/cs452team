@@ -7,6 +7,7 @@
 #include <user/train.h> // to handle sw
 #include <kernel/task.h> // to call taskDisplayAll()
 #include <user/sensor.h> // drawTrackLayoutGraph
+#include <debug.h>
 
 // Parser is a giant state machine
 // tr train_number train_speed
@@ -55,10 +56,10 @@ typedef struct Parser {
             int train_number;
             int train_speed;
         } speed;
-        struct Junction { // SW commands
+        struct Turnout { // SW commands
             int turnout_number;
-            bool curved;
-        } junction;
+            char direction;
+        } turnout;
         struct Reverse { // RV data
             int train_number;
         } reverse;
@@ -227,14 +228,14 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case SW_space_1: {
-                p->data.junction.turnout_number = 0;
-                p->state =  append_number(c, &(p->data.junction.turnout_number)) ?
+                p->data.turnout.turnout_number = 0;
+                p->state =  append_number(c, &(p->data.turnout.turnout_number)) ?
                             SW_turnout_number :
                             Error;
                 break;
             }
             case SW_turnout_number: {
-                if(! append_number(c, &(p->data.junction.turnout_number))) {
+                if(! append_number(c, &(p->data.turnout.turnout_number))) {
                     REQUIRE(' ', SW_space_2);
                 }
                 break;
@@ -242,11 +243,11 @@ static bool parse(Parser *p, char c) {
             case SW_space_2: {
                 switch(c) { // either 'c' or 's'
                 case 'c':
-                    p->data.junction.curved = true;
+                    p->data.turnout.direction = 'c';
                     p->state = SW_turnout_dir;
                     break;
                 case 's':
-                    p->data.junction.curved = false;
+                    p->data.turnout.direction = 's';
                     p->state = SW_turnout_dir;
                     break;
                 default:
@@ -284,6 +285,7 @@ static bool parse(Parser *p, char c) {
 
     else if(c == VT_CARRIAGE_RETURN) { // user pressed return (enter)
         sputstr(&disp_msg, VT_RESET);
+        sputstr(&disp_msg, "  | ");
         // should be on an end state
         switch(p->state) {
             case H_sensor_number: {
@@ -336,12 +338,13 @@ static bool parse(Parser *p, char c) {
             }
             case SW_turnout_dir: {
                 // check turnout_number
-                int turnout_number = p->data.junction.turnout_number;
+                int turnout_number = p->data.turnout.turnout_number;
                 if(   (1 <= turnout_number && turnout_number <= 18) ||
                     (153 <= turnout_number && turnout_number <= 156)) {
-                    bool is_curved = p->data.junction.curved;
+                    char dirctn = p->data.turnout.direction;
+                    assert(dirctn == 's' || dirctn == 'c');
                     sputstr(&disp_msg, "turnout changing\r\n");
-                    turnoutSet(turnout_number, is_curved);
+                    turnoutSet(turnout_number, dirctn);
                 }
                 else {
                     sputstr(&disp_msg, "SW: bad turnout_number\r\n");

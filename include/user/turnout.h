@@ -6,7 +6,7 @@
 void initTurnout();
 // sets the turnout curved or straight
 
-void turnoutSet(int turnout_number, bool desire_curved);
+void turnoutSet(int turnout_number, char direction);
 bool turnoutIsCurved(int turnout_number);
 void printResetTurnouts();
 
