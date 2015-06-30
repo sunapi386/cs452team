@@ -29,14 +29,12 @@ void bootstrapTask() {
 
     // Create user task
     Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
-    initLogger();
+    // initLogger();
     initController();
-
     initTrain();
     initTurnout();
-
     initParser();
-    initSensor();
+    // initSensor();
     // Create idle task
     Create(PRIORITY_IDLE, idleProfiler);
 
