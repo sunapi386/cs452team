@@ -373,7 +373,9 @@ static bool parse(Parser *p, char c) {
                 sputstr(&disp_msg, "Command not recognized!\r\n");
             }
         } // switch
-        sputstr(&disp_msg, "> ");
+        if(run) {
+            sputstr(&disp_msg, "> ");
+        }
         p->state = Empty;
     } // else if carriage return
     PutString(COM2, &disp_msg);
