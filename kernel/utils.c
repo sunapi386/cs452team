@@ -42,8 +42,7 @@ char * strncpy(char *dst, const char *src, size_t n) {
     return dst;
 }
 
-size_t strlen(const char *str)
-{
+size_t strlen(const char *str) {
     // OpenBSD strlen() implementation
     // http://fxr.watson.org/fxr/source/lib/libsa/strlen.c?v=OPENBSD
     const char *s;
@@ -118,10 +117,10 @@ int CBufferPushStr(CBuffer *b, char *str)
 }
 
 void scopy(String *dst, const char *src) {
-    sinit(dst);
     size_t n = strlen(src);
     assert(n < STR_MAX_LEN);
     strncpy(dst->buf, src, n);
+    dst->len += n;
 }
 
 void scopystr(String *dst, String *src) {
