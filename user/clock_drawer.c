@@ -1,6 +1,6 @@
 #include <utils.h>
 #include <priority.h>           // init
-#include <user/vt100.h>              // constants
+#include <user/vt100.h>         // constants
 #include <user/syscall.h>       // Create
 
 static void draw(int time) {
@@ -8,7 +8,6 @@ static void draw(int time) {
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_CLOCK_ROW, VT_CLOCK_COL);
-    sputstr(&s, VT_CURSOR_HIDE);
     sputc(&s, '0' + time / 3600000);
     sputc(&s, '0' + (time % 3600000) / 360000);
     sputc(&s, ':');
@@ -19,7 +18,6 @@ static void draw(int time) {
     sputc(&s, '0' + (time % 1000) / 100);
     sputc(&s, '.');
     sputc(&s, '0' + (time % 100) / 10);
-    sputstr(&s, VT_CURSOR_SHOW);
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }

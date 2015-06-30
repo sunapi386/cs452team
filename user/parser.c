@@ -93,7 +93,6 @@ static bool parse(Parser *p, char c) {
     String disp_msg;
     sinit(&disp_msg);
 
-
     // only accept ascii characters and newline
     if(' ' <= c && c <= '~') { // if printable
         if('A' <= c && c <= 'Z') {
@@ -353,7 +352,6 @@ static bool parse(Parser *p, char c) {
             case Q_Q: {
                 sputstr(&disp_msg, "Quit\r\n");
                 run = false;
-                Halt();
                 break;
             }
             case DB_TASK: {
@@ -379,25 +377,17 @@ static bool parse(Parser *p, char c) {
         p->state = Empty;
     } // else if carriage return
     PutString(COM2, &disp_msg);
-
     return run;
 }
 
 
 void parserTask() {
-    String s;
-    // sinit(&s);
-    // sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
-    // // set scrolling region
-    // sprintf(&s, "%s%d;%dr", VT_CSI, 18, 20);
-    // sprintf(&s, "%s%s", VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
-    // PutString(COM2, &s);
-
     Parser p;
     p.state = Empty;
     bool run = true; // set to false when we detect quit command
 
     // draw the parsing window, etc
+    String s;
     sinit(&s);
     vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
     sputstr(&s, "> ");
@@ -417,13 +407,14 @@ void parserTask() {
             run = parse(&p, input.buf[i]);
         }
     }
-    sinit(&s);
-    vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
-    sputstr(&s, "Parser exiting");
-    PutString(COM2, &s);
+    //while (parse(&p, Getc(COM2)));
+    // sinit(&s);
+    // vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
+    // sputstr(&s, "Parser exiting");
+    // PutString(COM2, &s);
 
     // write output
-    Exit();
+    Halt();
 }
 
 void initParser() {

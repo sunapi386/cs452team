@@ -47,10 +47,8 @@ inline void drawIdle(unsigned int diff) {
     String s;
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
-    sputstr(&s, VT_CURSOR_HIDE);
     vt_pos(&s, VT_IDLE_ROW, VT_IDLE_COL);
     sputuint(&s, diff, 10);
-    sputstr(&s, VT_CURSOR_SHOW);
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }

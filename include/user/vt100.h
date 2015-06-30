@@ -12,8 +12,6 @@
 
 #define VT_CURSOR_SAVE             (VT_ESC "7")
 #define VT_CURSOR_RESTORE          (VT_ESC "8")
-#define VT_CURSOR_SHOW             (VT_CSI "?25h")
-#define VT_CURSOR_HIDE             (VT_CSI "?25l")
 
 #define VT_CLEAR_LINE              (VT_CSI "2K")
 #define VT_CLEAR_SCREEN            (VT_CSI "2J")
