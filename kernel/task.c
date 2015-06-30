@@ -43,32 +43,31 @@ static void printTask(TaskDescriptor *task) {
 
     switch (task->status) {
     case ready:
-        statusName = "ready";
+        statusName = "ready  ";
         break;
     case send_block:
-        statusName = "send_block";
+        statusName = "send   ";
         break;
     case receive_block:
-        statusName = "receive_block";
+        statusName = "receive";
         break;
     case reply_block:
-        statusName = "reply_block";
+        statusName = "reply  ";
         break;
     default:
+        statusName = "?      ";
         return;
     }
 
     bwprintf(COM2,
-        "id:%d: na:%s pr:%d st:%s cpu:%u\r\n",
+        "id:%d\tpr:%d\tst:%s   cpu:%u\r\n",
         taskGetIndex(task),
-        task->name,
         taskGetPriority(task),
         statusName,
         task->cpu_time_used);
 }
 
 void taskDisplayAll() {
-    bwprintf(COM2, "All tasks\r\n");
     for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
         printTask(&global_task_table[i]);
     }
@@ -90,7 +89,7 @@ unsigned int taskIdleRatio() {
             max = global_task_table[i].cpu_time_used;
         }
     }
-    if(max > 10000) {
+    if(max > 100000) {
         // reset the cpu_time_used for the next time slice
         for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
             global_task_table[i].cpu_time_used = 0;

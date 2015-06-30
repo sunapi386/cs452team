@@ -60,7 +60,7 @@ inline void drawIdle(unsigned int diff) {
 void idleProfiler() {
     int i = 0;
     for (;;) {
-        if(i++ % 500000 == 0) {
+        if(i++ % 1000000 == 0) {
             drawIdle(taskIdleRatio());
         }
     }
