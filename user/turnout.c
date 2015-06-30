@@ -39,45 +39,16 @@ static inline void _set_bitmap(int turnout_number, char direction) {
     track_bitmap ^= (-value ^ track_bitmap) & (1 << bit_address);
 }
 
-static void _setTurnout(int turnout_number, char curvature, char *color, char symbol) {
-    // updates the screen for where the turnout_number is
-    _set_bitmap(turnout_number, curvature);
-    int bit_address = _to_bit_address(turnout_number);
-    int row = 0, col = 0;
-    if(bit_address <= 17) {
-        row = bit_address / 3 + 1;
-        col = 9 * (bit_address % 3) + 8;
-    }
-    else {
-        row = 8;
-        col = 9 * (bit_address - 18) + 8;
-    }
-
-    // tell train controller to change direction
-    printf(COM1, "%c%c%c", curvature, turnout_number, SOLENOID_OFF);
-
-    // draw on screen
-    String s;
-    sinit(&s);
-    sputstr(&s, VT_CURSOR_SAVE);
-    vt_pos(&s, VT_TURNOUT_ROW + row, col);
-    sputstr(&s, color);
-    sputc(&s, symbol);
-    sputstr(&s, VT_RESET);
-    sputstr(&s, VT_CURSOR_RESTORE);
-    PutString(COM2, &s);
-}
-
-static void _updateTurnoutDisplay(int turnout_number, bool is_straight) {
+static void _updateTurnoutDisplay(int turnout_number, bool is_straight, char *color) {
     int bit_address = _to_bit_address(turnout_number);
     int row, col;
     switch(bit_address) {
-        case  0: row = 1; col = 3; break;
-        case  1: row = 2; col = 3; break;
-        case  2: row = 3; col = 3; break;
-        case  3: row = 4; col = 3; break;
-        case  4: row = 5; col = 3; break;
-        case  5: row = 6; col = 3; break;
+        case  0: row = 1; col = 2; break;
+        case  1: row = 2; col = 2; break;
+        case  2: row = 3; col = 2; break;
+        case  3: row = 4; col = 2; break;
+        case  4: row = 5; col = 2; break;
+        case  5: row = 6; col = 2; break;
         case  6: row = 1; col = 7; break;
         case  7: row = 2; col = 7; break;
         case  8: row = 3; col = 7; break;
@@ -102,16 +73,36 @@ static void _updateTurnoutDisplay(int turnout_number, bool is_straight) {
     String s;
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
-    sputstr(&s, VT_CURSOR_HIDE);
     vt_pos(&s, row, col);
+    sputstr(&s, color);
     sputc(&s, is_straight ? 's' : 'c');
-    sputstr(&s, VT_CURSOR_SHOW);
+    sputstr(&s, VT_RESET);
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
-static int controller_id;
-static void turnoutTask() {
+static void _setTurnout(int turnout_number, char curvature, char *color) {
+    // updates the screen for where the turnout_number is
+    _set_bitmap(turnout_number, curvature);
+    int bit_address = _to_bit_address(turnout_number);
+    int row = 0, col = 0;
+    if(bit_address <= 17) {
+        row = bit_address / 3 + 1;
+        col = 9 * (bit_address % 3) + 8;
+    }
+    else {
+        row = 8;
+        col = 9 * (bit_address - 18) + 8;
+    }
+
+    // tell train controller to change direction
+    trainSetSwitch(turnout_number, curvature == CURVED); // only use in turnout.c
+
+    // draw on screen
+    _updateTurnoutDisplay(turnout_number, curvature == STRAIGHT, color);
+}
+
+void printResetTurnouts() {
     String s;
     sinit(&s);
     sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
@@ -128,13 +119,17 @@ static void turnoutTask() {
     PutString(COM2, &s);
 
     for (int i = 1; i <= 18; ++i) {
-        _setTurnout(i, CURVED, VT_CYAN, 'c');
+        _setTurnout(i, CURVED, VT_CYAN);
     }
 
     for (int i = 153; i <= 156; ++i) {
-        _setTurnout(i, CURVED, VT_CYAN, 'c');
+        _setTurnout(i, CURVED, VT_CYAN);
     }
+}
 
+static int controller_id;
+static void turnoutTask() {
+    printResetTurnouts();
     controller_id = WhoIs("controller");
     assert(controller_id >= 0);
     ControllerData controller_reply;
@@ -149,10 +144,10 @@ static void turnoutTask() {
         assert(is_straight == true || is_straight == false);
 
         if(is_straight) {
-            _setTurnout(turnout_number, STRAIGHT, VT_GREEN, 's');
+            _setTurnout(turnout_number, STRAIGHT, VT_GREEN);
         }
         else {
-            _setTurnout(turnout_number, CURVED, VT_CYAN, 'c');
+            _setTurnout(turnout_number, CURVED, VT_CYAN);
         }
 
     }
@@ -165,7 +160,12 @@ static void turnoutTask() {
 */
 void turnoutSet(int turnout_number, bool desire_curved) {
     trainSetSwitch(turnout_number, desire_curved); // only use in turnout.c
-    _updateTurnoutDisplay(turnout_number, ! desire_curved);
+    if(desire_curved) {
+        _updateTurnoutDisplay(turnout_number, true, VT_CYAN);
+    }
+    else {
+        _updateTurnoutDisplay(turnout_number, false, VT_GREEN);
+    }
     // tell controller
     assert(controller_id >= 0);
     ControllerData update;
