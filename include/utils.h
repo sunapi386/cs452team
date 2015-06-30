@@ -45,6 +45,7 @@ void sputuint(String *s, int num, unsigned short base);
 void sputint(String *s, int num, unsigned short base);
 void sformat(String *s, char *fmt, char * va);
 void sprintf(String *s, char *fmt, ... );
+void sprintfstr(String *s, char *fmt, ... );
 void printf(int channel, char *fmt, ... );
 
 #endif

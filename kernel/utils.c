@@ -285,6 +285,16 @@ void sformat(String *s, char *fmt, va_list va) {
     }
 }
 
+void sprintfstr(String *s, char *fmt, ... ) {
+    va_list va;
+    va_start(va, fmt);
+    String new_s;
+    sinit(&new_s);
+    sformat(&new_s, fmt, va );
+    va_end(va);
+    sconcat(s, new_s);
+}
+
 void sprintf(String *s, char *fmt, ... ) {
     va_list va;
     va_start(va, fmt);
