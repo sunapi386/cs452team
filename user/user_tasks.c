@@ -46,19 +46,21 @@ void userTaskMessage() {
 inline void drawIdle(unsigned int diff) {
     String s;
     sinit(&s);
-    sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
+    sputstr(&s, VT_CURSOR_SAVE);
+    sputstr(&s, VT_CURSOR_HIDE);
     vt_pos(&s, VT_IDLE_ROW, VT_IDLE_COL);
-    sprintf(&s, "%u %% idle%s%s", diff, VT_CURSOR_SHOW, VT_CURSOR_RESTORE);
+    sputuint(&s, diff, 10);
+    sputstr(&s, VT_CURSOR_SHOW);
+    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
 void idleProfiler() {
-    int i = 0;
+    // int i = 0;
     for (;;) {
-        if(i++ % 500000 == 0) {
-            drawIdle(taskIdleRatio());
-        }
-        Pass();
+        // if(i++ % 500000 == 0) {
+            // drawIdle(taskIdleRatio());
+        // }
     }
 }
 

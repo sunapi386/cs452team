@@ -291,16 +291,16 @@ static bool parse(Parser *p, char c) {
                 int sensor_number = p->data.sensor_halt.sensor_number;
                 // check each is valid
                 if(train_number < 0 || 80 < train_number) {
-                    sprintf(&disp_msg,
-                        "H: bad train_number %d, expects 0 to 80\r\n", train_number);
+                    sputstr(&disp_msg,
+                        "H: bad train_number expects 0 to 80\r\n");
                 }
                 else if(sensor_group < 'a' || 'e' < sensor_group) {
-                    sprintf(&disp_msg,
+                    sputstr(&disp_msg,
                         "H: bad sensor_group char, expects 'a' to 'e'\r\n");
                 }
                 else if(sensor_number < 1 || 16 < sensor_number) {
-                    sprintf(&disp_msg,
-                        "H: bad sensor_number %d, expects 1 to 16\r\n", sensor_number);
+                    sputstr(&disp_msg,
+                        "H: bad sensor_number, expects 1 to 16\r\n");
                 }
                 sensorHalt(train_number, sensor_group, sensor_number);
                 break;
@@ -311,13 +311,11 @@ static bool parse(Parser *p, char c) {
                 int train_speed = p->data.speed.train_speed;
                 if((0 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
-                    sprintf(&disp_msg,"TR: %d %d\r\n",
-                        train_number, train_speed);
+                    sputstr(&disp_msg,"setting train speed\r\n");
                     trainSetSpeed(train_number, train_speed);
                 }
                 else {
-                    sputstr(&disp_msg,
-                        "TR: bad train_number or train_speed\r\n");
+                    sputstr(&disp_msg, "TR: bad train_number or train_speed\r\n");
                 }
 
                 break;
@@ -326,12 +324,11 @@ static bool parse(Parser *p, char c) {
                 // check train_number
                 int train_number = p->data.reverse.train_number;
                 if(0 <= train_number && train_number <= 80) {
-                    sprintf(&disp_msg,"RV: %d\r\n", train_number);
+                    sputstr(&disp_msg,"Reversing\r\n");
                     trainSetReverse(train_number);
                 }
                 else {
-                    sputstr(&disp_msg,
-                        "RV: bad train_number\r\n");
+                    sputstr(&disp_msg, "RV: bad train_number\r\n");
                 }
 
                 break;
@@ -342,13 +339,11 @@ static bool parse(Parser *p, char c) {
                 if(   (1 <= turnout_number && turnout_number <= 18) ||
                     (153 <= turnout_number && turnout_number <= 156)) {
                     bool is_curved = p->data.junction.curved;
-                    sprintf(&disp_msg, "SW: %d %c\r\n",
-                        turnout_number, (is_curved ? 'C' : 'S'));
+                    sputstr(&disp_msg, "turnout changing\r\n");
                     turnoutSet(turnout_number, is_curved);
                 }
                 else {
-                    sputstr(&disp_msg,
-                        "SW: bad turnout_number\r\n");
+                    sputstr(&disp_msg, "SW: bad turnout_number\r\n");
                 }
 
                 break;

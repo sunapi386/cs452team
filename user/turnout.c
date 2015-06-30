@@ -61,7 +61,10 @@ static void _setTurnout(int turnout_number, char curvature, char *color, char sy
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_TURNOUT_ROW + row, col);
-    sprintf(&s, "%s%s%s%s", color, symbol, VT_RESET, VT_CURSOR_RESTORE);
+    sputstr(&s, color);
+    sputc(&s, symbol);
+    sputstr(&s, VT_RESET);
+    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
@@ -98,12 +101,13 @@ static void _updateTurnoutDisplay(int turnout_number, bool is_straight) {
 
     String s;
     sinit(&s);
-    sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
+    sputstr(&s, VT_CURSOR_SAVE);
+    sputstr(&s, VT_CURSOR_HIDE);
     vt_pos(&s, row, col);
     sputc(&s, is_straight ? 's' : 'c');
-    sprintf(&s, "%s%s", VT_CURSOR_SHOW, VT_CURSOR_RESTORE);
+    sputstr(&s, VT_CURSOR_SHOW);
+    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
-
 }
 
 static int controller_id;
@@ -119,7 +123,8 @@ static void turnoutTask() {
     sputstr(&s, "4:x 10:x 16:x 156:x\r\n");
     sputstr(&s, "5:x 11:x 17:x\r\n");
     sputstr(&s, "6:x 12:x 18:x\r\n");
-    sprintf(&s, "%s%s", VT_CURSOR_SHOW, VT_CURSOR_RESTORE);
+    sputstr(&s, VT_CURSOR_SHOW);
+    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 
     for (int i = 1; i <= 18; ++i) {

@@ -62,7 +62,7 @@ static void _sensorFormat(String *s, SensorReading *sensorReading) {
     char alpha = sensorReading->group / 2;
     char bit = sensorReading->offset;
     // Mmm alphabit soup
-    sprintf(s, "%c%d\r\n", 'A' + alpha, bit);
+    sprintfstr(s, "%c%d\r\n", 'A' + alpha, bit);
 }
 
 static void drawSensorArea() {
@@ -71,11 +71,11 @@ static void drawSensorArea() {
     sprintf(&s, "%s%s" VT_CURSOR_HIDE, VT_CURSOR_SAVE);
     vt_pos(&s, VT_SENSOR_ROW, VT_SENSOR_COL);
     sputstr(&s, VT_RESET);
-    sprintf(&s, "-- RECENT SENSORS --\r\n");
+    sprintfstr(&s, "-- RECENT SENSORS --\r\n");
     for(int i = 1; i <= NUM_RECENT_SENSORS; i++) {
-        sprintf(&s, "%d. A10\r\n", i);
+        sprintfstr(&s, "%d. A10\r\n", i);
     }
-    sprintf(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    sprintfstr(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
     PutString(COM2, &s);
 }
 
@@ -93,7 +93,7 @@ static void _updateSensoryDisplay() {
         _sensorFormat(&s, &recent_sensors[i]);
     }
 
-    sprintf(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
+    sprintfstr(&s, "%s%s%s", VT_RESET, VT_CURSOR_RESTORE, VT_CURSOR_SHOW);
     PutString(COM2, &s);
 }
 
@@ -155,11 +155,8 @@ static void _sensorTask() {
 }
 
 void initSensor() {
-    debug("strlen %d", strlen(trackA) );
-    debug("strlen %d", strlen(trackB) );
     assert(STR_MAX_LEN > strlen(trackA));
     assert(STR_MAX_LEN > strlen(trackB));
-
     Create(PRIORITY_SENSOR_TASK, _sensorTask);
 }
 

@@ -292,7 +292,7 @@ void sprintfstr(String *s, char *fmt, ... ) {
     sinit(&new_s);
     sformat(&new_s, fmt, va );
     va_end(va);
-    sconcat(s, new_s);
+    sconcat(s, &new_s);
 }
 
 void sprintf(String *s, char *fmt, ... ) {
