@@ -35,10 +35,12 @@
 
 #define VT_CLOCK_ROW            1
 #define VT_CLOCK_COL            68
+#define VT_IDLE_ROW             1
+#define VT_IDLE_COL             1
 #define VT_SENSOR_ROW           10
 #define VT_SENSOR_COL           1
-#define VT_TURNOUT_ROW           20
-#define VT_TURNOUT_COL           1
+#define VT_TURNOUT_ROW          20
+#define VT_TURNOUT_COL          1
 #define VT_TRACK_GRAPH_ROW      4
 #define VT_TRACK_GRAPH_COL      24
 

@@ -2,6 +2,7 @@
 #include <cpsr.h>
 #include <bwio.h>
 #include <utils.h>
+#include <priority.h> // PRIORITY_IDLE
 
 static int global_next_unique_task_id;
 static unsigned int *global_current_stack_address;
@@ -58,7 +59,7 @@ static void printTask(TaskDescriptor *task) {
     }
 
     bwprintf(COM2,
-        "id:%d: na:%s pr:%d st:%s cpu:%d\r\n",
+        "id:%d: na:%s pr:%d st:%s cpu:%u\r\n",
         taskGetIndex(task),
         task->name,
         taskGetPriority(task),
@@ -78,7 +79,7 @@ unsigned int taskIdleRatio() {
     unsigned int busy_time = 0;
     for(unsigned i = 0; i < TASK_MAX_TASKS; i++) {
         if(global_task_table[i].id == 0) continue;
-        if(taskGetPriority(&global_task_table[i]) == 31) {
+        if(taskGetPriority(&global_task_table[i]) == PRIORITY_IDLE) {
             idle_time += global_task_table[i].cpu_time_used;
         }
         else {

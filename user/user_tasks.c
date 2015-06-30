@@ -46,12 +46,9 @@ void userTaskMessage() {
 inline void drawIdle(unsigned int diff) {
     String s;
     sinit(&s);
-    sprintf(&s, "%c7", ESC); // SAVE CURSOR
-    vt_pos(&s, VT_CLOCK_ROW + 1, VT_CLOCK_COL);
-    sprintf(&s, "%c[?25l", ESC); // HIDE CURSOR
-    sprintf(&s, "%u %%", diff);
-    sprintf(&s, "%c[?25h", ESC); // SHOW CURSOR
-    sprintf(&s, "%c8", ESC); // LOAD CURSOR
+    sprintf(&s, "%s%s", VT_CURSOR_SAVE, VT_CURSOR_HIDE);
+    vt_pos(&s, VT_IDLE_ROW, VT_IDLE_COL);
+    sprintf(&s, "[%u %%]%s%s", diff, VT_CURSOR_SHOW, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 

@@ -25,7 +25,7 @@ Ben
 #define PRIORITY_IRQ_SERVER         3
 #define PRIORITY_SERVER             4
 #define PRIORITY_USERTASK           5
-#define PRIORITY_IDLE               6
+#define PRIORITY_IDLE               31
 
 // Input/output
 #define PRIORITY_TRAIN_IN_NOTIFIER     PRIORITY_NOTIFIER
