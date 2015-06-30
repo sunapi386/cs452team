@@ -24,6 +24,9 @@ static void server() {
     String logs[LOG_SIZE];
     int logs_head = 0;
     int logs_tail = 0;
+    for(int i = 0; i < LOG_SIZE; i++) {
+        sinit(&(logs[i]));
+    }
 
     int current_row = 0;
     int num_messages = 0;
@@ -39,6 +42,7 @@ static void server() {
                 // build the log message
                 char *task_name = taskGetName(taskGetTDById(sender_tid));
                 String log_message;
+                sinit(&log_message);
                 sprintf(&log_message, "#%d %s : %s\r\n",
                     num_messages, task_name, &(request.msg));
 
@@ -51,6 +55,7 @@ static void server() {
 
                 // print to screen
                 String out;
+                sinit(&out);
                 sprintf(&out, "%s", VT_CURSOR_SAVE);
                 vt_pos(&out, VT_LOG_ROW + current_row, VT_LOG_COL);
                 sconcat(&out, &log_message);
