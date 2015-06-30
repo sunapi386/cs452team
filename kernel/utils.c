@@ -135,6 +135,7 @@ void sputc(String *s, const char c) {
     }
     assert(s->len < STR_MAX_LEN);
     s->buf[s->len++] = c;
+    s->buf[s->len] = '\0';
 }
 
 void sputstr(String *s, const char *str) {
@@ -142,7 +143,7 @@ void sputstr(String *s, const char *str) {
 }
 
 void sconcat(String *dst, String *src) {
-    assert(dst->len + src->len < STR_MAX_LEN);
+    assert(dst->len + 1 + src->len + 1 < STR_MAX_LEN);
     for(unsigned i = 0; i < src->len; i++) {
         sputc(dst, src->buf[i]);
     }

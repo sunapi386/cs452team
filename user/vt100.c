@@ -3,5 +3,5 @@
 #include <user/syscall.h>
 
 void vt_pos(String *s, int row, int col) {
-    sprintf(s, "%c[%d;%dH", ESC, row, col);
+    sprintfstr(s, "%c[%d;%dH", ESC, row, col);
 }

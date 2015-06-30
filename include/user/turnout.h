@@ -8,5 +8,6 @@ void initTurnout();
 
 void turnoutSet(int turnout_number, bool desire_curved);
 bool turnoutIsCurved(int turnout_number);
+void printResetTurnouts();
 
 #endif
