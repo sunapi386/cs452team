@@ -21,10 +21,10 @@ Ben
 // Common system level priorities
 #define PRIORITY_INIT               0
 #define PRIORITY_NOTIFIER           1
-#define PRIORITY_CLOCK_SERVER       2
-#define PRIORITY_IRQ_SERVER         3
-#define PRIORITY_SERVER             4
-#define PRIORITY_USERTASK           5
+#define PRIORITY_CLOCK_SERVER       4
+#define PRIORITY_IRQ_SERVER         8
+#define PRIORITY_SERVER             10
+#define PRIORITY_USERTASK           16
 #define PRIORITY_IDLE               31
 
 // Input/output
