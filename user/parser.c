@@ -6,6 +6,7 @@
 #include <user/turnout.h> // to handle sw
 #include <user/train.h> // to handle sw
 #include <kernel/task.h> // to call taskDisplayAll()
+#include <user/sensor.h> // drawTrackLayoutGraph
 
 // Parser is a giant state machine
 // tr train_number train_speed
@@ -43,7 +44,8 @@ typedef struct Parser {
         H_space_3,
         H_sensor_number,
         Q_Q,        // q
-        DB_TASK,    // taskDisplayAll()
+        P,          // p for printing the graph
+        DB_TASK,    // db
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -106,11 +108,11 @@ static bool parse(Parser *p, char c) {
                     case 'q': p->state = Q_Q; break;
                     case 'd': p->state = DB_TASK; break;
                     case 'h': p->state = H_H; break;
+                    case 'p': p->state = P; break;
                     default:  p->state = Error; break;
                 }
                 break;
             }
-
             // ----------- h train_number sensor_group sensor_number ------- //
             case H_H: {
                 REQUIRE(' ', H_space_1);
@@ -359,6 +361,10 @@ static bool parse(Parser *p, char c) {
             }
             case DB_TASK: {
                 taskDisplayAll();
+                break;
+            }
+            case P: {
+                drawTrackLayoutGraph(A);
                 break;
             }
             default: {
