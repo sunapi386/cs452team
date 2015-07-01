@@ -428,11 +428,6 @@ void parserTask() {
             run = parse(&p, input.buf[i]);
         }
     }
-    //while (parse(&p, Getc(COM2)));
-    // sinit(&s);
-    // vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
-    // sputstr(&s, "Parser exiting");
-    // PutString(COM2, &s);
 
     // write output
     Halt();
