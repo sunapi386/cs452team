@@ -114,6 +114,7 @@ static inline void _handleChar(char c) {
             // check if reading was what we should halt on
             if(halt_reading.group == last_byte &&
                 halt_reading.offset == bit) {
+                debug("HALTING TRAIN BECAUSE SENSOR TRIGGERED");
                 trainSetSpeed(halt_train_number, 0);
             }
 
@@ -160,18 +161,20 @@ void initSensor() {
     Create(PRIORITY_SENSOR_TASK, _sensorTask);
 }
 
-void sensorHalt(int train_number, int sensor, int sensor_number) {
+void sensorHalt(int train_number, char sensor_group, int sensor_number) {
     // gets called by the parser
+    assert(0 < train_number && train_number < 80);
+    assert('a' <= sensor_group && sensor_group <= 'e');
+    assert(1 <= sensor_number && sensor_number <= 16);
 
-    int group = (sensor - 'a') * 2;
+    int group = (sensor_group - 'a') * 2;
     if(sensor_number > 8 ) {
         sensor_number -= 8;
         group++;
     }
     int bit = 9 - sensor_number;
 
-    // debug:
-    // printf(COM2, "train #%d group %d offset %d\r\n", train_number, group, bit);
+    debug("train #%d group %d offset %d\r\n", train_number, group, bit);
 
     halt_train_number = train_number;
     halt_reading.group = group;
