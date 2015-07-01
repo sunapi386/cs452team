@@ -9,7 +9,7 @@
 #define NUM_SENSORS     5
 #define SENSOR_RESET    192
 #define SENSOR_QUERY    (128 + NUM_SENSORS)
-#define NUM_RECENT_SENSORS    8
+#define NUM_RECENT_SENSORS    7
 #define POS                     "\033[4;24H"
 #define POS1                    "\033[;24H"
 
@@ -44,9 +44,18 @@ static char *trackB =
 
 
 typedef struct SensorReading {
-    char group;
-    char offset;
+    char group; // 0 to 4
+    char offset; // 1 to 16
 } SensorReading;
+
+static void setSensorReading(SensorReading *s, char group, char offset) {
+    // compiler hax to silence comparison of char is always true in limited range
+    int newgroup = group * 1000;
+    assert(0 <= newgroup && newgroup <= 4 * 1000);
+    assert(1 <= (unsigned) offset && (unsigned) offset <= 16);
+    s->group = group;
+    s->offset = offset;
+}
 
 static SensorReading recent_sensors[NUM_RECENT_SENSORS];
 
@@ -57,44 +66,44 @@ static int recently_read = 0;
 static int halt_train_number;
 static SensorReading halt_reading;
 
-static void _sensorFormat(String *s, SensorReading *sensorReading) {
-    // e.g. formats the SensorReading to "A10"
-    char alpha = sensorReading->group / 2;
-    char bit = sensorReading->offset;
-    // Mmm alphabit soup
-    sputc(s, 'A' + alpha);
-    sputc(s, '.');
-    sputuint(s, bit, 10);
-}
-
-static void drawSensorArea() {
+static void initDrawSensorArea() {
     String s;
     sinit(&s);
     sprintf(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_SENSOR_ROW, VT_SENSOR_COL);
     sputstr(&s, VT_RESET);
     sputstr(&s, "-- RECENT SENSORS --\r\n");
-    for(int i = 1; i <= NUM_RECENT_SENSORS; i++) {
-        sputint(&s, i, 10);
-        sputstr(&s, ". A??\r\n");
-    }
     sputstr(&s, VT_RESET);
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
+}
+
+static void _sensorFormat(String *s, const SensorReading *sensorReading) {
+    if(sensorReading->offset == 0) {
+        return;
+    }
+    // e.g. formats the SensorReading to "A10"
+    char alpha = sensorReading->group;
+    char bit = sensorReading->offset;
+    // Mmm alphabit soup
+    sputc(s, 'A' + alpha);
+    sputc(s, '.');
+    sputuint(s, bit, 10);
+    sputstr(s, "         \r\n");
 }
 
 static void _updateSensoryDisplay() {
     String s;
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
-    // TODO: calc and determine where the actual row and col is, on gui
-    vt_pos(&s, VT_SENSOR_ROW + 1, VT_SENSOR_COL + sizeof("0. "));
-    sputstr(&s, VT_RESET);
+    vt_pos(&s, VT_SENSOR_ROW + 1, VT_SENSOR_COL);
 
-    for(int i = (recently_read + 1) % NUM_SENSORS;
-        recent_sensors[recently_read].offset != 0;
-        i = (i + 1) % NUM_RECENT_SENSORS) {
+    for(int i = recently_read ; ; ) {
         _sensorFormat(&s, &recent_sensors[i]);
+        i = (i + 1) % NUM_RECENT_SENSORS;
+        if(i == recently_read) {
+            break;
+        }
     }
 
     sputstr(&s, VT_RESET);
@@ -103,34 +112,23 @@ static void _updateSensoryDisplay() {
 }
 
 
-static inline void _handleChar(char c) {
-    char old = sensor_states[last_byte];
+static inline void _handleChar(char c, int reply_index) {
     sensor_states[last_byte] = c;
-    char diff = ~old & c;
-    int group = 0;
-    // make sensor reading for each different (changed) bit
-    for(int bit = 1; diff; diff >>= 1, bit++) {
-        if(diff & 1) {
-            debug("HANDLE group %d last_byte %d bit %d", group, last_byte, bit);
-            recent_sensors[group].group = last_byte;
-            recent_sensors[group].offset = bit;
+    //char diff = c;
 
-            group = (group - 1 + NUM_RECENT_SENSORS) % NUM_RECENT_SENSORS;
-
-            // check if reading was what we should halt on
-            if(halt_reading.group == last_byte &&
-                halt_reading.offset == bit) {
-                debug("HALTING TRAIN BECAUSE SENSOR TRIGGERED");
-                trainSetSpeed(halt_train_number, 0);
-            }
-
-            recent_sensors[group].group = 0;
-            recent_sensors[group].offset = 0;
-
+    char offset = ((reply_index % 2 == 0) ? 0 : 8);
+    char i, index;
+    for (i = 0, index = 8; i < 8; i++, index--) {
+        if ((1 << i) & c) {
+            setSensorReading(&recent_sensors[recently_read], last_byte / 2, index + offset);
             _updateSensoryDisplay();
-
-            // TODO: later, notify the train controller of sensor trigger
-
+            recently_read = (recently_read + 1) % NUM_RECENT_SENSORS;
+            // // check if reading was what we should halt on
+            // if(halt_reading.group == last_byte &&
+            //     halt_reading.offset == bit) {
+            //     debug("HALTING TRAIN BECAUSE SENSOR TRIGGERED");
+            //     trainSetSpeed(halt_train_number, 0);
+            // }
         }
     }
 
@@ -145,7 +143,7 @@ static void sensorTask() {
         sensor_states[i] = 0;
     }
     last_byte = recently_read = 0;
-    drawSensorArea();
+    initDrawSensorArea();
     drawTrackLayoutGraph(A);
     Putc(COM1, SENSOR_RESET);
 
@@ -153,9 +151,9 @@ static void sensorTask() {
         Putc(COM1, SENSOR_QUERY);
         for(int i = 0; i < (2 * NUM_SENSORS); i++) {
             char c = Getc(COM1);
-            debug("got char c %c", c);
             if(c != 0) {
-                _handleChar(c);
+                last_byte = i;
+                _handleChar(c, i);
             }
         }
     }
@@ -175,18 +173,13 @@ void sensorHalt(int train_number, char sensor_group, int sensor_number) {
     assert('a' <= sensor_group && sensor_group <= 'e');
     assert(1 <= sensor_number && sensor_number <= 16);
 
-    int group = (sensor_group - 'a') * 2;
-    if(sensor_number > 8 ) {
-        sensor_number -= 8;
-        group++;
-    }
-    int bit = 9 - sensor_number;
+    int group = sensor_group - 'a';
+    int bit = sensor_number % 8;
 
-    debug("train #%d group %d offset bit %d\r\n", train_number, group, bit);
+    printf(COM2, "train #%d group %d offset bit %d\r\n", train_number, group, bit);
 
     halt_train_number = train_number;
-    halt_reading.group = group;
-    halt_reading.offset = bit;
+    setSensorReading(&halt_reading, group, bit);
 }
 
 
