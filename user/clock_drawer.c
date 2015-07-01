@@ -3,6 +3,9 @@
 #include <user/vt100.h>         // constants
 #include <user/syscall.h>       // Create
 
+#define CURSOR_SHOW             (VT_CSI "?25h")
+#define CURSOR_HIDE             (VT_CSI "?25l")
+
 static void draw(int time) {
     String s;
     sinit(&s);
@@ -24,6 +27,7 @@ void clockDrawer() {
     String s;
     sinit(&s);
     sputstr(&s, VT_CLEAR_SCREEN);
+    sputstr(&s, CURSOR_HIDE);
     PutString(COM2, &s);
 
     int t = Time();

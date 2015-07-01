@@ -123,7 +123,7 @@ void monitorInServer() {
     RegisterAs("monitorInServer");
 
     // Spawn courier
-    Create(PRIORITY_NOTIFIER, &echoCourier);
+    // Create(PRIORITY_NOTIFIER, &echoCourier);
 
     // Spawn notifier
     Create(PRIORITY_NOTIFIER, &monitorInNotifier);

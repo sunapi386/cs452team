@@ -9,6 +9,8 @@
 #include <user/sensor.h> // drawTrackLayoutGraph
 #include <debug.h>
 
+#define CURSOR      '|'
+
 // Parser is a giant state machine
 // tr train_number train_speed
 // rv train_number
@@ -288,7 +290,7 @@ static bool parse(Parser *p, char c) {
 
     else if(c == VT_CARRIAGE_RETURN) { // user pressed return (enter)
         sputstr(&disp_msg, VT_RESET);
-        sputstr(&disp_msg, "  | ");
+        sputc(&disp_msg, ' ');
         // should be on an end state
         switch(p->state) {
             case H_sensor_number: {
@@ -392,9 +394,6 @@ static bool parse(Parser *p, char c) {
                 sputstr(&disp_msg, "Command not recognized!\r\n");
             }
         } // switch
-        if(run) {
-            sputstr(&disp_msg, "> ");
-        }
         p->state = Empty;
     } // else if carriage return
     PutString(COM2, &disp_msg);
@@ -411,22 +410,40 @@ void parserTask() {
     String s;
     sinit(&s);
     vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
-    sputstr(&s, "> ");
+    sputc(&s, CURSOR);
     PutString(COM2, &s);
 
     // read input
     String input;
+    String output;
     while(run) {
         sinit(&input);
         while(1) { // read string
             char ch = Getc(COM2);
+
+            sinit(&output);
+            vt_pos(&output, VT_PARSER_ROW, VT_PARSER_COL + slen(&input));
+            sputc(&output, ch);
+            sputc(&output, CURSOR);
+            PutString(COM2, &output);
+
             sputc(&input, ch);
-            if(ch == VT_CARRIAGE_RETURN) break;
+            if(ch == VT_CARRIAGE_RETURN) {
+                break;
+            }
         }
+        sinit(&output);
+        sputstr(&output, VT_CLEAR_LINE);
+        sputc(&output, CURSOR);
+        vt_pos(&output, VT_PARSER_ROW - 1, VT_PARSER_COL);
+        sputstr(&output, VT_CLEAR_LINE);
+        PutString(COM2, &output);
+
         // parse string
         for(unsigned i = 0; i < input.len && run; i++) {
             run = parse(&p, input.buf[i]);
         }
+
     }
     //while (parse(&p, Getc(COM2)));
     // sinit(&s);

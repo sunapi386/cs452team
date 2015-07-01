@@ -127,6 +127,7 @@ void scopystr(String *dst, String *src) {
     sinit(dst);
     size_t n = src->len;
     strncpy(dst->buf, src->buf, n);
+    dst->len = n;
 }
 
 void sputc(String *s, const char c) {
