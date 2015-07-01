@@ -34,7 +34,7 @@ void bootstrapTask() {
     initTrain();
     initTurnout();
     initParser();
-    //initSensor();
+    initSensor();
     // Create idle task
     Create(PRIORITY_IDLE, idleProfiler);
 

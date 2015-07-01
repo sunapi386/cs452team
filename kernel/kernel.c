@@ -21,7 +21,6 @@ static void initKernel(TaskQueue *sendQueues) {
     initInterrupts();
     initUART();
     initTimer();
-
     int create_ret = taskCreate(PRIORITY_INIT, bootstrapTask, 0);
     queueTask(taskGetTDById(create_ret));
 }
