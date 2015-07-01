@@ -120,15 +120,16 @@ static inline void _handleChar(char c, int reply_index) {
     char i, index;
     for (i = 0, index = 8; i < 8; i++, index--) {
         if ((1 << i) & c) {
-            setSensorReading(&recent_sensors[recently_read], last_byte / 2, index + offset);
+            int group_number = last_byte / 2;
+            int group_offset = index + offset;
+            setSensorReading(&recent_sensors[recently_read], group_number, group_offset);
             _updateSensoryDisplay();
             recently_read = (recently_read + 1) % NUM_RECENT_SENSORS;
-            // // check if reading was what we should halt on
-            // if(halt_reading.group == last_byte &&
-            //     halt_reading.offset == bit) {
-            //     debug("HALTING TRAIN BECAUSE SENSOR TRIGGERED");
-            //     trainSetSpeed(halt_train_number, 0);
-            // }
+            // check if reading was what we should halt on
+            if(halt_reading.group == group_number && halt_reading.offset == group_offset) {
+                trainSetSpeed(halt_train_number, 0);
+                printf(COM2, "HALTING TRAIN %d BECAUSE SENSOR TRIGGERED", halt_train_number);
+            }
         }
     }
 
