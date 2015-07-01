@@ -64,11 +64,11 @@ irqEnter:
     # put lr-4 (pc_usr) to r3
     sub r3, lr, #4
 
-    # change back to supervisor mode
-    msr cpsr_c, #0xd3
-
     # Put spsr (user cpsr) in r2
     mrs r2, spsr
+
+    # change back to supervisor mode
+    msr cpsr_c, #0xd3
 
     # {r1, r2, r3} = {user sp, user cpsr, user pc}, we are svc
     #
