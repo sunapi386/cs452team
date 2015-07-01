@@ -114,7 +114,6 @@ static void _updateSensoryDisplay() {
 
 static inline void _handleChar(char c, int reply_index) {
     sensor_states[last_byte] = c;
-    //char diff = c;
 
     char offset = ((reply_index % 2 == 0) ? 0 : 8);
     char i, index;
@@ -125,10 +124,10 @@ static inline void _handleChar(char c, int reply_index) {
             setSensorReading(&recent_sensors[recently_read], group_number, group_offset);
             _updateSensoryDisplay();
             recently_read = (recently_read + 1) % NUM_RECENT_SENSORS;
+
             // check if reading was what we should halt on
             if(halt_reading.group == group_number && halt_reading.offset == group_offset) {
                 trainSetSpeed(halt_train_number, 0);
-                printf(COM2, "HALTING TRAIN %d BECAUSE SENSOR TRIGGERED", halt_train_number);
             }
         }
     }
