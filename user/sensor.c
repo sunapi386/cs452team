@@ -62,7 +62,9 @@ static void _sensorFormat(String *s, SensorReading *sensorReading) {
     char alpha = sensorReading->group / 2;
     char bit = sensorReading->offset;
     // Mmm alphabit soup
-    sprintfstr(s, "%c%d\r\n", 'A' + alpha, bit);
+    sputc(s, 'A' + alpha);
+    sputc(s, '.');
+    sputuint(s, bit, 10);
 }
 
 static void drawSensorArea() {
@@ -71,11 +73,13 @@ static void drawSensorArea() {
     sprintf(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_SENSOR_ROW, VT_SENSOR_COL);
     sputstr(&s, VT_RESET);
-    sprintfstr(&s, "-- RECENT SENSORS --\r\n");
+    sputstr(&s, "-- RECENT SENSORS --\r\n");
     for(int i = 1; i <= NUM_RECENT_SENSORS; i++) {
-        sprintfstr(&s, "%d. A10\r\n", i);
+        sputint(&s, i, 10);
+        sputstr(&s, ". A??\r\n");
     }
-    sprintfstr(&s, "%s%s", VT_RESET, VT_CURSOR_RESTORE);
+    sputstr(&s, VT_RESET);
+    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
@@ -93,7 +97,8 @@ static void _updateSensoryDisplay() {
         _sensorFormat(&s, &recent_sensors[i]);
     }
 
-    sprintfstr(&s, "%s%s", VT_RESET, VT_CURSOR_RESTORE);
+    sputstr(&s, VT_RESET);
+    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
@@ -106,6 +111,7 @@ static inline void _handleChar(char c) {
     // make sensor reading for each different (changed) bit
     for(int bit = 1; diff; diff >>= 1, bit++) {
         if(diff & 1) {
+            debug("HANDLE group %d last_byte %d bit %d", group, last_byte, bit);
             recent_sensors[group].group = last_byte;
             recent_sensors[group].offset = bit;
 
@@ -131,7 +137,7 @@ static inline void _handleChar(char c) {
     last_byte = (last_byte + 1) % (2 * NUM_SENSORS);
 }
 
-static void _sensorTask() {
+static void sensorTask() {
     for(int i = 0; i < NUM_RECENT_SENSORS; i++) {
         recent_sensors[i].group = recent_sensors[i].offset = 0;
     }
@@ -147,6 +153,7 @@ static void _sensorTask() {
         Putc(COM1, SENSOR_QUERY);
         for(int i = 0; i < (2 * NUM_SENSORS); i++) {
             char c = Getc(COM1);
+            debug("got char c %c", c);
             if(c != 0) {
                 _handleChar(c);
             }
@@ -156,9 +163,10 @@ static void _sensorTask() {
 }
 
 void initSensor() {
+    debug("initSensor");
     assert(STR_MAX_LEN > strlen(trackA));
     assert(STR_MAX_LEN > strlen(trackB));
-    Create(PRIORITY_SENSOR_TASK, _sensorTask);
+    Create(PRIORITY_SENSOR_TASK, sensorTask);
 }
 
 void sensorHalt(int train_number, char sensor_group, int sensor_number) {
@@ -174,7 +182,7 @@ void sensorHalt(int train_number, char sensor_group, int sensor_number) {
     }
     int bit = 9 - sensor_number;
 
-    debug("train #%d group %d offset %d\r\n", train_number, group, bit);
+    debug("train #%d group %d offset bit %d\r\n", train_number, group, bit);
 
     halt_train_number = train_number;
     halt_reading.group = group;
