@@ -48,6 +48,7 @@ typedef struct Parser {
         P,          // p for printing the graph
         O,          // o for printing the turnouts
         DB_TASK,    // db
+        HELP,       // ? for printing all available commands
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -65,7 +66,7 @@ typedef struct Parser {
         } reverse;
         struct SensorHalt {
             int train_number;
-            int sensor_group;
+            char sensor_group;
             int sensor_number;
         } sensor_halt;
     } data;
@@ -111,6 +112,7 @@ static bool parse(Parser *p, char c) {
                     case 'h': p->state = H_H; break;
                     case 'p': p->state = P; break;
                     case 'o': p->state = O; break;
+                    case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
                 }
                 break;
@@ -134,16 +136,17 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case H_space_2: {
-                p->data.sensor_halt.sensor_group = 0;
-                p->state =  append_number(c, &(p->data.sensor_halt.sensor_group)) ?
-                            H_sensor_group :
-                            Error;
+                if('a' <= c && c <= 'e') {
+                    p->data.sensor_halt.sensor_group = c;
+                    p->state = H_sensor_group;
+                }
+                else {
+                    p->state = Error;
+                }
                 break;
             }
             case H_sensor_group: {
-                if(! append_number(c, &(p->data.sensor_halt.sensor_group))) {
-                    REQUIRE(' ', H_space_3);
-                }
+                REQUIRE(' ', H_space_3);
                 break;
             }
             case H_space_3: {
@@ -370,6 +373,19 @@ static bool parse(Parser *p, char c) {
             case O: {
                 sputstr(&disp_msg, "Drawing turnouts!\r\n");
                 printResetTurnouts();
+                break;
+            }
+            case HELP: {
+                sputstr(&disp_msg, "Help!\r\n");
+                sputstr(&disp_msg, "? (help message)\r\n");
+                sputstr(&disp_msg, "d (debug)\r\n");
+                sputstr(&disp_msg, "h train_number sensor_group sensor_number\r\n");
+                sputstr(&disp_msg, "o (draw turnouts)\r\n");
+                sputstr(&disp_msg, "p (draw track)\r\n");
+                sputstr(&disp_msg, "q (quits)\r\n");
+                sputstr(&disp_msg, "rv train_number\r\n");
+                sputstr(&disp_msg, "sw train_number turnout_direction\r\n");
+                sputstr(&disp_msg, "tr train_number train_speed\r\n");
                 break;
             }
             default: {
