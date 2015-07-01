@@ -19,7 +19,14 @@ void trainSetSpeed(int train_number, int train_speed) {
 void trainSetReverse(int train_number) {
     Putc(COM1, REVERSE);
     Putc(COM1, train_number);
-    trainSetSpeed(train_number, speeds[train_number]);
+}
+
+void trainSetReverseNicely(int train_number) {
+    unsigned short prev_speed = speeds[train_number];
+    trainSetSpeed(train_number, 0);
+    Delay(speeds[train_number] * 200);
+    trainSetReverse(train_number);
+    trainSetSpeed(train_number, prev_speed);
 }
 
 // DEPRECATED, only used by turnout.c
