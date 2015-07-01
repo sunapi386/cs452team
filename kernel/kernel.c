@@ -22,9 +22,10 @@ void snder()
     int data = 4;
     for (;;)
     {
-        int ret = Send(rcverTid, data, sizeof(int), 0, 0);
-        assert(ret == sizeof(int));
-        debug("+");
+        assert(rcverTid > 0);
+        int ret = Send(rcverTid, &data, sizeof(int), 0, 0);
+        assert(ret == 0);
+        bwprintf(COM2, "+");
     }
 }
 
@@ -39,7 +40,7 @@ void rcver()
         assert(ret == sizeof(int));
         assert(tid == senderTid);
         assert(buf == 4);
-        debug(".");
+        bwprintf(COM2, ".");
         ret = Reply(tid, 0, 0);
         assert(ret == 0);
     }

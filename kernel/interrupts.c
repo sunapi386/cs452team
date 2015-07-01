@@ -116,7 +116,7 @@ void initInterrupts()
     // enable(VIC2, UART1_OR_MASK);   // uart1 OR
     // enable(VIC1, UART2_RECV_MASK); // uart2 recv
     // enable(VIC1, UART2_XMIT_MASK); // uart2 xmit
-    // enable(VIC2, TIMER3_MASK);     // enable timer 3
+    enable(VIC2, TIMER3_MASK);     // enable timer 3
 }
 
 void resetInterrupts() {
