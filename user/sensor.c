@@ -86,10 +86,11 @@ static void _sensorFormat(String *s, const SensorReading *sensorReading) {
     char alpha = sensorReading->group;
     char bit = sensorReading->offset;
     // Mmm alphabit soup
+    sputstr(s, "      ");
     sputc(s, 'A' + alpha);
     sputc(s, '.');
     sputuint(s, bit, 10);
-    sputstr(s, "         \r\n");
+    sputstr(s, "      \r\n");
 }
 
 static void _updateSensoryDisplay() {
@@ -142,7 +143,11 @@ static void sensorTask() {
     for(int i = 0; i < 2 * NUM_SENSORS; i++) {
         sensor_states[i] = 0;
     }
-    last_byte = recently_read = 0;
+    last_byte = 0;
+    recently_read = 0;
+    halt_train_number = 0;
+    halt_reading.group = halt_reading.offset = 0;
+
     initDrawSensorArea();
     drawTrackLayoutGraph(A);
     Putc(COM1, SENSOR_RESET);
@@ -174,12 +179,8 @@ void sensorHalt(int train_number, char sensor_group, int sensor_number) {
     assert(1 <= sensor_number && sensor_number <= 16);
 
     int group = sensor_group - 'a';
-    int bit = sensor_number % 8;
-
-    printf(COM2, "train #%d group %d offset bit %d\r\n", train_number, group, bit);
-
     halt_train_number = train_number;
-    setSensorReading(&halt_reading, group, bit);
+    setSensorReading(&halt_reading, group, sensor_number);
 }
 
 
