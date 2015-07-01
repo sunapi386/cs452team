@@ -13,46 +13,6 @@
 #include <kernel/cache.h>
 #include <user/clockserver.h>
 
-static int senderTid = -1;
-static int rcverTid = -1;
-
-void snder()
-{
-    senderTid = MyTid();
-    int data = 4;
-    for (;;)
-    {
-        assert(rcverTid > 0);
-        int ret = Send(rcverTid, &data, sizeof(int), 0, 0);
-        assert(ret == 0);
-        bwprintf(COM2, "+");
-    }
-}
-
-void rcver()
-{
-    rcverTid = MyTid();
-    int tid = 0;
-    int buf = 0;
-    for (;;)
-    {
-        int ret = Receive(&tid, &buf, sizeof(int));
-        assert(ret == sizeof(int));
-        assert(tid == senderTid);
-        assert(buf == 4);
-        bwprintf(COM2, ".");
-        ret = Reply(tid, 0, 0);
-        assert(ret == 0);
-    }
-}
-
-void initTask()
-{
-    Create(16, rcver);
-    Create(16, snder);
-    Exit();
-}
-
 static void initKernel(TaskQueue *sendQueues) {
     cacheEnable();
     initTaskSystem();
@@ -61,8 +21,7 @@ static void initKernel(TaskQueue *sendQueues) {
     initInterrupts();
     initUART();
     initTimer();
-    int create_ret = taskCreate(PRIORITY_INIT, initTask, 0);
-    //int create_ret = taskCreate(PRIORITY_INIT, bootstrapTask, 0);
+    int create_ret = taskCreate(PRIORITY_INIT, bootstrapTask, 0);
     queueTask(taskGetTDById(create_ret));
 }
 

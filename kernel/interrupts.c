@@ -113,9 +113,9 @@ void initInterrupts()
     setICU(VIC2, VIC_INT_SELECT, 0);
 
     //enable(VIC1, 1); // soft int
-    // enable(VIC2, UART1_OR_MASK);   // uart1 OR
-    // enable(VIC1, UART2_RECV_MASK); // uart2 recv
-    // enable(VIC1, UART2_XMIT_MASK); // uart2 xmit
+    enable(VIC2, UART1_OR_MASK);   // uart1 OR
+    enable(VIC1, UART2_RECV_MASK); // uart2 recv
+    enable(VIC1, UART2_XMIT_MASK); // uart2 xmit
     enable(VIC2, TIMER3_MASK);     // enable timer 3
 }
 
