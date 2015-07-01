@@ -131,7 +131,7 @@ void scopystr(String *dst, String *src) {
 
 void sputc(String *s, const char c) {
     if(s->len >= STR_MAX_LEN) {
-        debug("sputc overflow: \"%s\" while inserting '%c' %u==%u",
+        debug("sputc overflow: 1234567\"%s\"7654321 while inserting '%c' %u==%u",
             s->buf, c, s->len, strlen(s->buf));
     }
     assert(s->len < STR_MAX_LEN);
@@ -144,7 +144,7 @@ void sputstr(String *s, const char *str) {
 }
 
 void sconcat(String *dst, String *src) {
-    assert(dst->len + 1 + src->len + 1 < STR_MAX_LEN);
+    assert(dst->len + src->len + 1 < STR_MAX_LEN);
     for(unsigned i = 0; i < src->len; i++) {
         sputc(dst, src->buf[i]);
     }
@@ -285,16 +285,6 @@ void sformat(String *s, char *fmt, va_list va) {
             }
         }
     }
-}
-
-void sprintfstr(String *s, char *fmt, ... ) {
-    va_list va;
-    va_start(va, fmt);
-    String new_s;
-    sinit(&new_s);
-    sformat(&new_s, fmt, va );
-    va_end(va);
-    sconcat(s, &new_s);
 }
 
 void sprintf(String *s, char *fmt, ... ) {
