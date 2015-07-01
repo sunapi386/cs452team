@@ -10,9 +10,6 @@
 #define VT_CSI             VT_ESC "["     // Control Sequence Introducer
 #define VT_SEP              ";"
 
-#define VT_CURSOR_SAVE             (VT_ESC "7")
-#define VT_CURSOR_RESTORE          (VT_ESC "8")
-
 #define VT_CLEAR_LINE              (VT_CSI "2K")
 #define VT_CLEAR_SCREEN            (VT_CSI "2J")
 

@@ -415,8 +415,8 @@ void parserTask() {
     PutString(COM2, &s);
 
     // read input
+    String input;
     while(run) {
-        String input;
         sinit(&input);
         while(1) { // read string
             char ch = Getc(COM2);

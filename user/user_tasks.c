@@ -47,13 +47,11 @@ void userTaskMessage() {
 inline void drawIdle(unsigned int diff) {
     String s;
     sinit(&s);
-    sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_IDLE_ROW, VT_IDLE_COL);
     sputuint(&s, diff / 100, BASE10);
     sputc(&s, '.');
     sputuint(&s, diff % 100, BASE10);
     sputc(&s, '%');
-    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 

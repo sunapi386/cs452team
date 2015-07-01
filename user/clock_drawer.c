@@ -6,7 +6,6 @@
 static void draw(int time) {
     String s;
     sinit(&s);
-    sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_CLOCK_ROW, VT_CLOCK_COL);
     sputc(&s, '0' + time / 3600000);
     sputc(&s, '0' + (time % 3600000) / 360000);
@@ -18,7 +17,6 @@ static void draw(int time) {
     sputc(&s, '0' + (time % 1000) / 100);
     sputc(&s, '.');
     sputc(&s, '0' + (time % 100) / 10);
-    sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 

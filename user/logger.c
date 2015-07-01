@@ -56,10 +56,8 @@ static void server() {
                 // print to screen
                 String out;
                 sinit(&out);
-                sprintf(&out, "%s", VT_CURSOR_SAVE);
                 vt_pos(&out, VT_LOG_ROW + current_row, VT_LOG_COL);
                 sconcat(&out, &log_message);
-                sputstr(&out, VT_CURSOR_RESTORE);
                 PutString(COM2, &out);
 
                 current_row = (current_row + 1) % LOG_SIZE;
