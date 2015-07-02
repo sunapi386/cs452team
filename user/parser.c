@@ -422,14 +422,22 @@ static bool parse(Parser *p, char c) {
                     sputstr(&disp_msg, "Create engineer for ");
                     sputint(&disp_msg, train_number, 10);
                     sputstr(&disp_msg, "\r\n");
+                    int engineerTaskId = engineerPleaseManThisTrain(train_number);
 
-                    // Enstruction enstruction = {
-                    //     .speed = 12,
-                    //     .time = Time() + 1000,
-                    //     .distance = 2000000,
-                    // };
-
-                    // Send()
+                    // hardcoded sending to that engineer
+                    Enstruction enstruction1 = {
+                        .speed = 12,
+                        .time = Time() + 1000,
+                        .distance = 2000000,
+                    };
+                    Send(engineerTaskId, &enstruction1, sizeof(Enstruction), 0, 0);
+                    Enstruction enstruction2 = {
+                        .speed = 0,
+                        .time = Time() + 1000,
+                        .distance = 2000000,
+                    };
+                    Send(engineerTaskId, &enstruction2, sizeof(Enstruction), 0, 0);
+                    break;
                 }
                 else {
                     sputstr(&disp_msg, "Error bad train_number ");

@@ -21,6 +21,7 @@ typedef struct Enstruction {
     int distance;   // how far to the target
 } Enstruction;
 
-void engineerCreate(int train_number);
+void initEngineer();
+int engineerPleaseManThisTrain(); // returns id of engineer task
 
 #endif

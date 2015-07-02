@@ -3,6 +3,7 @@
 #include <debug.h> // assert
 #include <user/syscall.h>
 #include <utils.h> // printf
+#include <user/train.h> // trainSetSpeed
 
 #define ENSTRUCTION_BUFFER_SIZE 5
 
@@ -34,6 +35,7 @@ static int decel[14] = {200,200,200,200,200,200,200,200,200,200,200,200,200,200}
 // Pre-computed transition table
 static int speed_change[15][15];
 
+static int active_train;
 static void precompute() {
     for(int to = 0; to < 15; to++) {
         speed_change[to][to] = 0;
@@ -122,13 +124,28 @@ static void engineerTask() {
         }
         current_enstruction--;
 
+        // when woken up again, change the state of the variables
+        current_time = ordered.time;
+        current_speed = ordered.speed;
+        current_distance = ordered.distance;
+
+        // set train speed
+        trainSetSpeed(active_train, current_speed);
     }
 
 }
 
+static int engineerTaskId;
 void initEngineer() {
     precompute();
 
     // Create(PRIORITY_TRACK_CONTROLLER_TASK, controllerSimulatorTask);
-    Create(PRIORITY_ENGINEER, engineerTask);
+    engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
+    assert(engineerTaskId >= 0);
+}
+
+int engineerPleaseManThisTrain(int train_number) {
+    assert(engineerTaskId >= 0);
+    active_train = train_number;
+    return engineerTaskId;
 }
