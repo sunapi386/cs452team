@@ -4,7 +4,7 @@
 void initTimer() {
     clearTimerInterrupt();
 
-	// 10 ms interval for 508kHz
+	// 10 ms per interrupt, timer 3 runs at 508.4689KHz.
     *(int *)(TIMER3_BASE + LDR_OFFSET) = 5084;
 
     // 508kHz | enable | periodic mode
