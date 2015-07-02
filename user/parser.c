@@ -17,6 +17,21 @@
 // q
 #include <user/sensor.h> // SensorHalt
 
+static char *help_message =
+"------------------ Trains commands\r\n"
+"tr train_num speed                 | set train speed\r\n"
+"rv train_num                       | reverse train\r\n"
+"sw train_num direction             | switch a turnout\r\n"
+"e train_num                        | create engineer for train\r\n"
+"h train_num group_char sensor_num  | halts on sensor \r\n"
+"------------------ Misc. commands\r\n"
+"q                                  | quit\r\n"
+"o                                  | redraw turnouts\r\n"
+"p                                  | redraw track\r\n"
+"d                                  | debug tasks\r\n"
+"?                                  | prints this help message\r\n";
+
+
 typedef struct Parser {
     // state is the last character we've parsed
     enum State {
@@ -417,16 +432,7 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case HELP: {
-                sputstr(&disp_msg, "Help!\r\n");
-                sputstr(&disp_msg, "? (help message)\r\n");
-                sputstr(&disp_msg, "d (debug)\r\n");
-                sputstr(&disp_msg, "h train_number sensor_group sensor_number\r\n");
-                sputstr(&disp_msg, "o (draw turnouts)\r\n");
-                sputstr(&disp_msg, "p (draw track)\r\n");
-                sputstr(&disp_msg, "q (quits)\r\n");
-                sputstr(&disp_msg, "rv train_number\r\n");
-                sputstr(&disp_msg, "sw train_number turnout_direction\r\n");
-                sputstr(&disp_msg, "tr train_number train_speed\r\n");
+                sputstr(&disp_msg, help_message);
                 break;
             }
             default: {
