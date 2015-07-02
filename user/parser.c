@@ -2,7 +2,7 @@
 #include <priority.h>
 #include <utils.h>
 #include <user/vt100.h>
-#include <user/syscall.h> // Create
+#include <user/syscall.h> // Create, Time
 #include <user/turnout.h> // to handle sw
 #include <user/train.h> // to handle sw
 #include <kernel/task.h> // to call taskDisplayAll()
@@ -422,7 +422,14 @@ static bool parse(Parser *p, char c) {
                     sputstr(&disp_msg, "Create engineer for ");
                     sputint(&disp_msg, train_number, 10);
                     sputstr(&disp_msg, "\r\n");
-                    engineerCreate(train_number);
+
+                    // Enstruction enstruction = {
+                    //     .speed = 12,
+                    //     .time = Time() + 1000,
+                    //     .distance = 2000000,
+                    // };
+
+                    // Send()
                 }
                 else {
                     sputstr(&disp_msg, "Error bad train_number ");

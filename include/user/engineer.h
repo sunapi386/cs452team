@@ -15,6 +15,12 @@ The engineer is spawned by the controller, upon a parser command telling the
 controller to spawn an engineer for a particular train, via "e train_number".
 */
 
+typedef struct Enstruction {
+    int speed;      // how fast we want the train to go
+    int time;       // how long to go for
+    int distance;   // how far to the target
+} Enstruction;
+
 void engineerCreate(int train_number);
 
 #endif
