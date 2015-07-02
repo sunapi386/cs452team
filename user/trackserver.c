@@ -16,20 +16,20 @@ void trackServer()
 {
     int tid;
     //void *data[DATA_BUF_SIZE] = {0, 0, 0, 0}; // 16 byte, 4 ints
-    ControllerData data;
+    TrackRequest req;
 
     RegisterAs("trackServer");
 
     for (;;)
     {
         // Receive the message
-        Receive(&tid, &data, sizeof(data));
+        Receive(&tid, &req, sizeof(req));
 
         // debug("train controller Received from tid %d", tid);
         // Reply(tid, 0, 0);
 
         // switch on the type of the message
-        switch (data.type)
+        switch (req.type)
         {
         case type_sensor:
             break;

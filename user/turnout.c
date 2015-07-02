@@ -119,25 +119,25 @@ void printResetTurnouts() {
     PutString(COM2, &s);
 
     for (int i = 1; i <= 18; ++i) {
-        _setTurnout(i, 'c');
+        _setTurnout(i, 's');
     }
 
     for (int i = 153; i <= 156; ++i) {
-        _setTurnout(i, 'c');
+        _setTurnout(i, 's');
     }
 }
 
-static int controller_id;
+static int trackServerId;
 static void turnoutTask() {
     printResetTurnouts();
-    controller_id = WhoIs("trackServer");
-    assert(controller_id >= 0);
-    ControllerData controller_reply;
+    trackServerId = WhoIs("trackServer");
+    assert(trackServerId >= 0);
+    TrackRequest trackServerReply;
 
     while(1) {
-        Send(controller_id, 0, 0, &controller_reply, sizeof(controller_reply));
-        int turnout_number = controller_reply.data.turnout.turnout_number;
-        char direction = controller_reply.data.turnout.direction;
+        Send(trackServerId, 0, 0, &trackServerReply, sizeof(trackServerReply));
+        int turnout_number = trackServerReply.data.turnout.turnout_number;
+        char direction = trackServerReply.data.turnout.direction;
 
         assert((153 <= turnout_number && turnout_number <= 156) ||
                  (1 <= turnout_number && turnout_number <= 18));

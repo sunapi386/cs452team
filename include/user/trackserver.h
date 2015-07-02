@@ -22,7 +22,7 @@ typedef struct {
         SensorData sensor;
         TurnoutData turnout;
     } data;
-} ControllerData;
+} TrackRequest;
 
 
 // Called by sensor task to update the controller on latest fired sensor

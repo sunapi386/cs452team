@@ -127,8 +127,8 @@ int main()
         request = kernelExit(task);
         int diff = (*TIMER4_VAL - task_begin_time);
         task->cpu_time_used += diff;
-        // bwprintf(COM2, "%d ticks have elapsed\r\n", diff);
-        if(handleRequest(task, request, sendQueues)) {
+
+        if (handleRequest(task, request, sendQueues)) {
             debug("Halt");
             break;
         }
