@@ -7,6 +7,7 @@
 #include <user/train.h> // to handle sw
 #include <kernel/task.h> // to call taskDisplayAll()
 #include <user/sensor.h> // drawTrackLayoutGraph
+#include <user/engineer.h> // createEngineer
 #include <debug.h>
 
 // Parser is a giant state machine
@@ -48,6 +49,9 @@ typedef struct Parser {
         P,          // p for printing the graph
         O,          // o for printing the turnouts
         DB_TASK,    // db
+        E,          // e train_number to spawning an engineer to train
+        E_space_1,
+        E_train_number,
         HELP,       // ? for printing all available commands
     } state;
 
@@ -69,6 +73,9 @@ typedef struct Parser {
             char sensor_group;
             int sensor_number;
         } sensor_halt;
+        struct Engineer {
+            int train_number;
+        } engineer;
     } data;
 
 } Parser;
@@ -112,6 +119,7 @@ static bool parse(Parser *p, char c) {
                     case 'h': p->state = H_H; break;
                     case 'p': p->state = P; break;
                     case 'o': p->state = O; break;
+                    case 'e': p->state = E; break;
                     case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
                 }
@@ -269,6 +277,24 @@ static bool parse(Parser *p, char c) {
                 break;
             }
 
+            // ----------- e for engineer ----------- //
+            case E: {
+                REQUIRE(' ', E_space_1);
+                break;
+            }
+            case E_space_1: {
+                p->data.engineer.train_number = 0;
+                p->state =  append_number(c, &(p->data.engineer.train_number)) ?
+                            E_train_number :
+                            Error;
+            }
+            case E_train_number: {
+                if(! append_number(c, &(p->data.engineer.train_number))) {
+                    p->state = Error;
+                }
+                break;
+            }
+
             // ---------- print task ---- //
             case DB_TASK: {
                 p->state = Error;
@@ -373,6 +399,21 @@ static bool parse(Parser *p, char c) {
             case O: {
                 sputstr(&disp_msg, "Drawing turnouts!\r\n");
                 printResetTurnouts();
+                break;
+            }
+            case E_train_number: {
+                int train_number = p->data.engineer.train_number;
+                if(0 <= train_number && train_number <= 80) {
+                    sputstr(&disp_msg, "Create engineer for ");
+                    sputint(&disp_msg, train_number, 10);
+                    sputstr(&disp_msg, "\r\n");
+                    engineerCreate(train_number);
+                }
+                else {
+                    sputstr(&disp_msg, "Error bad train_number ");
+                    sputint(&disp_msg, train_number, 10);
+                    sputstr(&disp_msg, "\r\n");
+                }
                 break;
             }
             case HELP: {
