@@ -8,7 +8,7 @@
 #include <user/parser.h>
 #include <user/sensor.h>
 #include <user/syscall.h>
-#include <user/track_controller.h>
+#include <user/trackserver.h>
 #include <user/train.h>
 #include <user/turnout.h>
 #include <user/user_tasks.h>
@@ -31,7 +31,7 @@ void bootstrapTask() {
     // Create user task
     Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
     // initLogger();
-    initController();
+    initTrackServer();
     initTrain();
     initTurnout();
     initParser();

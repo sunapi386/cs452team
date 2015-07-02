@@ -5,6 +5,7 @@
 #include <user/syscall.h>
 #include <debug.h> // assert
 #include <user/train.h> // halting
+#include <user/trackserver.h>
 
 #define NUM_SENSORS     5
 #define SENSOR_RESET    192
@@ -129,29 +130,14 @@ static char *trackB =
 "\033[14;24H"   "-----------2\\           \\          /"
 "\033[15;24H"   "-------------3-----------18--------5------------";
 
-
-typedef struct SensorReading {
-    char group; // 0 to 4
-    char offset; // 1 to 16
-} SensorReading;
-
-static void setSensorReading(SensorReading *s, char group, char offset) {
-    // compiler hax to silence comparison of char is always true in limited range
-    int newgroup = group * 1000;
-    assert(0 <= newgroup && newgroup <= 4 * 1000);
-    assert(1 <= (unsigned) offset && (unsigned) offset <= 16);
-    s->group = group;
-    s->offset = offset;
-}
-
-static SensorReading recent_sensors[NUM_RECENT_SENSORS];
+static SensorData recent_sensors[NUM_RECENT_SENSORS];
 
 static char sensor_states[2 * NUM_SENSORS];
 static int last_byte = 0;
 static int recently_read = 0;
 
 static int halt_train_number;
-static SensorReading halt_reading;
+static SensorData halt_reading;
 
 static void initDrawSensorArea() {
     String s;
@@ -165,7 +151,16 @@ static void initDrawSensorArea() {
     PutString(COM2, &s);
 }
 
-// static void trackDrawingFormat(String *s, const SensorReading *reading, Track track) {
+static void setSensorData(SensorData *s, char group, char offset) {
+    // compiler hax to silence comparison of char is always true in limited range
+    int newgroup = group * 1000;
+    assert(0 <= newgroup && newgroup <= 4 * 1000);
+    assert(1 <= (unsigned) offset && (unsigned) offset <= 16);
+    s->group = group;
+    s->offset = offset;
+}
+
+// static void trackDrawingFormat(String *s, const SensorData *reading, Track track) {
     // if(reading->offset == 0) {
     //     return;
     // }
@@ -273,11 +268,11 @@ static void initDrawSensorArea() {
     // }
 // }
 
-static void sensorFormat(String *s, const SensorReading *sensorReading) {
+static void sensorFormat(String *s, const SensorData *sensorReading) {
     if(sensorReading->offset == 0) {
         return;
     }
-    // e.g. formats the SensorReading to "A10"
+    // e.g. formats the SensorData to "A10"
     char alpha = sensorReading->group;
     char bit = sensorReading->offset;
     // Mmm alphabit soup
@@ -317,7 +312,7 @@ static inline void handleChar(char c, int reply_index) {
         if ((1 << i) & c) {
             int group_number = last_byte / 2;
             int group_offset = index + offset;
-            setSensorReading(&recent_sensors[recently_read], group_number, group_offset);
+            setSensorData(&recent_sensors[recently_read], group_number, group_offset);
             updateSensoryDisplay();
             recently_read = (recently_read + 1) % NUM_RECENT_SENSORS;
 
@@ -331,18 +326,12 @@ static inline void handleChar(char c, int reply_index) {
     last_byte = (last_byte + 1) % (2 * NUM_SENSORS);
 }
 
-static void sensorTask() {
-    for(int i = 0; i < NUM_RECENT_SENSORS; i++) {
-        recent_sensors[i].group = recent_sensors[i].offset = 0;
-    }
-    for(int i = 0; i < 2 * NUM_SENSORS; i++) {
-        sensor_states[i] = 0;
-    }
-    last_byte = 0;
-    recently_read = 0;
-    halt_train_number = 0;
-    halt_reading.group = halt_reading.offset = 0;
+static void sensorCourier()
+{
 
+}
+
+static void sensorTask() {
     initDrawSensorArea();
     drawTrackLayoutGraph(A);
     Putc(COM1, SENSOR_RESET);
@@ -362,6 +351,18 @@ static void sensorTask() {
 
 void initSensor() {
     debug("initSensor");
+
+    for(int i = 0; i < NUM_RECENT_SENSORS; i++) {
+        recent_sensors[i].group = recent_sensors[i].offset = 0;
+    }
+    for(int i = 0; i < 2 * NUM_SENSORS; i++) {
+        sensor_states[i] = 0;
+    }
+    last_byte = 0;
+    recently_read = 0;
+    halt_train_number = 0;
+    halt_reading.group = halt_reading.offset = 0;
+
     assert(STR_MAX_LEN > strlen(trackA));
     assert(STR_MAX_LEN > strlen(trackB));
     Create(PRIORITY_SENSOR_TASK, sensorTask);
@@ -375,7 +376,7 @@ void sensorHalt(int train_number, char sensor_group, int sensor_number) {
 
     int group = sensor_group - 'a';
     halt_train_number = train_number;
-    setSensorReading(&halt_reading, group, sensor_number);
+    setSensorData(&halt_reading, group, sensor_number);
 }
 
 

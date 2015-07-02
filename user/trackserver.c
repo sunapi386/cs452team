@@ -2,9 +2,7 @@
 #include <priority.h>
 #include <user/syscall.h>
 #include <user/nameserver.h>
-#include <user/track_controller.h>
-
-#define DATA_BUF_SIZE 4
+#include <user/trackserver.h>
 
 void sensorTrigger(char group, int offset)
 {
@@ -14,23 +12,24 @@ void sensorTrigger(char group, int offset)
     //Send();
 }
 
-void trackControllerTask()
+void trackServer()
 {
     int tid;
-    void *data[DATA_BUF_SIZE] = {0, 0, 0, 0}; // 16 byte, 4 ints
+    //void *data[DATA_BUF_SIZE] = {0, 0, 0, 0}; // 16 byte, 4 ints
+    ControllerData data;
 
-    RegisterAs("controller");
+    RegisterAs("trackServer");
 
     for (;;)
     {
         // Receive the message
-        Receive(&tid, data, sizeof(data));
-        ControllerData *ctrlData = (ControllerData *)data;
+        Receive(&tid, &data, sizeof(data));
+
         // debug("train controller Received from tid %d", tid);
         // Reply(tid, 0, 0);
 
         // switch on the type of the message
-        switch (ctrlData->type)
+        switch (data.type)
         {
         case type_sensor:
             break;
@@ -43,6 +42,6 @@ void trackControllerTask()
     Exit();
 }
 
-void initController() {
-    Create(PRIORITY_TRACK_CONTROLLER_TASK, trackControllerTask);
+void initTrackServer() {
+    Create(PRIORITY_TRACKSERVER, trackServer);
 }

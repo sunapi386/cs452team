@@ -5,7 +5,7 @@
 #include <user/syscall.h> // sending to screen
 #include <user/vt100.h>
 #include <user/train.h>
-#include <user/track_controller.h> // shared reply structure
+#include <user/trackserver.h> // shared reply structure
 
 #define SOLENOID_OFF 32
 #define STRAIGHT 33
@@ -130,7 +130,7 @@ void printResetTurnouts() {
 static int controller_id;
 static void turnoutTask() {
     printResetTurnouts();
-    controller_id = WhoIs("controller");
+    controller_id = WhoIs("trackServer");
     assert(controller_id >= 0);
     ControllerData controller_reply;
 
