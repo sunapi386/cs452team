@@ -156,9 +156,66 @@ static inline void handleChar(char c, int reply_index) {
     last_byte = (last_byte + 1) % (2 * NUM_SENSORS);
 }
 
-static void sensorCourier()
+// Courier: TrainOutServer -> sensorServer
+void trainOutCourier()
 {
+    int pid = MyParentTid();
+    int sid = WhoIs("sensorServer");
 
+    IOMessage message;
+    message.type = MESSAGE_TRAIN_OUT_COURIER;
+
+    for (;;)
+    {
+        // send to train out server
+        Send(pid, &message, sizeof(message), &message, sizeof(message));
+
+        // send to sensor server
+        Send(sid, &message, sizeof(message), 0, 0);
+    }
+
+}
+
+// Courier: sensorServer -> engineer
+void sensorCourier()
+{
+    int pid = MyParentTid();
+    int eid = WhoIs("engineer");
+
+    SensorMessage message;
+    message.type = MESSAGE_SENSOR_COURIER;
+
+    for (;;)
+    {
+        // sensor server replies with a message with populated fields
+        Send(pid, &message, sizeof(message), &message, sizeof(message));
+
+        // send it to engineer
+        Send(eid, &message, sizeof(message), 0, 0);
+    }
+}
+
+void sensorServer()
+{
+    int tid = 0;
+    SensorRequest req;
+
+    for (;;)
+    {
+        Receive(&tid, &req, sizeof(req));
+
+        switch (req.type)
+        {
+            case MESSAGE_TRAIN_OUT_COURIER:
+                //if ()
+                Reply(tid, 0, 0);
+                break;
+            case MESSAGE_SENSOR_COURIER:
+                break;
+            default:
+                assert(0);
+        }
+    }
 }
 
 static void sensorTask() {

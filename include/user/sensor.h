@@ -1,6 +1,31 @@
 #ifndef __SENSOR_H
 #define __SENSOR_H
 
+
+#define MESSAGE_TRAIN_OUT_COURIER   1
+#define MESSAGE_SENSOR_COURIER      2
+
+// IO server -> sensorServer
+typedef struct IOMessage {
+    char type;
+    char data;
+} IOMessage;
+
+// sensorServer -> engineer
+typedef struct SensorMessage {
+    char type;
+    int sensor;
+    int time;
+} SensorMessage;
+
+typedef struct {
+    char type;
+    union {
+        IOMessage io;
+        SensorMessage sensor;
+    } data;
+} SensorRequest;
+
 /**
 Sensor receives sensor data from tracks and handles drawning on the screen.
 Also handles sensor manipulations, i.e. stopping a train when it has reached
