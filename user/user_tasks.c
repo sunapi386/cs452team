@@ -52,7 +52,7 @@ inline void drawIdle(unsigned int diff) {
     sputuint(&s, diff / 100, BASE10);
     sputc(&s, '.');
     sputuint(&s, diff % 100, BASE10);
-    sputc(&s, '%');
+    sputstr(&s, " %");
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
@@ -60,7 +60,7 @@ inline void drawIdle(unsigned int diff) {
 void idleProfiler() {
     int i = 0;
     for (;;) {
-        if(i++ % 1000000 == 0) {
+        if(i++ % 2000000 == 0) {
             drawIdle(taskIdleRatio());
         }
     }
