@@ -8,6 +8,7 @@
 #include <kernel/task.h> // to call taskDisplayAll()
 #include <user/sensor.h> // drawTrackLayoutGraph
 #include <user/engineer.h> // createEngineer
+#include <user/trackserver.h> // since the typedef for SensorData is moved there..
 #include <debug.h>
 
 // Parser is a giant state machine
@@ -24,6 +25,7 @@ static char *help_message =
 "sw train_num direction             | switch a turnout\r\n"
 "e train_num                        | create engineer for train\r\n"
 "h train_num group_char sensor_num  | halts on sensor \r\n"
+"m s1_grp s1_num s2_grp s2_num      | timing sensor1 to sensor2 \r\n"
 "------------------ Misc. commands\r\n"
 "q                                  | quit\r\n"
 "o                                  | redraw turnouts\r\n"
@@ -68,6 +70,15 @@ typedef struct Parser {
         E_space_1,
         E_train_number,
         HELP,       // ? for printing all available commands
+        M,          // m s1_grp s1_num s2_grp s2_num
+        M_space_1,
+        M_s1_g,
+        M_space_2,
+        M_s1_n,
+        M_space_3,
+        M_s2_g,
+        M_space_4,
+        M_s2_n,
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -91,6 +102,12 @@ typedef struct Parser {
         struct Engineer {
             int train_number;
         } engineer;
+        struct SensorTime {
+            char sensor1_group;
+            int sensor1_offset;
+            char sensor2_group;
+            int sensor2_offset;
+        } sensor_time;
     } data;
 
 } Parser;
@@ -135,8 +152,68 @@ static bool parse(Parser *p, char c) {
                     case 'p': p->state = P; break;
                     case 'o': p->state = O; break;
                     case 'e': p->state = E; break;
+                    case 'm': p->state = M; break;
                     case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
+                }
+                break;
+            }
+            // ----------- h train_number sensor_group sensor_number ------- //
+            case M: {
+                REQUIRE(' ', M_space_1);
+                break;
+            }
+            case M_space_1: {
+                if('a' <= c && c <= 'e') {
+                    p->data.sensor_time.sensor1_group = c;
+                    p->state = M_s1_g;
+                }
+                else {
+                    p->state = Error;
+                }
+                break;
+            }
+            case M_s1_g: {
+                REQUIRE(' ', M_space_2);
+                break;
+            }
+            case M_space_2: {
+                p->data.sensor_time.sensor1_offset = 0;
+                p->state =  append_number(c, &(p->data.sensor_time.sensor1_offset)) ?
+                            M_s1_n :
+                            Error;
+                break;
+            }
+            case M_s1_n: {
+                if(! append_number(c, &(p->data.sensor_time.sensor1_offset))) {
+                    REQUIRE(' ', M_space_3);
+                }
+                break;
+            }
+            case M_space_3: {
+                if('a' <= c && c <= 'e') {
+                    p->data.sensor_time.sensor2_group = c;
+                    p->state = M_s2_g;
+                }
+                else {
+                    p->state = Error;
+                }
+                break;
+            }
+            case M_s2_g: {
+                REQUIRE(' ', M_space_4);
+                break;
+            }
+            case M_space_4: {
+                p->data.sensor_time.sensor2_offset = 0;
+                p->state =  append_number(c, &(p->data.sensor_time.sensor2_offset)) ?
+                            M_s2_n :
+                            Error;
+                break;
+            }
+            case M_s2_n: {
+                if(! append_number(c, &(p->data.sensor_time.sensor2_offset))) {
+                    p->state = Error;
                 }
                 break;
             }
@@ -332,6 +409,36 @@ static bool parse(Parser *p, char c) {
         sputstr(&disp_msg, "  | ");
         // should be on an end state
         switch(p->state) {
+            case M_s2_n: {
+                char sensor1_group = p->data.sensor_time.sensor1_group;
+                int sensor1_offset = p->data.sensor_time.sensor1_offset;
+                char sensor2_group = p->data.sensor_time.sensor2_group;
+                int sensor2_offset = p->data.sensor_time.sensor2_offset;
+
+                if(sensor1_group < 'a' || 'e' < sensor1_group) {
+                    sputstr(&disp_msg,
+                        "H: bad sensor1_group char, expects 'a' to 'e'\r\n");
+                }
+                else if(sensor1_offset < 1 || 16 < sensor1_offset) {
+                    sputstr(&disp_msg,
+                        "H: bad sensor1_offset, expects 1 to 16\r\n");
+                }
+                else if(sensor2_group < 'a' || 'e' < sensor2_group) {
+                    sputstr(&disp_msg,
+                        "H: bad sensor2_group char, expects 'a' to 'e'\r\n");
+                }
+                else if(sensor2_offset < 1 || 16 < sensor2_offset) {
+                    sputstr(&disp_msg,
+                        "H: bad sensor2_offset, expects 1 to 16\r\n");
+                }
+                else { // looks like a valid command
+                    struct SensorData s1 = {sensor1_group, sensor1_offset};
+                    struct SensorData s2 = {sensor2_group, sensor2_offset};
+                    sensorTime(&s1, &s2);
+                }
+
+                break;
+            }
             case H_sensor_number: {
                 int train_number = p->data.sensor_halt.train_number;
                 int sensor_group = p->data.sensor_halt.sensor_group;
@@ -349,7 +456,9 @@ static bool parse(Parser *p, char c) {
                     sputstr(&disp_msg,
                         "H: bad sensor_number, expects 1 to 16\r\n");
                 }
-                sensorHalt(train_number, sensor_group, sensor_number);
+                else {
+                    sensorHalt(train_number, sensor_group, sensor_number);
+                }
                 break;
             }
             case TR_speed: {
