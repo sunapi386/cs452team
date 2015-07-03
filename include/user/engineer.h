@@ -22,6 +22,6 @@ typedef struct Enstruction {
 } Enstruction;
 
 void initEngineer();
-int engineerPleaseManThisTrain(); // returns id of engineer task
+void engineerPleaseManThisTrain(); // returns id of engineer task
 
 #endif
