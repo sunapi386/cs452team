@@ -114,8 +114,6 @@ static void updateSensoryDisplay() {
     PutString(COM2, &s);
 }
 
-#define TIMER4_VAL      ((volatile unsigned int *) 0x80810060)
-
 static inline void handleChar(char c, int reply_index) {
     sensor_states[last_byte] = c;
 
@@ -137,16 +135,17 @@ static inline void handleChar(char c, int reply_index) {
             // if sensor1 was hit, mark the start_time
             if(time_sensor_pair.sensor1_group == group_number &&
                time_sensor_pair.sensor1_offset == group_offset) {
-                time_sensor_pair.start_time = *TIMER4_VAL;
+                debug("sensor1 triggered on %c%d", group_number, group_offset);
+                time_sensor_pair.start_time = Time();
             }
             // if sensor2 was hit, calculate difference from start_time
             if(time_sensor_pair.sensor2_group == group_number &&
                time_sensor_pair.sensor2_offset == group_offset) {
-                int time_diff = *TIMER4_VAL - time_sensor_pair.start_time;
-                printf(COM2, "From sensor %c%d to sensor %c%d took %d ticks\r\n",
-                    time_sensor_pair.sensor1_group,
+                int time_diff = Time() - time_sensor_pair.start_time;
+                printf(COM2, "sensor2 %c%d to sensor %c%d took %d ticks\r\n",
+                    time_sensor_pair.sensor1_group + 'A',
                     time_sensor_pair.sensor1_offset,
-                    time_sensor_pair.sensor2_group,
+                    time_sensor_pair.sensor2_group + 'A',
                     time_sensor_pair.sensor2_offset,
                     time_diff);
             }

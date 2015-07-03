@@ -432,8 +432,8 @@ static bool parse(Parser *p, char c) {
                         "H: bad sensor2_offset, expects 1 to 16\r\n");
                 }
                 else { // looks like a valid command
-                    struct SensorData s1 = {sensor1_group, sensor1_offset};
-                    struct SensorData s2 = {sensor2_group, sensor2_offset};
+                    struct SensorData s1 = {sensor1_group - 'a', sensor1_offset};
+                    struct SensorData s2 = {sensor2_group - 'a', sensor2_offset};
                     sensorTime(&s1, &s2);
                 }
 
