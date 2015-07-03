@@ -2,8 +2,7 @@
 #define __TRACKSERVER_H
 
 // list of data formats that are accepted by the track controller
-
-typedef struct {
+typedef struct SensorData {
     char group;
     char offset;
 } SensorData;
