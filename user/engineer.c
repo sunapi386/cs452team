@@ -52,7 +52,10 @@ static void engineerTask() {
 
         if(last_index != -1) { // apply learning
             int last_time = pairs[index][last_index];
-            pairs[index][last_index] = ALPHA * new_time + (1 - ALPHA) * last_time;
+            int past_difference = pairs[index][last_index];
+            int new_difference = new_time - last_time;
+            pairs[index][last_index] =  new_difference * ALPHA +
+                                        past_difference * (1 - ALPHA);
         }
 
         printf(COM2, "new: from %d to %d is %d\r\n",
