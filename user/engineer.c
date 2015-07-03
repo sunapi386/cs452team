@@ -49,6 +49,7 @@ static void precompute() {
 }
 
 static void engineerTask() {
+    RegisterAs("engineer");
     // int controller_id = WhoIs("controller_simulator");
     // assert(controller_id >= 0);
     // TODO: receive the Enstruction from controller, for now just init here

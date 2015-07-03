@@ -6,6 +6,7 @@
 #include <debug.h> // assert
 #include <user/train.h> // halting
 #include <user/trackserver.h>
+#include <user/nameserver.h>
 
 #define NUM_SENSORS     5
 #define SENSOR_RESET    192
@@ -113,6 +114,30 @@ static void updateSensoryDisplay() {
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
+
+static void sensorCourierTask() {
+    int parent = MyParentTid();
+    int engineerTask = WhoIs("engineer");
+    assert(engineerTask >= 0);
+    struct sensorAndTimestamp;
+    int sensor;
+    for(;;) {
+        Send(parent, 0, 0, &sensor, sizeof(int));
+        Send(engineerTask, &sensor, sizeof(int), 0, 0);
+    }
+}
+
+typedef struct SensorAndTimestamp {
+    int index_to_train_data;
+    int time;
+} SensorAndTimestamp;
+
+static void notifyEngineers(const char group, const char offset, const int time) {
+    int index_to_train_data = 16 * group + offset - 1;
+    SensorAndTimestamp st = {index_to_train_data, time};
+    (void)st;
+}
+
 
 static inline void handleChar(char c, int reply_index) {
     sensor_states[last_byte] = c;

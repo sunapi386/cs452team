@@ -8,6 +8,11 @@ a certain sensor.
 */
 struct SensorData; // defined in trackserver.h
 
+struct MessageToEngineer {
+    int index_to_train_data; //
+    int time;   //
+};
+
 void initSensor();
 // displays the time taken to tigger sensor1 then sensor2
 void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2);
