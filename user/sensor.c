@@ -128,13 +128,13 @@ static void sensorCourierTask() {
 }
 
 typedef struct SensorAndTimestamp {
-    int index_to_train_data;
+    int sensor;
     int time;
 } SensorAndTimestamp;
 
 static void notifyEngineers(const char group, const char offset, const int time) {
-    int index_to_train_data = 16 * group + offset - 1;
-    SensorAndTimestamp st = {index_to_train_data, time};
+    int sensor = (group << 8) & offset;
+    SensorAndTimestamp st = {sensor, time};
     (void)st;
 }
 
