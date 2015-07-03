@@ -1,28 +1,27 @@
 #ifndef __SENSOR_H
 #define __SENSOR_H
 
+#define MESSAGE_SENSOR_COURIER      11
+#define MESSAGE_ENGINEER_COURIER    12
 
-#define MESSAGE_TRAIN_OUT_COURIER   1
-#define MESSAGE_SENSOR_COURIER      2
-
-// IO server -> sensorServer
-typedef struct IOMessage {
-    char type;
-    char data;
-} IOMessage;
-
-// sensorServer -> engineer
+// sensorCourier -> sensorServer
 typedef struct SensorMessage {
-    char type;
-    int sensor;
-    int time;
+    char data;  // actual data from com1
+    char seq;   // sequence number [0,2*NUM_SENSORS-1]
+    int time;   // timestamp in ticks
 } SensorMessage;
 
-typedef struct {
+// sensorServer -> engineer
+typedef struct SensorUpdate {
+    int sensor;
+    int time;
+} SensorUpdate;
+
+typedef struct SensorRequest {
     char type;
     union {
-        IOMessage io;
-        SensorMessage sensor;
+        SensorMessage sm;
+        SensorUpdate su;
     } data;
 } SensorRequest;
 

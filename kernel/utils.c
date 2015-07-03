@@ -50,14 +50,6 @@ size_t strlen(const char *str) {
     return (s - str);
 }
 
-int countLeadingZeroes(const unsigned int mask) {
-    static const int table[32] = {
-        0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
-        31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
-    };
-    return table[(unsigned int)((mask ^ (mask & (mask - 1))) * 0x077cb531u) >> 27];
-}
-
 void CBufferInit(CBuffer *b, char *array, size_t size) {
     b->data = array;
     b->size = size;
@@ -94,7 +86,6 @@ char CBufferPop(CBuffer *b) {
     }
 }
 
-
 bool CBufferIsEmpty(const CBuffer *b) {
     return b->head == b->tail;
 }
@@ -114,6 +105,46 @@ int CBufferPushStr(CBuffer *b, char *str)
         counter++;
     }
     return ret == 0 ? counter : ret;
+}
+
+void IBufferInit(IBuffer *b, int * array, size_t size)
+{
+    b->data = array;
+    b->size = size;
+    b->head = 0;
+    b->tail = 0;
+}
+int IBufferPush(IBuffer *b, int n)
+{
+    int ret = 0;
+    b->tail = (b->tail + 1) % b->size;
+    if (b->tail == b->head)
+    {
+        b->tail = (b->tail + 1) % b->size;
+        ret = -1;
+    }
+    b->data[b->tail] = n;
+    return ret;
+}
+
+char IBufferPop(IBuffer *b)
+{
+    if (b->head != b->tail)
+    {
+        // If no underflow, update head
+        b->head = (b->head + 1) % b->size;
+        return b->data[b->head];
+    }
+    else
+    {
+        //Return -1 if underflow
+        return -1;
+    }
+}
+
+bool IBufferIsEmpty(const IBuffer *b)
+{
+    return b->head == b->tail;
 }
 
 void scopy(String *dst, const char *src) {

@@ -8,8 +8,10 @@ void memcpy(void *dest, const void *src, size_t n);
 int strcmp (const char * dst, const char * src);
 char * strncpy(char *dst, const char *src, size_t n);
 size_t strlen(const char *str); // does not count null terminator
-int countLeadingZeroes(const unsigned int mask);
 
+/*
+    CBuffer
+*/
 
 typedef struct CBuffer {
     char *data;
@@ -22,6 +24,24 @@ char CBufferPop(CBuffer *b);
 bool CBufferIsEmpty(const CBuffer *b);
 void CBufferClean(CBuffer *b);
 int CBufferPushStr(CBuffer *b, char *str);
+
+/*
+    IBuffer
+*/
+
+typedef struct IBuffer {
+    int *data;
+    size_t size, head, tail;
+} IBuffer;
+
+void IBufferInit(IBuffer *b, int * array, size_t size);
+int IBufferPush(IBuffer *b, int n);
+char IBufferPop(IBuffer *b);
+bool IBufferIsEmpty(const IBuffer *b);
+
+/*
+    String
+*/
 
 #define STR_MAX_LEN 1024
 
