@@ -224,16 +224,27 @@ void engineerCourier()
     }
 }
 
+static void clearScreen()
+{
+    String s;
+    sinit(&s);
+    sputstr(&s, VT_CLEAR_SCREEN);
+    PutString(COM2, &s);
+}
+
 void sensorCourier()
 {
-    // Ok this is not really a "courier"
-    initDrawSensorArea();
-    drawTrackLayoutGraph(A);
+    Putc(COM1, SENSOR_QUERY);
 
     int pid = MyParentTid();
     int timestamp = 0;
     SensorRequest req;
     char sensorStates[2 * NUM_SENSORS];
+
+    clearScreen();
+    initDrawSensorArea();
+    drawTrackLayoutGraph(A);
+
 
     // initialize sensor states
     for (int i = 0; i < 2 * NUM_SENSORS; i++)
@@ -346,6 +357,9 @@ void sensorServer()
 }
 
 void initSensor() {
+    assert(STR_MAX_LEN > strlen(trackA));
+    assert(STR_MAX_LEN > strlen(trackB));
+
     recently_read = 0;
     halt_train_number = 0;
     halt_reading.group = halt_reading.offset = 0;
@@ -359,7 +373,5 @@ void initSensor() {
         recent_sensors[i].offset = 0;
     }
 
-    assert(STR_MAX_LEN > strlen(trackA));
-    assert(STR_MAX_LEN > strlen(trackB));
     Create(PRIORITY_SENSOR_SERVER, sensorServer);
 }

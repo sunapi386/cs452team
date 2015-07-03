@@ -76,7 +76,7 @@ static void _updateTurnoutDisplay(int turnout_number, char direction) {
     sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, row, col);
     sputstr(&s, (direction == 'c' ? VT_CYAN : VT_GREEN));
-    sputc(&s, (direction == 'c' ? 'C' : 'I'));
+    sputc(&s, (direction == 'c' ? 'C' : 'S'));
     sputstr(&s, VT_RESET);
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);

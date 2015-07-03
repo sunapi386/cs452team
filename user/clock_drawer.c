@@ -23,11 +23,6 @@ static void draw(int time) {
 }
 
 void clockDrawer() {
-    String s;
-    sinit(&s);
-    sputstr(&s, VT_CLEAR_SCREEN);
-    PutString(COM2, &s);
-
     int t = Time();
     while(1) {
         draw(t);
