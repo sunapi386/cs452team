@@ -285,6 +285,10 @@ void sensorCourier()
                 req.data.sm.time = timestamp;
                 Send(pid, &req, sizeof(req), 0, 0);
             }
+            else
+            {
+                sensorStates[i] = 0;
+            }
         }
     }
 }
