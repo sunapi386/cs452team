@@ -27,6 +27,7 @@
 #define VT_WHITE                 (VT_CSI "37m")
 
 #define VT_CARRIAGE_RETURN      0x0d
+#define VT_BACKSPACE            0x08
 
 // Display positions
 // refer to gui_track{A,B}.txt for layouts

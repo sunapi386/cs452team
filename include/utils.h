@@ -62,6 +62,7 @@ static inline unsigned int slen(String *s) {
 void scopy(String *dst, const char *src);
 void scopystr(String *dst, String *src);
 void sputc(String *s, const char c);
+char spop(String *s);
 void sputstr(String *s, const char *str);
 void sconcat(String *dst, String *src);
 void sputuint(String *s, int num, unsigned short base);

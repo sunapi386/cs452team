@@ -777,8 +777,14 @@ void parserTask() {
         sinit(&input);
         while(1) { // read string
             char ch = Getc(COM2);
+            if(ch == VT_BACKSPACE) {
+                spop(&input);
+                continue;
+            }
             sputc(&input, ch);
-            if(ch == VT_CARRIAGE_RETURN) break;
+            if(ch == VT_CARRIAGE_RETURN) {
+                break;
+            }
         }
         // parse string
         for(unsigned i = 0; i < input.len && run; i++) {

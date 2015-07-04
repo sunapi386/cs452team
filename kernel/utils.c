@@ -160,6 +160,13 @@ void scopystr(String *dst, String *src) {
     strncpy(dst->buf, src->buf, n);
 }
 
+char spop(String *s) {
+    if(slen(s) == 0) return '\0';
+    char last = s->buf[s->len--];
+    s->buf[s->len] = '\0';
+    return last;
+}
+
 void sputc(String *s, const char c) {
     if(s->len >= STR_MAX_LEN) {
         debug("sputc overflow: 1234567\"%s\"7654321 while inserting '%c' %u==%u",
