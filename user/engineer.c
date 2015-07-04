@@ -6,6 +6,8 @@
 #include <user/train.h> // trainSetSpeed
 #include <user/sensor.h> // sizeof(MessageToEngineer)
 #include <user/nameserver.h>
+#include <user/track_data.h>
+#include <user/turnout.h> // turnoutIsCurved
 
 #define ALPHA           0.85
 #define NUM_SENSORS     (5 * 16)
@@ -13,6 +15,7 @@
 static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
 static int pairs[NUM_SENSORS][NUM_SENSORS];
+static track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
 
 // Courier: sensorServer -> engineer
 static void engineerCourier() {
@@ -25,13 +28,58 @@ static void engineerCourier() {
 
     for (;;) {
         Send(sensor, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
+        // printf("Send wrote a engineerReq: t %d s %d\n\r", engineerReq.time, engineerReq.sensor);
         Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
     }
 }
 
 // function that looks up the distance between any two landmarks
 // returns a distance in mm.
-// int distanceBetween(Landmark a, Landmark b);
+    // from b1 to d14, is consequtive
+int distanceBetween(SensorUpdate from, SensorUpdate to) {
+    if(from.sensor == to.sensor) return 0;
+    return 100;
+    //     // int group = sensor_update.sensor >> 8;
+    //     // int offset = sensor_update.sensor & 0xff;
+    //     // int index = 16 * group + offset - 1;
+
+    // int from_index = 16 * (from.sensor >> 8) + (from.sensor & 0xff) - 1;
+    // int to_index = 16 * (to.sensor >> 8) + (to.sensor & 0xff) - 1;
+    // int total_distance = 0;
+    // printf(COM2, "from_index %d, to_index %d\r\n", from_index, to_index);
+
+    // int i;
+    // track_node *next_node = &g_track[from_index];
+    // for(i = 0; i < TRACK_MAX; i++) {
+    //     printf(COM2, "visiting %s\r\n", next_node->name);
+    //     if(next_node->type == NODE_BRANCH) {
+    //         total_distance += next_node->edge[turnoutIsCurved(next_node->num)].dist;
+    //         next_node = next_node->edge[turnoutIsCurved(next_node->num)].dest;
+    //     }
+    //     else if(next_node->type == NODE_SENSOR ||
+    //             next_node->type == NODE_MERGE) {
+    //         total_distance += next_node->edge[DIR_AHEAD].dist;
+    //         next_node = next_node->edge[DIR_AHEAD].dest;
+    //     }
+    //     else {
+    //         printf(COM2, "node type is bad.\n\r");
+    //         break;
+    //     }
+
+    //     // printf(COM2, "node_1_offset %d, node_2_offset %d\r\n",
+    //         // (next_node - &g_track[0]), to_index);
+
+    //     if((next_node - &g_track[0]) == to_index) {
+    //     // if(strcmp(next_node->name, g_track[to_index].name)) {
+    //         printf(COM2, "distanceBetween: done.\n\r");
+    //         break;
+    //     }
+    // }
+    // if(i == TRACK_MAX) {
+    //     printf(COM2, "distanceBetween: something went wrong: %d.\n\r", i);
+    // }
+    // return total_distance;
+}
 
 // function that looks up the next landmark, using direction_is_forward
 // returns a landmark
@@ -42,18 +90,17 @@ static bool direction_is_forward = true;
 static void engineerTask() {
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
     printf(COM2, "debug: engineerTask started\r\n");
-
+    trainSetSpeed(active_train, desired_speed);
     // at this point the train is up-to-speed
     int tid;
-    int last_index = -1;
+    SensorUpdate last_update = {0,0};
+    SensorUpdate sensor_update = {0,0};
     for(;;) {
-        SensorUpdate sensor_update;
         int len = Receive(&tid, &sensor_update, sizeof(SensorUpdate));
-        // printf(COM2, "debug: Receive\r\n");
         if(len != sizeof(SensorUpdate)) {
+            printf(COM2, "Warning engineer Received garbage\r\n");
             continue;
         }
-        //printf(COM2, "debug: len is  %d\r\n", len);
 
         // print out the direction of travel
 
@@ -69,14 +116,20 @@ static void engineerTask() {
 
         Reply(tid, 0, 0);
 
+        int time_since_last_sensor = sensor_update.time - last_update.time;
         // i. the real-time location of the train in form of landmark
         // for now define landmark as only sensor, then location is:
-        // estimated_distance_travelled_from_last_sensor =
-        // (current_velocity * time_since_last_sensor)
+
+        int distance_between_previous_two_sensors = distanceBetween(sensor_update, last_update);
+        int current_velocity = distance_between_previous_two_sensors / time_since_last_sensor;
+        int est_dist_since_last_sensor = (current_velocity * time_since_last_sensor);
+
+        printf(COM2, "distance_between_previous_two_sensors %d current_velocity %d est_dist_since_last_sensor %d\n\r",
+            distance_between_previous_two_sensors,
+            current_velocity,
+            est_dist_since_last_sensor);
         //
-        // time_since_last_sensor = Time() - time_last_sensor_triggered
         //
-        // current_velocity = distance_between_previous_two_sensors / time_between_last_sensor
         // for amusement, display:
         // average_velocity = length_of_track_circle / time_between_same_sensor
         // current_deviation_from_avg_v = abs(current_velocity - average_velocity)
@@ -96,6 +149,8 @@ static void engineerTask() {
 
         // last_index = index;
         // printf(COM2, "debug: done loop\r\n");
+        last_update.time = sensor_update.time;
+        last_update.sensor = sensor_update.sensor;
     }
 
 }
@@ -111,16 +166,25 @@ void initEngineer() {
     }
     direction_is_forward = true;
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
-    printf(COM2, "debug: assert\r\n");
     assert(engineerTaskId >= 0);
 }
 
 void engineerPleaseManThisTrain(int train_number, int desired_speed) {
-    printf(COM2, "debug: engineerPleaseManThisTrain\r\n");
     active_train = train_number;
     desired_speed = desired_speed;
 }
 
 void engineerParserGotReverseCommand() {
     direction_is_forward = ! direction_is_forward;
+}
+
+void engineerLoadTrackStructure(char which_track) {
+    // draw track
+    drawTrackLayoutGraph(which_track);
+    if(which_track == 'a') {
+        init_tracka(g_track);
+    }
+    else {
+        init_trackb(g_track);
+    }
 }

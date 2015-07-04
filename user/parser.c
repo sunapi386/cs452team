@@ -29,6 +29,7 @@ static char *help_message =
 "g                                  | Go again at last speed\r\n"
 "0                                  | set last train speed to 0\r\n"
 "c tr_num speed char num loops      | Calibration: at speed, delay, loop.\r\n"
+"k track_A_or_B_char                | tracK A or B.\r\n"
 "------------------ Misc. commands\r\n"
 "q                                  | Quit\r\n"
 "o                                  | redraw turnOuts\r\n"
@@ -97,6 +98,9 @@ typedef struct Parser {
         C_space_5,
         C_loops,
         Zero,       // 0 set last train speed 0
+        K,          // k A or k B (load track data)
+        K_space,
+        K_which_track,
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -134,7 +138,9 @@ typedef struct Parser {
             int sensor_number;
             int num_loops;
         } calibration;
-
+        struct Track {
+            char which_track;
+        } track;
     } data;
 
 } Parser;
@@ -183,12 +189,31 @@ static bool parse(Parser *p, char c) {
                     case 'g': p->state = G; break;
                     case '0': p->state = Zero; break;
                     case 'c': p->state = C; break;
+                    case 'k': p->state = K; break;
                     case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
                 }
                 break;
             }
-
+            // ----------- k A or B (load track data) --- //
+            case K: {
+                REQUIRE(' ', K_space);
+                break;
+            }
+            case K_space: {
+                if('a' <= c && c <= 'b') {
+                    p->data.track.which_track = c;
+                    p->state = K_which_track;
+                }
+                else {
+                    p->state = Error;
+                }
+                break;
+            }
+            case K_which_track: {
+                p->state = Error;
+                break;
+            }
             // ----------- c tr_num speed grp_char snsr_num (calibration) ----//
             case C: {
                 REQUIRE(' ', C_space_1);
@@ -221,7 +246,7 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case C_space_3: {
-                 if('a' <= c && c <= 'e') {
+                if('a' <= c && c <= 'e') {
                     p->data.calibration.sensor_group = c;
                     p->state = C_sensor_group;
                 }
@@ -644,8 +669,8 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case P: {
-                sputstr(&disp_msg, "Drawing track!\r\n");
-                drawTrackLayoutGraph(A);
+                sputstr(&disp_msg, "Drawing track A!\r\n");
+                drawTrackLayoutGraph('a');
                 break;
             }
             case C: {
@@ -675,7 +700,8 @@ static bool parse(Parser *p, char c) {
                     sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
                 }
                 break;
-            }case G: {
+            }
+            case G: {
                 sputstr(&disp_msg, "Going again at last speed!\r\n");
                 int train_number = p->data.speed.train_number;
                 int train_speed = p->data.speed.train_speed;
@@ -709,6 +735,11 @@ static bool parse(Parser *p, char c) {
             }
             case HELP: {
                 sputstr(&disp_msg, help_message);
+                break;
+            }
+            case K_which_track: {
+                char which_track = p->data.track.which_track;
+                engineerLoadTrackStructure(which_track);
                 break;
             }
             case C_loops: {

@@ -46,7 +46,6 @@ void initSensor();
 void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2);
 // e.g. sensorHalt(42, 'a', 3);
 void sensorHalt(int train_number, char sensor_group, int sensor_number);
-typedef enum {A, B, None} Track;
-void drawTrackLayoutGraph(Track which_track);
+void drawTrackLayoutGraph(char which_track);
 
 #endif

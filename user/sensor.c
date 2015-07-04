@@ -167,13 +167,13 @@ void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2) {
     time_sensor_pair.sensor2_offset = sensor2->offset;
 }
 
-void drawTrackLayoutGraph(Track which_track) {
+void drawTrackLayoutGraph(char which_track) {
     String s;
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
     vt_pos(&s, VT_TRACK_GRAPH_ROW, VT_TRACK_GRAPH_COL);
     sputstr(&s, VT_RESET);
-    sputstr(&s, which_track == A ? trackA : trackB);
+    sputstr(&s, which_track == 'a' ? trackA : trackB);
     sputstr(&s, VT_RESET);
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
@@ -214,7 +214,7 @@ static void clearScreen()
 
 void sensorCourier()
 {
-    Putc(COM1, SENSOR_QUERY);
+    Putc(COM1, SENSOR_RESET);
 
     int pid = MyParentTid();
     SensorRequest req;
@@ -222,7 +222,6 @@ void sensorCourier()
 
     clearScreen();
     initDrawSensorArea();
-    drawTrackLayoutGraph(A);
 
 
     // initialize sensor states
