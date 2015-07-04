@@ -228,26 +228,6 @@ void pushSensorData(SensorMessage *message, IBuffer *sensorBuf, IBuffer *timeBuf
     }
 }
 
-// Courier: sensorServer -> engineer
-void engineerCourier()
-{
-    int pid = MyParentTid();
-    int eid = WhoIs("engineer");
-
-    SensorRequest sensorReq;  // courier <-> sensorServer
-    sensorReq.type = MESSAGE_ENGINEER_COURIER;
-    SensorUpdate engineerReq; // courier <-> engineer
-
-    for (;;)
-    {
-        // sensor server replies with a message with populated fields
-        Send(pid, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
-
-        // send it to engineer
-        Send(eid, &engineerReq, sizeof(engineerReq), 0, 0);
-    }
-}
-
 static void clearScreen()
 {
     String s;
@@ -319,6 +299,7 @@ void sensorCourier()
 
 void sensorServer()
 {
+    RegisterAs("sensorServer");
     int tid = 0;
     int engieCourierTid = 0;
     SensorRequest req;

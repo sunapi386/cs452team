@@ -20,20 +20,21 @@
 
 static char *help_message =
 "------------------ Trains commands\r\n"
-"tr train_num speed                 | set train speed\r\n"
-"rv train_num                       | reverse train\r\n"
-"sw train_num direction             | switch a turnout\r\n"
-"e train_num speed                  | create engineer for train and give speed\r\n"
-"h train_num group_char sensor_num  | halts on sensor \r\n"
-"m s1_grp s1_num s2_grp s2_num      | timing sensor1 to sensor2 \r\n"
-"g                                  | go again at last speed\r\n"
+"tr train_num speed                 | set TRain speed\r\n"
+"rv train_num                       | ReVerse train\r\n"
+"sw train_num direction             | SWitch a turnout\r\n"
+"e train_num speed                  | create Engineer for train and give speed\r\n"
+"h train_num group_char sensor_num  | Halts on sensor \r\n"
+"m s1_grp s1_num s2_grp s2_num      | tiMing sensor1 to sensor2 \r\n"
+"g                                  | Go again at last speed\r\n"
 "0                                  | set last train speed to 0\r\n"
+"c tr_num speed char num loops      | Calibration: at speed, delay, loop.\r\n"
 "------------------ Misc. commands\r\n"
-"q                                  | quit\r\n"
-"o                                  | redraw turnouts\r\n"
-"p                                  | redraw track\r\n"
-"d                                  | debug tasks\r\n"
-"?                                  | prints this help message\r\n";
+"q                                  | Quit\r\n"
+"o                                  | redraw turnOuts\r\n"
+"p                                  | Print track\r\n"
+"d                                  | Debug tasks\r\n"
+"?                                  | help?\r\n";
 
 
 typedef struct Parser {
@@ -84,6 +85,17 @@ typedef struct Parser {
         M_space_4,
         M_s2_n,
         G,          // g go again at last speed
+        C,          // c tr_num speed grp_char snsr_num (calibration)
+        C_space_1,
+        C_train_number,
+        C_space_2,
+        C_train_speed,
+        C_space_3,
+        C_sensor_group,
+        C_space_4,
+        C_sensor_number,
+        C_space_5,
+        C_loops,
         Zero,       // 0 set last train speed 0
     } state;
 
@@ -115,6 +127,14 @@ typedef struct Parser {
             char sensor2_group;
             int sensor2_offset;
         } sensor_time;
+        struct Calibration {
+            int train_number;
+            int train_speed;
+            char sensor_group;
+            int sensor_number;
+            int num_loops;
+        } calibration;
+
     } data;
 
 } Parser;
@@ -162,12 +182,84 @@ static bool parse(Parser *p, char c) {
                     case 'm': p->state = M; break;
                     case 'g': p->state = G; break;
                     case '0': p->state = Zero; break;
+                    case 'c': p->state = C; break;
                     case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
                 }
                 break;
             }
 
+            // ----------- c tr_num speed grp_char snsr_num (calibration) ----//
+            case C: {
+                REQUIRE(' ', C_space_1);
+                break;
+            }
+            case C_space_1: {
+                p->data.calibration.train_number = 0;
+                p->state =  append_number(c, &(p->data.calibration.train_number)) ?
+                            C_train_number :
+                            Error;
+                break;
+            }
+            case C_train_number: {
+                if(! append_number(c, &(p->data.calibration.train_number))) {
+                    REQUIRE(' ', C_space_2);
+                }
+                break;
+            }
+            case C_space_2: {
+                p->data.calibration.train_speed = 0;
+                p->state =  append_number(c, &(p->data.calibration.train_speed)) ?
+                            C_train_speed :
+                            Error;
+                break;
+            }
+            case C_train_speed: {
+                if(! append_number(c, &(p->data.calibration.train_speed))) {
+                    REQUIRE(' ', C_space_3);
+                }
+                break;
+            }
+            case C_space_3: {
+                 if('a' <= c && c <= 'e') {
+                    p->data.calibration.sensor_group = c;
+                    p->state = C_sensor_group;
+                }
+                else {
+                    p->state = Error;
+                }
+                break;
+            }
+            case C_sensor_group: {
+                REQUIRE(' ', C_space_4);
+                break;
+            }
+            case C_space_4: {
+                p->data.calibration.sensor_number = 0;
+                p->state =  append_number(c, &(p->data.calibration.sensor_number)) ?
+                            C_sensor_number :
+                            Error;
+                break;
+            }
+            case C_sensor_number: {
+                if(! append_number(c, &(p->data.calibration.sensor_number))) {
+                    REQUIRE(' ', C_space_5);
+                }
+                break;
+            }
+            case C_space_5: {
+                p->data.calibration.num_loops = 0;
+                p->state =  append_number(c, &(p->data.calibration.num_loops)) ?
+                            C_loops :
+                            Error;
+                break;
+            }
+            case C_loops: {
+                if(! append_number(c, &(p->data.calibration.num_loops))) {
+                    p->state = Error;
+                }
+                break;
+            }
             // ----------- 0 set last speed 0 ------//
             case Zero: {
                 p->state = Error;
@@ -420,7 +512,6 @@ static bool parse(Parser *p, char c) {
                 }
                 break;
             }
-
             // ---------- print task ---- //
             case DB_TASK: {
                 p->state = Error;
@@ -554,6 +645,15 @@ static bool parse(Parser *p, char c) {
                 drawTrackLayoutGraph(A);
                 break;
             }
+            case C: {
+                sputstr(&disp_msg, "Running calibration! Warning: parser stops working.\r\n");
+                for(int i = 0; i < 5; i++) {
+                    printf(COM2, "calibration loop: %d\r\n", i);
+                    Delay(500); // 500 ticks * 10 ms per tick = 5 seconds
+
+                }
+                break;
+            }
             case O: {
                 sputstr(&disp_msg, "Drawing turnouts!\r\n");
                 printResetTurnouts();
@@ -588,13 +688,14 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.engineer.train_number;
                 int train_speed = p->data.engineer.train_speed;
                 if((0 <= train_number && train_number <= 80) &&
-                    (0 <= train_speed && train_speed <= 14)){
+                    (0 <= train_speed && train_speed <= 14)) {
                     sputstr(&disp_msg, "Create engineer for ");
                     sputint(&disp_msg, train_number, 10);
                     sputstr(&disp_msg, " with speed \r\n");
                     sputint(&disp_msg, train_speed, 10);
                     sputstr(&disp_msg, "\r\n");
                     engineerPleaseManThisTrain(train_number, train_speed);
+                    initEngineer();
                 }
                 else {
                     sputstr(&disp_msg, "Error bad train_number ");
@@ -605,6 +706,40 @@ static bool parse(Parser *p, char c) {
             }
             case HELP: {
                 sputstr(&disp_msg, help_message);
+                break;
+            }
+            case C_loops: {
+                int train_number = p->data.calibration.train_number;
+                int train_speed = p->data.calibration.train_speed;
+                char sensor_group = p->data.calibration.sensor_group;
+                int sensor_number = p->data.calibration.sensor_number;
+                int num_loops = p->data.calibration.num_loops;
+
+                if( (0 <= train_number && train_number <= 80) &&
+                    (0 <= train_speed && train_speed <= 14)   &&
+                    ('a' <= sensor_group && sensor_group <= 'e') &&
+                    (1 <= sensor_number && sensor_number <= 16)  &&
+                    (1 <= num_loops && num_loops <= 20)) {
+
+                    sensorHalt(train_number, sensor_group, sensor_number);
+                    for(int i = 0; i < num_loops; i++) {
+                        trainSetSpeed(train_number, train_speed);
+                        Delay(2000); // estimate 20 seconds for a run
+                    }
+                }
+                else {
+                    sputstr(&disp_msg, "Bad calibration command: ");
+                    sputint(&disp_msg, train_number, 10);
+                    sputstr(&disp_msg, " ");
+                    sputint(&disp_msg, train_speed, 10);
+                    sputstr(&disp_msg, " ");
+                    sputc(&disp_msg, sensor_group);
+                    sputstr(&disp_msg, " ");
+                    sputint(&disp_msg, sensor_number, 10);
+                    sputstr(&disp_msg, " ");
+                    sputint(&disp_msg, num_loops, 10);
+                    sputstr(&disp_msg, "\r\n");
+                }
                 break;
             }
             default: {

@@ -35,7 +35,7 @@ void bootstrapTask() {
     initParser();
     initSensor();
 
-    initEngineer();
+    // now created in parser //initEngineer();
     // Create idle task
     Create(PRIORITY_IDLE, idleProfiler);
 

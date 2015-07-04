@@ -154,8 +154,6 @@ static void turnoutTask() {
     controller just replies the turnoutTask,
 */
 void turnoutSet(int turnout_number, char direction) {
-    debug("direction %c", direction);
-
     trainSetSwitch(turnout_number, direction); // only use in turnout.c
     _updateTurnoutDisplay(turnout_number, direction);
 

@@ -5,6 +5,7 @@
 #include <utils.h> // printf
 #include <user/train.h> // trainSetSpeed
 #include <user/sensor.h> // sizeof(MessageToEngineer)
+#include <user/nameserver.h>
 
 #define ALPHA           0.85
 #define NUM_SENSORS     (5 * 16)
@@ -13,33 +14,37 @@ static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
 static int pairs[NUM_SENSORS][NUM_SENSORS];
 
-static void engineerTask() {
-    // Goto DESIRED_SPEED
-    assert(active_train >= 0);
-    trainSetSpeed(active_train, desired_speed);
+// Courier: sensorServer -> engineer
+static void engineerCourier() {
+    int engineer = MyParentTid();
+    int sensor = WhoIs("sensorServer");
 
-    { // to jumpstart the engineer and unblock courier
-        unsigned int buffer[16];
-        int tid;
-        for(;;) {
-            Receive(&tid, &buffer, 16);
-            assert(tid > 0);
-            if(*buffer == 0xdeadbeef) {
-                break; // throws away messages from courier
-            }
-        }
-        for(int num_updates = 0; num_updates < 5; num_updates++) {
-            int _;
-            Receive(&_, 0, 0);
-        }
+    SensorRequest sensorReq;  // courier <-> sensorServer
+    sensorReq.type = MESSAGE_ENGINEER_COURIER;
+    SensorUpdate engineerReq; // courier <-> engineer
+
+    for (;;) {
+        // send it to engineer
+        Send(sensor, &engineerReq, sizeof(engineerReq), 0, 0);
+        // sensor server replies with a message with populated fields
+        Send(engineer, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
     }
+}
+
+
+static void engineerTask() {
+    Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
 
     // at this point the train is up-to-speed
     int tid;
     int last_index = -1;
     for(;;) {
         MessageToEngineer sensor_update;
-        Receive(&tid, &sensor_update, sizeof(MessageToEngineer));
+        int len = Receive(&tid, &sensor_update, sizeof(MessageToEngineer));
+        if(len != sizeof(MessageToEngineer)) {
+            printf(COM2, "engineer Receive weird stuff\r\n");
+            continue;
+        }
         int group = sensor_update.sensor & 0xff00;
         int offset = sensor_update.sensor & 0xff;
         int index = 16 * group + offset - 1;
@@ -79,9 +84,6 @@ void initEngineer() {
 }
 
 void engineerPleaseManThisTrain(int train_number, int desired_speed) {
-    assert(engineerTaskId >= 0);
-    int start_value = 0xdeadbeef;
-    Send(engineerTaskId, &start_value, sizeof(int), 0, 0);
     active_train = train_number;
     desired_speed = desired_speed;
 }
