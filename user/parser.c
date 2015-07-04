@@ -26,6 +26,8 @@ static char *help_message =
 "e train_num speed                  | create engineer for train and give speed\r\n"
 "h train_num group_char sensor_num  | halts on sensor \r\n"
 "m s1_grp s1_num s2_grp s2_num      | timing sensor1 to sensor2 \r\n"
+"g                                  | go again at last speed\r\n"
+"0                                  | set last train speed to 0\r\n"
 "------------------ Misc. commands\r\n"
 "q                                  | quit\r\n"
 "o                                  | redraw turnouts\r\n"
@@ -81,6 +83,8 @@ typedef struct Parser {
         M_s2_g,
         M_space_4,
         M_s2_n,
+        G,          // g go again at last speed
+        Zero,       // 0 set last train speed 0
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -156,9 +160,22 @@ static bool parse(Parser *p, char c) {
                     case 'o': p->state = O; break;
                     case 'e': p->state = E; break;
                     case 'm': p->state = M; break;
+                    case 'g': p->state = G; break;
+                    case '0': p->state = Zero; break;
                     case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
                 }
+                break;
+            }
+
+            // ----------- 0 set last speed 0 ------//
+            case Zero: {
+                p->state = Error;
+                break;
+            }
+            // ----------- g go again at last speed ------//
+            case G: {
+                p->state = Error;
                 break;
             }
             // ----------- h train_number sensor_group sensor_number ------- //
@@ -540,6 +557,31 @@ static bool parse(Parser *p, char c) {
             case O: {
                 sputstr(&disp_msg, "Drawing turnouts!\r\n");
                 printResetTurnouts();
+                break;
+            }
+            case Zero: {
+                sputstr(&disp_msg, "Setting last train speed 0!\r\n");
+                int train_number = p->data.speed.train_number;
+                int train_speed = p->data.speed.train_speed;
+                if(0 <= train_number && train_number <= 80) {
+                    trainSetSpeed(train_number, 0);
+                     if( ! (0 <= train_speed  && train_speed  <= 14) ) {
+                        sputstr(&disp_msg,"   Warning last train speed.\r\n");
+                     }
+                } else {
+                    sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
+                }
+                break;
+            }case G: {
+                sputstr(&disp_msg, "Going again at last speed!\r\n");
+                int train_number = p->data.speed.train_number;
+                int train_speed = p->data.speed.train_speed;
+                if((0 <= train_number && train_number <= 80) &&
+                   (0 <= train_speed  && train_speed  <= 14)) {
+                    trainSetSpeed(train_number, train_speed);
+                } else {
+                    sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
+                }
                 break;
             }
             case E_train_speed: {
