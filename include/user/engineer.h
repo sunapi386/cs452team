@@ -23,5 +23,6 @@ typedef struct Enstruction {
 
 void initEngineer();
 void engineerPleaseManThisTrain(); // returns id of engineer task
+void engineerParserGotReverseCommand();
 
 #endif

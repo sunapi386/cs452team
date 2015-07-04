@@ -24,14 +24,13 @@ static void engineerCourier() {
     SensorUpdate engineerReq; // courier <-> engineer
 
     for (;;) {
-        // send it to engineer
-        Send(sensor, &engineerReq, sizeof(engineerReq), 0, 0);
-        // sensor server replies with a message with populated fields
-        Send(engineer, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
+        Send(sensor, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
+        Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
     }
 }
 
 
+static bool direction_is_forward = true;
 static void engineerTask() {
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
 
@@ -81,9 +80,14 @@ void initEngineer() {
     }
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
     assert(engineerTaskId >= 0);
+    direction_is_forward = true;
 }
 
 void engineerPleaseManThisTrain(int train_number, int desired_speed) {
     active_train = train_number;
     desired_speed = desired_speed;
+}
+
+void engineerParserGotReverseCommand() {
+    direction_is_forward = ! direction_is_forward;
 }

@@ -528,7 +528,10 @@ static bool parse(Parser *p, char c) {
         sputc(&disp_msg, c);
 
     } // if printable
-
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
     else if(c == VT_CARRIAGE_RETURN) { // user pressed return (enter)
         sputstr(&disp_msg, VT_RESET);
         sputstr(&disp_msg, "  | ");
@@ -611,7 +614,7 @@ static bool parse(Parser *p, char c) {
                 else {
                     sputstr(&disp_msg, "RV: bad train_number\r\n");
                 }
-
+                engineerParserGotReverseCommand();
                 break;
             }
             case SW_turnout_dir: {
