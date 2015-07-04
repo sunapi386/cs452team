@@ -6,6 +6,7 @@
 #include <debug.h> // assert
 #include <user/train.h> // halting
 #include <user/trackserver.h>
+#include <user/nameserver.h>
 
 #define NUM_SENSORS         5
 #define SENSOR_RESET        192
@@ -112,7 +113,29 @@ static void updateSensoryDisplay() {
     PutString(COM2, &s);
 }
 
-#define TIMER4_VAL      ((volatile unsigned int *) 0x80810060)
+static void sensorCourierTask() {
+    int parent = MyParentTid();
+    int engineerTask = WhoIs("engineer");
+    assert(engineerTask >= 0);
+    struct sensorAndTimestamp;
+    int sensor;
+    for(;;) {
+        Send(parent, 0, 0, &sensor, sizeof(int));
+        Send(engineerTask, &sensor, sizeof(int), 0, 0);
+    }
+}
+
+typedef struct SensorAndTimestamp {
+    int sensor;
+    int time;
+} SensorAndTimestamp;
+
+static void notifyEngineers(const char group, const char offset, const int time) {
+    int sensor = (group << 8) & offset;
+    SensorAndTimestamp st = {sensor, time};
+    (void)st;
+}
+
 
 static inline void handleChar(char c, int reply_index) {
     char offset = ((reply_index % 2 == 0) ? 0 : 8);
@@ -133,16 +156,17 @@ static inline void handleChar(char c, int reply_index) {
             // if sensor1 was hit, mark the start_time
             if(time_sensor_pair.sensor1_group == group_number &&
                time_sensor_pair.sensor1_offset == group_offset) {
-                time_sensor_pair.start_time = *TIMER4_VAL;
+                debug("sensor1 triggered on %c%d", group_number, group_offset);
+                time_sensor_pair.start_time = Time();
             }
             // if sensor2 was hit, calculate difference from start_time
             if(time_sensor_pair.sensor2_group == group_number &&
                time_sensor_pair.sensor2_offset == group_offset) {
-                int time_diff = *TIMER4_VAL - time_sensor_pair.start_time;
-                printf(COM2, "From sensor %c%d to sensor %c%d took %d ticks\r\n",
-                    time_sensor_pair.sensor1_group,
+                int time_diff = Time() - time_sensor_pair.start_time;
+                printf(COM2, "sensor2 %c%d to sensor %c%d took %d ticks\r\n",
+                    time_sensor_pair.sensor1_group + 'A',
                     time_sensor_pair.sensor1_offset,
-                    time_sensor_pair.sensor2_group,
+                    time_sensor_pair.sensor2_group + 'A',
                     time_sensor_pair.sensor2_offset,
                     time_diff);
             }

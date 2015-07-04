@@ -4,148 +4,84 @@
 #include <user/syscall.h>
 #include <utils.h> // printf
 #include <user/train.h> // trainSetSpeed
+#include <user/sensor.h> // sizeof(MessageToEngineer)
 
-#define ENSTRUCTION_BUFFER_SIZE 5
+#define ALPHA           0.85
+#define NUM_SENSORS     (5 * 16)
 
-// static void controllerSimulatorTask() {
-//     int ret = RegisterAs("controller_simulator");
-//     assert(ret == 0);
-//     while(1) {
-//         ret = Receive();
-//         assert(ret ==  sizeof(Enstruction));
-//     }
-// }
-
-// Clockserver interrupt frequency: 10 ms per tick.
-// In train.c, reverseNicely() uses speeds[train_number] * 200 to calculate how
-// long to wait for a transition.
-// i.e. speed 14 means: 14 * 200 ticks = 2800 ticks delay to stop (280 ms),
-// TODO: is 280ms delay correct? why does it seem like we delay for 3 seconds
-// Assuming linear accleration and deceleration out:
-//       2800 ticks / 14 transition intervals = 200 ticks per transition (20ms)
-// Therefore, we fill accel and decel with 200.
-// TODO: non-linear accel/decel means the estimates need calibration.
-
-// Estimated velocity of a train in um/tick.
-static int velocity[15] = {0,100,200,400,600,800,1000,1200,1600,2000,2400,3000,3600,4200,5000};
-// Estimated transition time from one speed to the one above, in ticks.
-static int accel[14] = {200,200,200,200,200,200,200,200,200,200,200,200,200,200};
-// Estimated transition time into a speed from the one above, in ticks.
-static int decel[14] = {200,200,200,200,200,200,200,200,200,200,200,200,200,200};
-// Pre-computed transition table
-static int speed_change[15][15];
-
-static int active_train;
-static void precompute() {
-    for(int to = 0; to < 15; to++) {
-        speed_change[to][to] = 0;
-        for(int from = to - 1; from >= 0; from--) {
-            speed_change[from][to] = speed_change[from + 1][to] + accel[from];
-        }
-        for(int from = to + 1; from < 15; from++) {
-            speed_change[from][to] = speed_change[from - 1][to] + decel[from - 1];
-        }
-    }
-}
+static int desired_speed = -1;
+static int active_train = -1; // static for now, until controller is implemented
+static int pairs[NUM_SENSORS][NUM_SENSORS];
 
 static void engineerTask() {
-    // int controller_id = WhoIs("controller_simulator");
-    // assert(controller_id >= 0);
-    // TODO: receive the Enstruction from controller, for now just init here
+    // Goto DESIRED_SPEED
+    assert(active_train >= 0);
+    trainSetSpeed(active_train, desired_speed);
 
-    Enstruction manuvers[ENSTRUCTION_BUFFER_SIZE];
-    // for(int i = 0; i < ENSTRUCTION_BUFFER_SIZE; i++) {
-        // manuvers[i] = {.speed = 0, .time = 0 , .distance = 0};
-    // }
-    int current_enstruction = 0;
-    int current_distance = 0;
-    int current_speed = 0;
-    int current_time = Time(); // TODO: what about being blocked by receive?
-
-    for(;;) {
-        // an order is sent here by the human
-        Enstruction ordered;
+    { // to jumpstart the engineer and unblock courier
+        unsigned int buffer[16];
         int tid;
-        int len = Receive(&tid, &ordered, sizeof(Enstruction));
-        assert(len == sizeof(Enstruction));
-        Reply(tid, 0, 0);
-
-        printf(COM2, "engineer received an order: speed %d time %d distance %d",
-            ordered.speed, ordered.time, ordered.distance);
-
-        assert(0 <= current_enstruction && current_enstruction < ENSTRUCTION_BUFFER_SIZE);
-        manuvers[current_enstruction].speed = ordered.speed,
-        manuvers[current_enstruction].time = ordered.time,
-        manuvers[current_enstruction].distance = ordered.distance,
-        current_enstruction++;
-
-        printf(COM2, "engineer now has %d enstructions", current_enstruction);
-
-        // calc time required for changing to ordered speed
-        int delta_time = speed_change[current_speed][ordered.speed];
-        // calc distance required to fufil order
-        int delta_distance = delta_time * (velocity[current_speed] +
-                            velocity[ordered.speed]) / 2;
-
-        int bound_time = (ordered.time - current_time);
-        // should be possible to change to that speed before the ordered time
-        assert(delta_time <= bound_time);
-        // and that our distance to travel is no more than what is ordered
-        assert(delta_distance <= (ordered.distance - current_distance));
-
-        printf(COM2, "engineer estimates time %d and distance %d to fill order",
-            delta_time, delta_distance);
-
-        int distance_to_target = (current_distance - ordered.distance);
-        int travelled_before = velocity[current_speed] * current_time;
-        int travelled_after = velocity[ordered.speed] * ordered.time;
-        int travelled_delta = velocity[ordered.speed] * delta_time;
-
-        int expected_end_time =    (
-                            distance_to_target -
-                            travelled_before +
-                            delta_distance +
-                            travelled_after -
-                            travelled_delta
-                            )
-                        /  (velocity[ordered.speed] - velocity[current_speed]);
-
-        assert(current_time <= expected_end_time && expected_end_time <= ordered.time);
-
-        printf(COM2, "engineer expects to fufil order at %d", expected_end_time);
-
-        DelayUntil(expected_end_time);
-
-        // shuffle the enstructions buffer forward
-        for(int i = 0; i < current_enstruction - 1; i++) {
-            manuvers[i].speed = manuvers[i + 1].speed;
-            manuvers[i].time = manuvers[i + 1].time;
-            manuvers[i].distance = manuvers[i + 1].distance;
+        for(;;) {
+            Receive(&tid, &buffer, 16);
+            assert(tid > 0);
+            if(*buffer == 0xdeadbeef) {
+                break; // throws away messages from courier
+            }
         }
-        current_enstruction--;
+        for(int num_updates = 0; num_updates < 5; num_updates++) {
+            int _;
+            Receive(&_, 0, 0);
+        }
+    }
 
-        // when woken up again, change the state of the variables
-        current_time = ordered.time;
-        current_speed = ordered.speed;
-        current_distance = ordered.distance;
+    // at this point the train is up-to-speed
+    int tid;
+    int last_index = -1;
+    for(;;) {
+        MessageToEngineer sensor_update;
+        Receive(&tid, &sensor_update, sizeof(MessageToEngineer));
+        int group = sensor_update.sensor & 0xff00;
+        int offset = sensor_update.sensor & 0xff;
+        int index = 16 * group + offset - 1;
+        int new_time = sensor_update.time;
+        printf(COM2, "engineer read sensor: %c%d (%d index)at %d ticks\r\n",
+            group + 'A',
+            offset,
+            index,
+            new_time);
 
-        // set train speed
-        trainSetSpeed(active_train, current_speed);
+        if(last_index != -1) { // apply learning
+            int last_time = pairs[index][last_index];
+            int past_difference = pairs[index][last_index];
+            int new_difference = new_time - last_time;
+            pairs[index][last_index] =  new_difference * ALPHA +
+                                        past_difference * (1 - ALPHA);
+        }
+
+        printf(COM2, "new: from %d to %d is %d\r\n",
+            last_index, index, pairs[index][last_index]);
+
+        last_index = index;
     }
 
 }
 
-static int engineerTaskId;
-void initEngineer() {
-    precompute();
+static int engineerTaskId = -1;
 
-    // Create(PRIORITY_TRACK_CONTROLLER_TASK, controllerSimulatorTask);
+void initEngineer() {
+    for(int i = 0; i < NUM_SENSORS; i++) {
+        for(int j = 0; j < NUM_SENSORS; j++) {
+            pairs[i][j] = 0;
+        }
+    }
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
     assert(engineerTaskId >= 0);
 }
 
-int engineerPleaseManThisTrain(int train_number) {
+void engineerPleaseManThisTrain(int train_number, int desired_speed) {
     assert(engineerTaskId >= 0);
+    int start_value = 0xdeadbeef;
+    Send(engineerTaskId, &start_value, sizeof(int), 0, 0);
     active_train = train_number;
-    return engineerTaskId;
+    desired_speed = desired_speed;
 }

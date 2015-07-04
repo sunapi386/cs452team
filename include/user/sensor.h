@@ -32,6 +32,15 @@ a certain sensor.
 */
 struct SensorData; // defined in trackserver.h
 
+// changed back to int sensor;
+// note sending index_to_train_data_offset has no way to solve back group & offset
+// index = 16 * group + offset - 1;
+// to get back group and offset: index + 1 = 16 * group + offset, no way to solve
+typedef struct MessageToEngineer {
+    int sensor; // (group << 8) & offset
+    int time;
+} MessageToEngineer;
+
 void initSensor();
 // displays the time taken to tigger sensor1 then sensor2
 void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2);

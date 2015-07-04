@@ -23,7 +23,7 @@ static char *help_message =
 "tr train_num speed                 | set train speed\r\n"
 "rv train_num                       | reverse train\r\n"
 "sw train_num direction             | switch a turnout\r\n"
-"e train_num                        | create engineer for train\r\n"
+"e train_num speed                  | create engineer for train and give speed\r\n"
 "h train_num group_char sensor_num  | halts on sensor \r\n"
 "m s1_grp s1_num s2_grp s2_num      | timing sensor1 to sensor2 \r\n"
 "------------------ Misc. commands\r\n"
@@ -66,9 +66,11 @@ typedef struct Parser {
         P,          // p for printing the graph
         O,          // o for printing the turnouts
         DB_TASK,    // db
-        E,          // e train_number to spawning an engineer to train
+        E,          // e train_number train_speed an engineer to drive at speed
         E_space_1,
         E_train_number,
+        E_space_2,
+        E_train_speed,
         HELP,       // ? for printing all available commands
         M,          // m s1_grp s1_num s2_grp s2_num
         M_space_1,
@@ -101,6 +103,7 @@ typedef struct Parser {
         } sensor_halt;
         struct Engineer {
             int train_number;
+            int train_speed;
         } engineer;
         struct SensorTime {
             char sensor1_group;
@@ -379,8 +382,22 @@ static bool parse(Parser *p, char c) {
                 p->state =  append_number(c, &(p->data.engineer.train_number)) ?
                             E_train_number :
                             Error;
+                break;
             }
             case E_train_number: {
+                if(! append_number(c, &(p->data.engineer.train_number))) {
+                    REQUIRE(' ', E_space_2);
+                }
+                break;
+            }
+            case E_space_2: {
+                p->data.engineer.train_speed = 0;
+                p->state =  append_number(c, &(p->data.engineer.train_speed)) ?
+                            E_train_speed :
+                            Error;
+                break;
+            }
+            case E_train_speed: {
                 if(! append_number(c, &(p->data.engineer.train_number))) {
                     p->state = Error;
                 }
@@ -432,8 +449,8 @@ static bool parse(Parser *p, char c) {
                         "H: bad sensor2_offset, expects 1 to 16\r\n");
                 }
                 else { // looks like a valid command
-                    struct SensorData s1 = {sensor1_group, sensor1_offset};
-                    struct SensorData s2 = {sensor2_group, sensor2_offset};
+                    struct SensorData s1 = {sensor1_group - 'a', sensor1_offset};
+                    struct SensorData s2 = {sensor2_group - 'a', sensor2_offset};
                     sensorTime(&s1, &s2);
                 }
 
@@ -525,28 +542,17 @@ static bool parse(Parser *p, char c) {
                 printResetTurnouts();
                 break;
             }
-            case E_train_number: {
+            case E_train_speed: {
                 int train_number = p->data.engineer.train_number;
-                if(0 <= train_number && train_number <= 80) {
+                int train_speed = p->data.engineer.train_speed;
+                if((0 <= train_number && train_number <= 80) &&
+                    (0 <= train_speed && train_speed <= 14)){
                     sputstr(&disp_msg, "Create engineer for ");
                     sputint(&disp_msg, train_number, 10);
+                    sputstr(&disp_msg, " with speed \r\n");
+                    sputint(&disp_msg, train_speed, 10);
                     sputstr(&disp_msg, "\r\n");
-                    int engineerTaskId = engineerPleaseManThisTrain(train_number);
-
-                    // hardcoded sending to that engineer
-                    Enstruction enstruction1 = {
-                        .speed = 12,
-                        .time = Time() + 1000,
-                        .distance = 2000000,
-                    };
-                    Send(engineerTaskId, &enstruction1, sizeof(Enstruction), 0, 0);
-                    Enstruction enstruction2 = {
-                        .speed = 0,
-                        .time = Time() + 1000,
-                        .distance = 2000000,
-                    };
-                    Send(engineerTaskId, &enstruction2, sizeof(Enstruction), 0, 0);
-                    break;
+                    engineerPleaseManThisTrain(train_number, train_speed);
                 }
                 else {
                     sputstr(&disp_msg, "Error bad train_number ");
