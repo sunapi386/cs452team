@@ -127,7 +127,7 @@ int IBufferPush(IBuffer *b, int n)
     return ret;
 }
 
-char IBufferPop(IBuffer *b)
+int IBufferPop(IBuffer *b)
 {
     if (b->head != b->tail)
     {

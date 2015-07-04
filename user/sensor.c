@@ -113,30 +113,6 @@ static void updateSensoryDisplay() {
     PutString(COM2, &s);
 }
 
-static void sensorCourierTask() {
-    int parent = MyParentTid();
-    int engineerTask = WhoIs("engineer");
-    assert(engineerTask >= 0);
-    struct sensorAndTimestamp;
-    int sensor;
-    for(;;) {
-        Send(parent, 0, 0, &sensor, sizeof(int));
-        Send(engineerTask, &sensor, sizeof(int), 0, 0);
-    }
-}
-
-typedef struct SensorAndTimestamp {
-    int sensor;
-    int time;
-} SensorAndTimestamp;
-
-static void notifyEngineers(const char group, const char offset, const int time) {
-    int sensor = (group << 8) & offset;
-    SensorAndTimestamp st = {sensor, time};
-    (void)st;
-}
-
-
 static inline void handleChar(char c, int reply_index) {
     char offset = ((reply_index % 2 == 0) ? 0 : 8);
     char i, index;
@@ -156,14 +132,13 @@ static inline void handleChar(char c, int reply_index) {
             // if sensor1 was hit, mark the start_time
             if(time_sensor_pair.sensor1_group == group_number &&
                time_sensor_pair.sensor1_offset == group_offset) {
-                debug("sensor1 triggered on %c%d", group_number, group_offset);
                 time_sensor_pair.start_time = Time();
             }
             // if sensor2 was hit, calculate difference from start_time
             if(time_sensor_pair.sensor2_group == group_number &&
                time_sensor_pair.sensor2_offset == group_offset) {
                 int time_diff = Time() - time_sensor_pair.start_time;
-                printf(COM2, "sensor2 %c%d to sensor %c%d took %d ticks\r\n",
+                printf(COM2, "time between %c%d and %c%d is %d",
                     time_sensor_pair.sensor1_group + 'A',
                     time_sensor_pair.sensor1_offset,
                     time_sensor_pair.sensor2_group + 'A',
@@ -220,8 +195,9 @@ void pushSensorData(SensorMessage *message, IBuffer *sensorBuf, IBuffer *timeBuf
             int group = message->seq / 2;
             int number = index + offset;
 
+
             // encode sensor and push into buffers
-            int sensor = (group << 8) & number;
+            int sensor = (group << 8) | number;
             IBufferPush(sensorBuf, sensor);
             IBufferPush(timeBuf, time);
         }
@@ -241,7 +217,6 @@ void sensorCourier()
     Putc(COM1, SENSOR_QUERY);
 
     int pid = MyParentTid();
-    int timestamp = 0;
     SensorRequest req;
     char sensorStates[2 * NUM_SENSORS];
 
@@ -262,7 +237,7 @@ void sensorCourier()
     for (;;)
     {
         Putc(COM1, SENSOR_QUERY);
-
+        int timestamp = 0;
         for (int i = 0; i < 2 * NUM_SENSORS; i++)
         {
             char c = Getc(COM1);

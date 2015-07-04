@@ -36,7 +36,7 @@ typedef struct IBuffer {
 
 void IBufferInit(IBuffer *b, int * array, size_t size);
 int IBufferPush(IBuffer *b, int n);
-char IBufferPop(IBuffer *b);
+int IBufferPop(IBuffer *b);
 bool IBufferIsEmpty(const IBuffer *b);
 
 /*

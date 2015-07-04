@@ -22,14 +22,10 @@ static void engineerCourier() {
     SensorRequest sensorReq;  // courier <-> sensorServer
     sensorReq.type = MESSAGE_ENGINEER_COURIER;
     SensorUpdate engineerReq; // courier <-> engineer
-    debug("courier");
 
     for (;;) {
-        debug("send0");
         Send(sensor, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
-        debug("send1");
         Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
-        debug("send2");
     }
 }
 
@@ -45,36 +41,33 @@ static void engineerCourier() {
 static bool direction_is_forward = true;
 static void engineerTask() {
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
-    debug("engineerTask");
+    printf(COM2, "debug: engineerTask started\r\n");
 
     // at this point the train is up-to-speed
     int tid;
     int last_index = -1;
     for(;;) {
-        MessageToEngineer sensor_update;
-        debug("Waiting on Receive");
-        int len = Receive(&tid, &sensor_update, sizeof(MessageToEngineer));
-        debug("Receive");
-        Reply(tid, 0, 0);
-        if(len != sizeof(MessageToEngineer)) {
-            printf(COM2, "engineer Receive weird stuff\r\n");
+        SensorUpdate sensor_update;
+        int len = Receive(&tid, &sensor_update, sizeof(SensorUpdate));
+        // printf(COM2, "debug: Receive\r\n");
+        if(len != sizeof(SensorUpdate)) {
             continue;
         }
-        debug("len is  %d", len);
+        //printf(COM2, "debug: len is  %d\r\n", len);
 
         // print out the direction of travel
 
-        int group = sensor_update.sensor & 0xff00;
+        int group = sensor_update.sensor >> 8;
         int offset = sensor_update.sensor & 0xff;
         int index = 16 * group + offset - 1;
         int new_time = sensor_update.time;
-        debug("calcs");
-        // printf(COM2, "engineer read sensor: %c%d (%d index)at %d ticks\r\n",
-        // printf(COM2, "engineer read sensor: %c%d at %d ticks\r\n",
-            // (group | 0xff) + 'A',
-            // offset,
-            // index,
-            // new_time);
+        printf(COM2, "engineer read sensor: %c%d (%d index)at %d ticks\r\n",
+            group + 'A',
+            offset,
+            index,
+            new_time);
+
+        Reply(tid, 0, 0);
 
         // i. the real-time location of the train in form of landmark
         // for now define landmark as only sensor, then location is:
@@ -102,7 +95,7 @@ static void engineerTask() {
         //     last_index, index, pairs[index][last_index]);
 
         // last_index = index;
-        debug("done loop");
+        // printf(COM2, "debug: done loop\r\n");
     }
 
 }
@@ -110,7 +103,7 @@ static void engineerTask() {
 static int engineerTaskId = -1;
 
 void initEngineer() {
-    debug("initEngineer");
+    printf(COM2, "debug: initEngineer\r\n");
     for(int i = 0; i < NUM_SENSORS; i++) {
         for(int j = 0; j < NUM_SENSORS; j++) {
             pairs[i][j] = 0;
@@ -118,12 +111,12 @@ void initEngineer() {
     }
     direction_is_forward = true;
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
-    debug("assert");
+    printf(COM2, "debug: assert\r\n");
     assert(engineerTaskId >= 0);
 }
 
 void engineerPleaseManThisTrain(int train_number, int desired_speed) {
-    debug("engineerPleaseManThisTrain");
+    printf(COM2, "debug: engineerPleaseManThisTrain\r\n");
     active_train = train_number;
     desired_speed = desired_speed;
 }
