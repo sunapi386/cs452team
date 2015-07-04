@@ -344,6 +344,7 @@ void sensorServer()
                 break;
             }
             case MESSAGE_ENGINEER_COURIER:
+            {
                 if (IBufferIsEmpty(&sensorBuf))
                 {
                     engieCourierTid = tid;
@@ -358,6 +359,7 @@ void sensorServer()
                     Reply(tid, &su, sizeof(su));
                 }
                 break;
+            }
             default:
                 assert(0);
                 break;

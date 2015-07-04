@@ -22,36 +22,45 @@ static void engineerCourier() {
     SensorRequest sensorReq;  // courier <-> sensorServer
     sensorReq.type = MESSAGE_ENGINEER_COURIER;
     SensorUpdate engineerReq; // courier <-> engineer
+    debug("courier");
 
     for (;;) {
+        debug("send0");
         Send(sensor, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
+        debug("send1");
         Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
+        debug("send2");
     }
 }
 
 // function that looks up the distance between any two landmarks
 // returns a distance in mm.
-int distanceBetween(Landmark a, Landmark b);
+// int distanceBetween(Landmark a, Landmark b);
 
 // function that looks up the next landmark, using direction_is_forward
 // returns a landmark
-Landmark getNextLandmark(Landmark current_landmark);
+// Landmark getNextLandmark(Landmark current_landmark);
 
 
 static bool direction_is_forward = true;
 static void engineerTask() {
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
+    debug("engineerTask");
 
     // at this point the train is up-to-speed
     int tid;
     int last_index = -1;
     for(;;) {
         MessageToEngineer sensor_update;
+        debug("Waiting on Receive");
         int len = Receive(&tid, &sensor_update, sizeof(MessageToEngineer));
+        debug("Receive");
+        Reply(tid, 0, 0);
         if(len != sizeof(MessageToEngineer)) {
             printf(COM2, "engineer Receive weird stuff\r\n");
             continue;
         }
+        debug("len is  %d", len);
 
         // print out the direction of travel
 
@@ -59,11 +68,13 @@ static void engineerTask() {
         int offset = sensor_update.sensor & 0xff;
         int index = 16 * group + offset - 1;
         int new_time = sensor_update.time;
-        printf(COM2, "engineer read sensor: %c%d (%d index)at %d ticks\r\n",
-            group + 'A',
-            offset,
-            index,
-            new_time);
+        debug("calcs");
+        // printf(COM2, "engineer read sensor: %c%d (%d index)at %d ticks\r\n",
+        // printf(COM2, "engineer read sensor: %c%d at %d ticks\r\n",
+            // (group | 0xff) + 'A',
+            // offset,
+            // index,
+            // new_time);
 
         // i. the real-time location of the train in form of landmark
         // for now define landmark as only sensor, then location is:
@@ -80,18 +91,18 @@ static void engineerTask() {
         // ii. lookup the next landmark and display the estimate ETA to it
         //
 
-        if(last_index != -1) { // apply learning
-            int last_time = pairs[index][last_index];
-            int past_difference = pairs[index][last_index];
-            int new_difference = new_time - last_time;
-            pairs[index][last_index] =  new_difference * ALPHA +
-                                        past_difference * (1 - ALPHA);
-        }
+        // if(last_index >= 0) { // apply learning
+        //     int last_time = pairs[index][last_index];
+        //     int past_difference = pairs[index][last_index];
+        //     int new_difference = new_time - last_time;
+        //     pairs[index][last_index] =  new_difference * ALPHA +
+        //                                 past_difference * (1 - ALPHA);
+        // }
+        // printf(COM2, "new: from %d to %d is %d\r\n",
+        //     last_index, index, pairs[index][last_index]);
 
-        printf(COM2, "new: from %d to %d is %d\r\n",
-            last_index, index, pairs[index][last_index]);
-
-        last_index = index;
+        // last_index = index;
+        debug("done loop");
     }
 
 }
@@ -99,6 +110,7 @@ static void engineerTask() {
 static int engineerTaskId = -1;
 
 void initEngineer() {
+    debug("initEngineer");
     for(int i = 0; i < NUM_SENSORS; i++) {
         for(int j = 0; j < NUM_SENSORS; j++) {
             pairs[i][j] = 0;
@@ -106,10 +118,12 @@ void initEngineer() {
     }
     direction_is_forward = true;
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
+    debug("assert");
     assert(engineerTaskId >= 0);
 }
 
 void engineerPleaseManThisTrain(int train_number, int desired_speed) {
+    debug("engineerPleaseManThisTrain");
     active_train = train_number;
     desired_speed = desired_speed;
 }
