@@ -507,7 +507,7 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case E_train_speed: {
-                if(! append_number(c, &(p->data.engineer.train_number))) {
+                if(! append_number(c, &(p->data.engineer.train_speed))) {
                     p->state = Error;
                 }
                 break;

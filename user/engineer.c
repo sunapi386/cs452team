@@ -29,6 +29,14 @@ static void engineerCourier() {
     }
 }
 
+// function that looks up the distance between any two landmarks
+// returns a distance in mm.
+int distanceBetween(Landmark a, Landmark b);
+
+// function that looks up the next landmark, using direction_is_forward
+// returns a landmark
+Landmark getNextLandmark(Landmark current_landmark);
+
 
 static bool direction_is_forward = true;
 static void engineerTask() {
@@ -44,6 +52,9 @@ static void engineerTask() {
             printf(COM2, "engineer Receive weird stuff\r\n");
             continue;
         }
+
+        // print out the direction of travel
+
         int group = sensor_update.sensor & 0xff00;
         int offset = sensor_update.sensor & 0xff;
         int index = 16 * group + offset - 1;
@@ -53,6 +64,21 @@ static void engineerTask() {
             offset,
             index,
             new_time);
+
+        // i. the real-time location of the train in form of landmark
+        // for now define landmark as only sensor, then location is:
+        // estimated_distance_travelled_from_last_sensor =
+        // (current_velocity * time_since_last_sensor)
+        //
+        // time_since_last_sensor = Time() - time_last_sensor_triggered
+        //
+        // current_velocity = distance_between_previous_two_sensors / time_between_last_sensor
+        // for amusement, display:
+        // average_velocity = length_of_track_circle / time_between_same_sensor
+        // current_deviation_from_avg_v = abs(current_velocity - average_velocity)
+
+        // ii. lookup the next landmark and display the estimate ETA to it
+        //
 
         if(last_index != -1) { // apply learning
             int last_time = pairs[index][last_index];
@@ -78,9 +104,9 @@ void initEngineer() {
             pairs[i][j] = 0;
         }
     }
+    direction_is_forward = true;
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
     assert(engineerTaskId >= 0);
-    direction_is_forward = true;
 }
 
 void engineerPleaseManThisTrain(int train_number, int desired_speed) {
