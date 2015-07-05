@@ -97,7 +97,7 @@ static void _setTurnout(int turnout_number, char direction) {
     }
 
     // tell train controller to change direction
-    trainSetSwitch(turnout_number, direction == CURVED); // only use in turnout.c
+    trainSetSwitch(turnout_number, direction); // only use in turnout.c
 
     // draw on screen
     _updateTurnoutDisplay(turnout_number, direction);
