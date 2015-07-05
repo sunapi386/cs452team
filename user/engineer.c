@@ -24,6 +24,7 @@ static void engineerCourier() {
     SensorUpdate engineerReq; // courier <-> engineer
 
     for (;;) {
+        printf(COM2, ""); // HAX: needed to not make send below return 4 immediately
         Send(sensor, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
         Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
     }
