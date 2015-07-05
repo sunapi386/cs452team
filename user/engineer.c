@@ -9,8 +9,12 @@
 #include <user/track_data.h>
 #include <user/turnout.h> // turnoutIsCurved
 
-#define ALPHA           0.85
+#define ALPHA           85
 #define NUM_SENSORS     (5 * 16)
+
+static inline int abs(int num) {
+    return (num < 0 ? -1 * num : num);
+}
 
 static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
@@ -33,6 +37,10 @@ static void engineerCourier() {
     }
 }
 
+static inline int indexFromSensorUpdate(SensorUpdate update) {
+    return 16 * (update.sensor >> 8) + (update.sensor & 0xff) - 1;
+}
+
 // function that looks up the distance between any two landmarks
 // returns a distance in micrometre.
 int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
@@ -41,14 +49,15 @@ int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
     // int offset = sensor_update.sensor & 0xff;
     // int index = 16 * group + offset - 1;
 
-    int from_index = 16 * (from.sensor >> 8) + (from.sensor & 0xff) - 1;
-    int to_index = 16 * (to.sensor >> 8) + (to.sensor & 0xff) - 1;
+    int from_index = indexFromSensorUpdate(from);
+    int to_index = indexFromSensorUpdate(to);
     int total_distance = 0;
     // printf(COM2, ">>>>>>>>>>>>>> from %d (sensor %s), to %d (sensor %s)\r\n",
         // from_index, g_track[from_index].name, to_index, g_track[to_index].name);
 
     int i;
     track_node *next_node = &g_track[from_index];
+    // TODO: track_node *next_node = getNextLandmark(&g_track[from_index]);
     for(i = 0; i < TRACK_MAX; i++) {
         // printf(COM2, "[%s].", next_node->name);
         if(next_node->type == NODE_BRANCH) {
@@ -68,7 +77,7 @@ int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
             // printf(COM2, ".?\t");
             break;
         }
-
+        // TODO: next_node = getNextLandmark(next_node);
         if((next_node - &g_track[0]) == to_index) {
             // printf(COM2, "\r\ndistanceBetween: total_distance %d.\n\r", total_distance);
             break;
@@ -82,7 +91,19 @@ int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
 
 // function that looks up the next landmark, using direction_is_forward
 // returns a landmark
-// Landmark getNextLandmark(Landmark current_landmark);
+track_node *getNextLandmark(track_node *current_landmark) {
+    track_node *next_node = current_landmark;
+    if(next_node->type == NODE_BRANCH) {
+        next_node = next_node->edge[turnoutIsCurved(next_node->num)].dest;
+    }
+    else if(next_node->type == NODE_SENSOR || next_node->type == NODE_MERGE) {
+        next_node = next_node->edge[DIR_AHEAD].dest;
+    }
+    else {
+        assert(0);
+    }
+    return next_node;
+}
 
 
 static bool direction_is_forward = true;
@@ -94,6 +115,8 @@ static void engineerTask() {
     int tid;
     SensorUpdate last_update = {0,0};
     SensorUpdate sensor_update = {0,0};
+    track_node *current_landmark;
+
     for(;;) {
         int len = Receive(&tid, &sensor_update, sizeof(SensorUpdate));
         if(len != sizeof(SensorUpdate)) {
@@ -103,10 +126,10 @@ static void engineerTask() {
 
         // print out the direction of travel
 
-        int group = sensor_update.sensor >> 8;
-        int offset = sensor_update.sensor & 0xff;
-        int index = 16 * group + offset - 1;
-        int new_time = sensor_update.time;
+        // int group = sensor_update.sensor >> 8;
+        // int offset = sensor_update.sensor & 0xff;
+        // int index = indexFromSensorUpdate(sensor_update);
+        // int new_time = sensor_update.time;
         // printf(COM2, "engineer read %c%d (%d idx) %d ticks\r\n", group + 'A', offset, index, new_time);
 
         Reply(tid, 0, 0);
@@ -123,27 +146,35 @@ static void engineerTask() {
             current_velocity_in_um,
             um_dist_segment,
             est_dist_since_last_sensor);
-        //
-        //
+
+
         // for amusement, display:
-        // average_velocity = length_of_track_circle / time_between_same_sensor
+        // int average_velocity = length_of_track_circle / time_between_same_sensor
         // current_deviation_from_avg_v = abs(current_velocity - average_velocity)
 
         // ii. lookup the next landmark and display the estimate ETA to it
-        //
 
-        // if(last_index >= 0) { // apply learning
-        //     int last_time = pairs[index][last_index];
-        //     int past_difference = pairs[index][last_index];
-        //     int new_difference = new_time - last_time;
-        //     pairs[index][last_index] =  new_difference * ALPHA +
-        //                                 past_difference * (1 - ALPHA);
-        // }
-        // printf(COM2, "new: from %d to %d is %d\r\n",
-        //     last_index, index, pairs[index][last_index]);
 
-        // last_index = index;
-        // printf(COM2, "debug: done loop\r\n");
+        int last_index = indexFromSensorUpdate(last_update);
+        int index = indexFromSensorUpdate(sensor_update);
+        char group = (sensor_update.sensor >> 8) + 'A';
+        int offset = sensor_update.sensor & 0xff;
+        int expected_time = last_update.time + pairs[last_index][index];
+        int actual_time = sensor_update.time;
+        int error = abs(expected_time - actual_time);
+        printf(COM2, "Last: %c%d Exp: %d Act: %d Err: %d\r\n",
+            group, offset, expected_time, actual_time, error);
+
+        if(last_index >= 0) { // apply learning
+            int past_difference = pairs[last_index][index];
+            int new_difference = sensor_update.time - last_update.time;
+            pairs[last_index][index] =  (new_difference * ALPHA +
+                                        past_difference * (100 - ALPHA)) / 100;
+            printf(COM2, "time updated %d to %d \r\n",
+                past_difference, pairs[index][last_index]);
+        }
+
+        last_index = index;
         last_update.time = sensor_update.time;
         last_update.sensor = sensor_update.sensor;
     }
