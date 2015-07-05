@@ -34,9 +34,8 @@ static void engineerCourier() {
 }
 
 // function that looks up the distance between any two landmarks
-// returns a distance in mm.
-    // from b1 to d14, is consequtive
-int distanceBetween(SensorUpdate from, SensorUpdate to) {
+// returns a distance in micrometre.
+int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
     if(from.sensor == to.sensor) return 0;
     // int group = sensor_update.sensor >> 8;
     // int offset = sensor_update.sensor & 0xff;
@@ -45,44 +44,40 @@ int distanceBetween(SensorUpdate from, SensorUpdate to) {
     int from_index = 16 * (from.sensor >> 8) + (from.sensor & 0xff) - 1;
     int to_index = 16 * (to.sensor >> 8) + (to.sensor & 0xff) - 1;
     int total_distance = 0;
-    printf(COM2, ">>>>>>>>>>>>>> from %d (sensor %s), to %d (sensor %s)\r\n",
-        from_index, g_track[from_index].name, to_index, g_track[to_index].name);
+    // printf(COM2, ">>>>>>>>>>>>>> from %d (sensor %s), to %d (sensor %s)\r\n",
+        // from_index, g_track[from_index].name, to_index, g_track[to_index].name);
 
     int i;
     track_node *next_node = &g_track[from_index];
     for(i = 0; i < TRACK_MAX; i++) {
-        printf(COM2, "[%s].", next_node->name);
+        // printf(COM2, "[%s].", next_node->name);
         if(next_node->type == NODE_BRANCH) {
-            char direction = (turnoutIsCurved(next_node->num) ? 'c' : 's');
-            printf(COM2, "%d(%c,v%d)\t", next_node->num, direction, turnoutIsCurved(next_node->num));
+            // char direction = (turnoutIsCurved(next_node->num) ? 'c' : 's');
+            // printf(COM2, "%d(%c,v%d)\t", next_node->num, direction, turnoutIsCurved(next_node->num));
             total_distance += next_node->edge[turnoutIsCurved(next_node->num)].dist;
             next_node = next_node->edge[turnoutIsCurved(next_node->num)].dest;
         }
         else if(next_node->type == NODE_SENSOR ||
                 next_node->type == NODE_MERGE) {
-            printf(COM2, ".%s\t", next_node->edge[DIR_AHEAD].dest->name);
+            // printf(COM2, ".%s\t", next_node->edge[DIR_AHEAD].dest->name);
 
             total_distance += next_node->edge[DIR_AHEAD].dist;
             next_node = next_node->edge[DIR_AHEAD].dest;
         }
         else {
-            printf(COM2, ".?\t");
+            // printf(COM2, ".?\t");
             break;
         }
 
-        // printf(COM2, "node_1_offset %d, node_2_offset %d\r\n",
-            // (next_node - &g_track[0]), to_index);
-
         if((next_node - &g_track[0]) == to_index) {
-        // if(strcmp(next_node->name, g_track[to_index].name)) {
-            printf(COM2, "\r\ndistanceBetween: total_distance %d.\n\r", total_distance);
+            // printf(COM2, "\r\ndistanceBetween: total_distance %d.\n\r", total_distance);
             break;
         }
     }
     if(i == TRACK_MAX) {
-        printf(COM2, "distanceBetween: something went wrong: %d.\n\r", i);
+        printf(COM2, "umDistanceBetween: something went wrong: %d.\n\r", i);
     }
-    return total_distance;
+    return 1000 * total_distance;
 }
 
 // function that looks up the next landmark, using direction_is_forward
@@ -112,25 +107,21 @@ static void engineerTask() {
         int offset = sensor_update.sensor & 0xff;
         int index = 16 * group + offset - 1;
         int new_time = sensor_update.time;
-        printf(COM2, "engineer read sensor: %c%d (%d index)at %d ticks\r\n",
-            group + 'A',
-            offset,
-            index,
-            new_time);
+        // printf(COM2, "engineer read %c%d (%d idx) %d ticks\r\n", group + 'A', offset, index, new_time);
 
         Reply(tid, 0, 0);
 
-        int time_since_last_sensor = sensor_update.time - last_update.time;
         // i. the real-time location of the train in form of landmark
         // for now define landmark as only sensor, then location is:
 
-        int distance_between_previous_two_sensors = distanceBetween(last_update, sensor_update);
-        int current_velocity = distance_between_previous_two_sensors / time_since_last_sensor;
-        int est_dist_since_last_sensor = (current_velocity * time_since_last_sensor);
+        int time_since_last_sensor = sensor_update.time - last_update.time;
+        int um_dist_segment = umDistanceBetween(last_update, sensor_update);
+        int current_velocity_in_um = um_dist_segment / time_since_last_sensor;
+        int est_dist_since_last_sensor = (current_velocity_in_um * time_since_last_sensor);
 
-        printf(COM2, "distance_between_previous_two_sensors %d current_velocity %d est_dist_since_last_sensor %d\n\r",
-            distance_between_previous_two_sensors,
-            current_velocity,
+        printf(COM2, "current_velocity %d um/tick, actual distance %d estimated distance %d\n\r",
+            current_velocity_in_um,
+            um_dist_segment,
             est_dist_since_last_sensor);
         //
         //
