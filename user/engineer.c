@@ -27,7 +27,6 @@ static void engineerCourier() {
     SensorUpdate engineerReq; // courier <-> engineer
 
     for (;;) {
-        printf(COM2, ""); // HAX: needed to not make send below return 4 immediately
         Send(sensor, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
         // printf("Send wrote a engineerReq: t %d s %d\n\r", engineerReq.time, engineerReq.sensor);
         Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
@@ -90,7 +89,7 @@ int distanceBetween(SensorUpdate from, SensorUpdate to) {
 static bool direction_is_forward = true;
 static void engineerTask() {
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
-    printf(COM2, "debug: engineerTask started\r\n");
+    printf(COM2, "debug: engineerTask started >>>>>>>>>>>>> active_train %d desired_speed %d\r\n");
     trainSetSpeed(active_train, desired_speed);
     // at this point the train is up-to-speed
     int tid;
@@ -170,9 +169,9 @@ void initEngineer() {
     assert(engineerTaskId >= 0);
 }
 
-void engineerPleaseManThisTrain(int train_number, int desired_speed) {
+void engineerPleaseManThisTrain(int train_number, int speed) {
     active_train = train_number;
-    desired_speed = desired_speed;
+    desired_speed = speed;
 }
 
 void engineerParserGotReverseCommand() {

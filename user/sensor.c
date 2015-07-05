@@ -101,6 +101,7 @@ static void updateSensoryDisplay() {
     vt_pos(&s, VT_SENSOR_ROW + 1, VT_SENSOR_COL);
 
     for(int i = recently_read ; ; ) {
+        assert(0 <= i && i < NUM_RECENT_SENSORS);
         sensorFormat(&s, &recent_sensors[i]);
         i = (i == 0) ? (NUM_RECENT_SENSORS - 1) : (i - 1);
         if(i == recently_read) {
