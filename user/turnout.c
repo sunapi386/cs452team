@@ -29,14 +29,19 @@ static int _to_bit_address(int turnout_number) {
 }
 
 static void _set_bitmap(int turnout_number, char direction) {
+    assert( (turnout_number >= 153 && turnout_number <= 156) ||
+            (1 <= turnout_number && turnout_number <= 18));
+    assert(direction == 'c' || direction == 's');
     int bit_address = _to_bit_address(turnout_number);
-    int value = (direction == 'c') ? 1 : 0;
     // https://stackoverflow.com/questions/47981
-    // Changing the nth bit to x:
-    // Setting the nth bit to either 1 or 0 can be achieved with the following:
-    // number ^= (-x ^ number) & (1 << n);
-    // Bit n will be set if x is 1, and cleared if x is 0.
-    track_bitmap ^= (-value ^ track_bitmap) & (1 << bit_address);
+    if(direction == 'c') {
+        // set bit number |= 1 << x;
+        track_bitmap |= (1 << bit_address);
+    }
+    else {
+        // clear bit number &= ~(1 << x);
+        track_bitmap &= ~(1 << bit_address);
+    }
 }
 
 static void _updateTurnoutDisplay(int turnout_number, char direction) {
@@ -82,7 +87,7 @@ static void _updateTurnoutDisplay(int turnout_number, char direction) {
     PutString(COM2, &s);
 }
 
-static void _setTurnout(int turnout_number, char direction) {
+void setTurnout(int turnout_number, char direction) {
     // updates the screen for where the turnout_number is
     _set_bitmap(turnout_number, direction);
     int bit_address = _to_bit_address(turnout_number);
@@ -119,11 +124,11 @@ void printResetTurnouts() {
     PutString(COM2, &s);
 
     for (int i = 1; i <= 18; ++i) {
-        _setTurnout(i, 's');
+        setTurnout(i, 's');
     }
 
     for (int i = 153; i <= 156; ++i) {
-        _setTurnout(i, 's');
+        setTurnout(i, 's');
     }
 }
 
@@ -143,32 +148,14 @@ static void turnoutTask() {
                  (1 <= turnout_number && turnout_number <= 18));
         assert(direction == 'c' || direction == 's');
 
-        _setTurnout(turnout_number, direction);
+        setTurnout(turnout_number, direction);
 
     }
 
 }
 
-/** turnoutSet:
-    a human calls this;
-    controller just replies the turnoutTask,
-*/
-void turnoutSet(int turnout_number, char direction) {
-    trainSetSwitch(turnout_number, direction); // only use in turnout.c
-    _updateTurnoutDisplay(turnout_number, direction);
-
-    // Warning: Do not comment out the below unless you are working on
-    // communication with the controller. Doing so causes parser task to hang.
-    /*
-    assert(controller_id >= 0);
-    ControllerData update;
-    // TODO: set the update fields so the controller understands this is updated
-    Send(controller_id, &update, sizeof(update), 0, 0);
-    */
-}
-
-
 bool turnoutIsCurved(int turnout_number) {
+    // checking a bit: bit = (number >> x) & 1;
     int bit_address = _to_bit_address(turnout_number);
     return (track_bitmap >> bit_address) & 0x1;
 }

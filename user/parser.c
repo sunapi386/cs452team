@@ -647,10 +647,10 @@ static bool parse(Parser *p, char c) {
                 int turnout_number = p->data.turnout.turnout_number;
                 if(   (1 <= turnout_number && turnout_number <= 18) ||
                     (153 <= turnout_number && turnout_number <= 156)) {
-                    char dirctn = p->data.turnout.direction;
-                    assert(dirctn == 's' || dirctn == 'c');
+                    char direction = p->data.turnout.direction;
+                    assert(direction == 's' || direction == 'c');
                     sputstr(&disp_msg, "turnout changing\r\n");
-                    turnoutSet(turnout_number, dirctn);
+                    setTurnout(turnout_number, direction);
                 }
                 else {
                     sputstr(&disp_msg, "SW: bad turnout_number\r\n");
@@ -739,6 +739,7 @@ static bool parse(Parser *p, char c) {
             }
             case K_which_track: {
                 char which_track = p->data.track.which_track;
+                sputstr(&disp_msg, "Loading track");
                 engineerLoadTrackStructure(which_track);
                 break;
             }

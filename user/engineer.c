@@ -38,47 +38,51 @@ static void engineerCourier() {
     // from b1 to d14, is consequtive
 int distanceBetween(SensorUpdate from, SensorUpdate to) {
     if(from.sensor == to.sensor) return 0;
-    return 100;
-    //     // int group = sensor_update.sensor >> 8;
-    //     // int offset = sensor_update.sensor & 0xff;
-    //     // int index = 16 * group + offset - 1;
+    // int group = sensor_update.sensor >> 8;
+    // int offset = sensor_update.sensor & 0xff;
+    // int index = 16 * group + offset - 1;
 
-    // int from_index = 16 * (from.sensor >> 8) + (from.sensor & 0xff) - 1;
-    // int to_index = 16 * (to.sensor >> 8) + (to.sensor & 0xff) - 1;
-    // int total_distance = 0;
-    // printf(COM2, "from_index %d, to_index %d\r\n", from_index, to_index);
+    int from_index = 16 * (from.sensor >> 8) + (from.sensor & 0xff) - 1;
+    int to_index = 16 * (to.sensor >> 8) + (to.sensor & 0xff) - 1;
+    int total_distance = 0;
+    printf(COM2, ">>>>>>>>>>>>>> from %d (sensor %s), to %d (sensor %s)\r\n",
+        from_index, g_track[from_index].name, to_index, g_track[to_index].name);
 
-    // int i;
-    // track_node *next_node = &g_track[from_index];
-    // for(i = 0; i < TRACK_MAX; i++) {
-    //     printf(COM2, "visiting %s\r\n", next_node->name);
-    //     if(next_node->type == NODE_BRANCH) {
-    //         total_distance += next_node->edge[turnoutIsCurved(next_node->num)].dist;
-    //         next_node = next_node->edge[turnoutIsCurved(next_node->num)].dest;
-    //     }
-    //     else if(next_node->type == NODE_SENSOR ||
-    //             next_node->type == NODE_MERGE) {
-    //         total_distance += next_node->edge[DIR_AHEAD].dist;
-    //         next_node = next_node->edge[DIR_AHEAD].dest;
-    //     }
-    //     else {
-    //         printf(COM2, "node type is bad.\n\r");
-    //         break;
-    //     }
+    int i;
+    track_node *next_node = &g_track[from_index];
+    for(i = 0; i < TRACK_MAX; i++) {
+        printf(COM2, "[%s].", next_node->name);
+        if(next_node->type == NODE_BRANCH) {
+            char direction = (turnoutIsCurved(next_node->num) ? 'c' : 's');
+            printf(COM2, "%d(%c,v%d)\t", next_node->num, direction, turnoutIsCurved(next_node->num));
+            total_distance += next_node->edge[turnoutIsCurved(next_node->num)].dist;
+            next_node = next_node->edge[turnoutIsCurved(next_node->num)].dest;
+        }
+        else if(next_node->type == NODE_SENSOR ||
+                next_node->type == NODE_MERGE) {
+            printf(COM2, ".%s\t", next_node->edge[DIR_AHEAD].dest->name);
 
-    //     // printf(COM2, "node_1_offset %d, node_2_offset %d\r\n",
-    //         // (next_node - &g_track[0]), to_index);
+            total_distance += next_node->edge[DIR_AHEAD].dist;
+            next_node = next_node->edge[DIR_AHEAD].dest;
+        }
+        else {
+            printf(COM2, ".?\t");
+            break;
+        }
 
-    //     if((next_node - &g_track[0]) == to_index) {
-    //     // if(strcmp(next_node->name, g_track[to_index].name)) {
-    //         printf(COM2, "distanceBetween: done.\n\r");
-    //         break;
-    //     }
-    // }
-    // if(i == TRACK_MAX) {
-    //     printf(COM2, "distanceBetween: something went wrong: %d.\n\r", i);
-    // }
-    // return total_distance;
+        // printf(COM2, "node_1_offset %d, node_2_offset %d\r\n",
+            // (next_node - &g_track[0]), to_index);
+
+        if((next_node - &g_track[0]) == to_index) {
+        // if(strcmp(next_node->name, g_track[to_index].name)) {
+            printf(COM2, "\r\ndistanceBetween: total_distance %d.\n\r", total_distance);
+            break;
+        }
+    }
+    if(i == TRACK_MAX) {
+        printf(COM2, "distanceBetween: something went wrong: %d.\n\r", i);
+    }
+    return total_distance;
 }
 
 // function that looks up the next landmark, using direction_is_forward
@@ -120,7 +124,7 @@ static void engineerTask() {
         // i. the real-time location of the train in form of landmark
         // for now define landmark as only sensor, then location is:
 
-        int distance_between_previous_two_sensors = distanceBetween(sensor_update, last_update);
+        int distance_between_previous_two_sensors = distanceBetween(last_update, sensor_update);
         int current_velocity = distance_between_previous_two_sensors / time_since_last_sensor;
         int est_dist_since_last_sensor = (current_velocity * time_since_last_sensor);
 
