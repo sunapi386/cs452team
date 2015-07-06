@@ -134,6 +134,19 @@ static void updateScreen(char group, int offset, int expected_time,
 
 }
 
+void delayNotifier() {
+    int pid = MyParentTid();
+    MessageToEngineer message;
+    message.type = update_landmark;
+
+    for (;;)
+    {
+        int wakeTime = 0;
+        Send(pid, &message, sizeof(MessageToEngineer), &wakeTime, sizeof(wakeTime));
+        DelayUntil(wakeTime);
+    }
+}
+
 static void engineerTask() {
     speed_change_requested = false;
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
