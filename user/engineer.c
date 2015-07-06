@@ -114,7 +114,7 @@ track_edge *getNextEdge(track_node *current_landmark) {
 // returns a landmark
 track_node *getNextLandmark(track_node *current_landmark) {
     track_edge *next_edge = getNextEdge(current_landmark);
-    return next_edge->dest;
+    return (next_edge == 0 ? 0 : next_edge->dest);
 }
 
 static bool direction_is_forward = true;
@@ -145,13 +145,6 @@ void landmarkNotifier()
     int pid = MyParentTid();
     MessageToEngineer message;
     message.type = update_landmark;
-    printf(COM2, "landmarkNotifier\r\n");
-    printf(COM2, "landmarkNotifier\r\n");
-    printf(COM2, "landmarkNotifier\r\n");
-    printf(COM2, "landmarkNotifier\r\n");
-    printf(COM2, "landmarkNotifier\r\n");
-    printf(COM2, "landmarkNotifier\r\n");
-    printf(COM2, "landmarkNotifier\r\n");
 
     for (;;)
     {
@@ -186,7 +179,6 @@ static void engineerTask() {
         switch(message.type) {
 
             case x_mark: {
-                printf(COM2, "engineer got x_mark\r\n");
                 // if the engineer is approaching said sensor within, say 2 landmarks,
                 // engineer should calculate when to send the stop command to stop on
                 // top of the sensor
@@ -223,53 +215,45 @@ static void engineerTask() {
 
             case update_landmark: {
                 printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
-                printf(COM2, "engineer got update_landmark... \r\n");
                 // engineer should update screen with new estimated current_landmark
-                // track_node *next_landmark = getNextLandmark(current_landmark);
-                // int next_idx = next_landmark - &g_track[0];
-                // current_landmark = &g_track[next_idx];
-                // printf(COM2, "engineer got update_landmark: current_landmark was %s, setting it to %d",
-                //     current_landmark->name, next_landmark->name);
+                track_node *next_landmark = getNextLandmark(current_landmark);
+                if(next_landmark == 0) {
+                    printf(COM2, "WTF next_landmark is null, what do?\r\n");
+                    Reply(tid, 0, 0);
+                    break;
+                }
+                int next_idx = next_landmark - &g_track[0];
+                current_landmark = &g_track[next_idx];
+                printf(COM2, "engineer got update_landmark: current_landmark was %s, setting it to %d",
+                    current_landmark->name, next_landmark->name);
 
-                // if (next_landmark->type != NODE_SENSOR) {
-                //     // we don't need a landmark notifier if
-                //     // the next landmark is sensor, since
-                //     // the engineer courier will notify us!
+                if (next_landmark->type != NODE_SENSOR) {
+                    // we don't need a landmark notifier if
+                    // the next landmark is sensor, since
+                    // the engineer courier will notify us!
 
-                //     // assume that landmark notifier is send blocked on us
-                //     // at this point. If that is not the case, then it might
-                //     // be delayed for too long previously
+                    // assume that landmark notifier is send blocked on us
+                    // at this point. If that is not the case, then it might
+                    // be delayed for too long previously
 
-                //     track_edge *next_edge = getNextEdge(current_landmark);
+                    track_edge *next_edge = getNextEdge(current_landmark);
 
-                //     // calculate the time we want to landmark notifier to wake us up
-                //     int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
-                //     int wake_time = Time() + expected_time_to_next_landmark;
-                //     printf(COM2, "replying to landmark notifier: expected_time_to_next_landmark %d wake_time %d",
-                //         expected_time_to_next_landmark, wake_time);
-                //     Reply(tid, &wake_time, sizeof(int));
-                // }
-                // else {
-                //     printf(COM2, "next landmark is a sensor node, so no reply to notifier\r\n");
-                //     landmarkNotifierTid = tid;
-                // }
+                    // calculate the time we want to landmark notifier to wake us up
+                    int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
+                    int wake_time = Time() + expected_time_to_next_landmark;
+                    printf(COM2, "replying to landmark notifier: expected_time_to_next_landmark %d wake_time %d",
+                        expected_time_to_next_landmark, wake_time);
+                    Reply(tid, &wake_time, sizeof(int));
+                }
+                else {
+                    printf(COM2, "next landmark is a sensor node, so no reply to notifier\r\n");
+                    landmarkNotifierTid = tid;
+                }
 
                 break;
             } // update_landmark
 
             case update_sensor: {
-                printf(COM2, ".");
                 Reply(tid, 0, 0);
 
                 SensorUpdate sensor_update = {
@@ -337,26 +321,26 @@ static void engineerTask() {
 
                 // look up the next landmark
                 track_node *next_landmark = getNextLandmark(current_landmark);
-                // if (next_landmark->type != NODE_SENSOR) {
-                //     // we don't need a landmark notifier if
-                //     // the next landmark is sensor, since
-                //     // the engineer courier will notify us!
+                if (next_landmark->type != NODE_SENSOR) {
+                    // we don't need a landmark notifier if
+                    // the next landmark is sensor, since
+                    // the engineer courier will notify us!
 
-                //     // assume that landmark notifier is send blocked on us
-                //     // at this point. If that is not the case, then it might
-                //     // be delayed for too long previously
-                //     // assert(landmarkNotifierTid > 0);
+                    // assume that landmark notifier is send blocked on us
+                    // at this point. If that is not the case, then it might
+                    // be delayed for too long previously
+                    // assert(landmarkNotifierTid > 0);
 
-                //     track_edge *next_edge = getNextEdge(current_landmark);
+                    track_edge *next_edge = getNextEdge(current_landmark);
 
-                //     // calculate the time we want to landmark notifier to wake us up
-                //     int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
-                //     int wake_time = sensor_update.time + expected_time_to_next_landmark;
-                //     printf(COM2, "replying to landmark notifier: expected_time_to_next_landmark %d wake_time %d",
-                //         expected_time_to_next_landmark, wake_time);
-                //     Reply(landmarkNotifierTid, &wake_time, sizeof(int));
-                //     landmarkNotifierTid = -1;
-                // }
+                    // calculate the time we want to landmark notifier to wake us up
+                    int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
+                    int wake_time = sensor_update.time + expected_time_to_next_landmark;
+                    printf(COM2, "replying to landmark notifier: expected_time_to_next_landmark %d wake_time %d",
+                        expected_time_to_next_landmark, wake_time);
+                    Reply(landmarkNotifierTid, &wake_time, sizeof(int));
+                    landmarkNotifierTid = -1;
+                }
 
                 break;
             } // update
