@@ -5,7 +5,6 @@
 #include <utils.h> // printf
 #include <user/train.h> // trainSetSpeed
 #include <user/sensor.h> // sizeof(MessageToEngineer)
-#include <user/nameserver.h>
 #include <user/track_data.h>
 #include <user/turnout.h> // turnoutIsCurved
 #include <user/vt100.h>
@@ -134,6 +133,19 @@ static void updateScreen(char group, int offset, int expected_time,
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 
+}
+
+void delayNotifier() {
+    int pid = MyParentTid();
+    MessageToEngineer message;
+    message.type = update_landmark;
+
+    for (;;)
+    {
+        int wakeTime = 0;
+        Send(pid, &message, sizeof(MessageToEngineer), &wakeTime, sizeof(wakeTime));
+        DelayUntil(wakeTime);
+    }
 }
 
 static void engineerTask() {
