@@ -173,13 +173,14 @@ static void engineerTask() {
 
                 // this calculation requires knowing the stopping distance.
                 // we guess stopping distance for now
-                // int stop_dist_cm = (desired_speed > 10) ? 60 : 40;
+                // int stop_dist_mm = (desired_speed < 10) ? 300 : 600;
 
                 // the current speed of travel
+                // int current_speed = velocity[desired_speed];
                 // calculate after which sensor should the engineer need to care about stopping
                 // by backpropagating
-                // int x_sensor = (sensor_group << 8) | sensor_number;
-                // track_node *caring_sensor = backpropagateFrom(x_sensor, stopping_distance_in_cm);
+                // int sensor_encoding = (sensor_group << 8) | sensor_number;
+                // track_node *caring_sensor = backpropagateFrom(sensor_encoding, stopping_distance_in_mm);
 
                 // tell the train engineer he needs to stop after x-time
                 // int ticks_after_caring_sensor = 10000 * stopping_distance_in_cm / velocity_um_per_tick;
