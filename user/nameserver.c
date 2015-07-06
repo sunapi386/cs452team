@@ -41,7 +41,8 @@ void nameserverTask() {
         }
 
         switch (request.type) {
-            case REGISTER_AS:
+            case REGISTER_AS: {
+
                 if(num_registered > NS_MAX_REGIST_SIZE) {
                     Reply(sender_tid, (void *)&FULL, sizeof(int));
                     break;
@@ -60,21 +61,30 @@ void nameserverTask() {
                 Reply(sender_tid, (void *)&SUCCESS, sizeof(int));
 
                 break; // REGISTER_AS
+            }
 
-            case WHO_IS:
+            case WHO_IS: {
+
+                bool has_replied = false;
+
                 for(int i = 0; i < num_registered; i++) {
                     if( strcmp(registrations[i].name, request.name) == 0) {
                         Reply(sender_tid, &(registrations[i].tid), sizeof(int));
+                        has_replied = true;
                         break; // resolved whois name to a tid
                     }
                 }
                 // no registered tid for that name
-                Reply(sender_tid, (void *)&NO_TASK, sizeof(int));
+                if(!has_replied) {
+                    Reply(sender_tid, (void *)&NO_TASK, sizeof(int));
+                }
 
                 break; // WHO_IS
+            }
 
             default:
-                Reply(sender_tid, (void *)&ERROR, sizeof(int));
+                debug("nameserver got a bad request from tid %d", sender_tid);
+                assert(0);
         } // switch
     } // for
 }
