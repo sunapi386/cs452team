@@ -93,20 +93,26 @@ int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
     return 1000 * total_distance;
 }
 
-// function that looks up the next landmark, using direction_is_forward
-// returns a landmark
-track_node *getNextLandmark(track_node *current_landmark) {
-    track_node *next_node = current_landmark;
-    if(next_node->type == NODE_BRANCH) {
-        next_node = next_node->edge[turnoutIsCurved(next_node->num)].dest;
+track_edge *getNextEdge(track_node *current_landmark) {
+    if(current_landmark->type == NODE_BRANCH) {
+        return &current_landmark->edge[turnoutIsCurved(current_landmark->num)];
     }
-    else if(next_node->type == NODE_SENSOR || next_node->type == NODE_MERGE) {
-        next_node = next_node->edge[DIR_AHEAD].dest;
+    else if(current_landmark->type == NODE_SENSOR ||
+            current_landmark->type == NODE_MERGE) {
+        return &current_landmark->edge[DIR_AHEAD];
     }
     else {
         assert(0);
     }
-    return next_node;
+    return 0;
+
+}
+
+// function that looks up the next landmark, using direction_is_forward
+// returns a landmark
+track_node *getNextLandmark(track_node *current_landmark) {
+    track_edge next_edge = getNextEdge(current_landmark);
+    return next_edge.dest;
 }
 
 static bool speed_change_requested = false;
@@ -133,7 +139,7 @@ static void updateScreen(char group, int offset, int expected_time,
 
 }
 
-void delayNotifier()
+void landmarkNotifier()
 {
     int pid = MyParentTid();
     MessageToEngineer message;
@@ -154,10 +160,12 @@ static void engineerTask() {
         active_train, desired_speed);
     trainSetSpeed(active_train, desired_speed);
     // at this point the train is up-to-speed
-    int tid;
+    int tid = 0, landmarkNotifierTid = 0;
     SensorUpdate last_update = {0,0};
     MessageToEngineer message;
-    track_node *current_landmark;
+    track_node *current_landmark = 0;
+
+    Create(PRIORITY_ENGINEER_COURIER, landmarkNotifier);
 
     for(;;) {
         int len = Receive(&tid, &message, sizeof(MessageToEngineer));
@@ -179,14 +187,19 @@ static void engineerTask() {
 
 
             case update_landmark: {
+                assert(tid == delayNotifierTid);
+
                 break;
             } // update_landmark
 
             case update_sensor: {
+                Reply(tid, 0, 0);
+
                 SensorUpdate sensor_update = {
                     message.data.update_sensor.sensor,
                     message.data.update_sensor.time
                 };
+
                 // int group = sensor_update.sensor >> 8;
                 // int offset = sensor_update.sensor & 0xff;
                 // int index = indexFromSensorUpdate(sensor_update);
@@ -194,7 +207,6 @@ static void engineerTask() {
                 // printf(COM2, "engineer read %c%d (%d idx) %d ticks\r\n",
                 //          group + 'A', offset, index, new_time);
 
-                Reply(tid, 0, 0);
 
                 // i. the real-time location of the train in form of landmark
                 // for now define landmark as only sensor, then location is:
@@ -241,6 +253,32 @@ static void engineerTask() {
                 last_index = index;
                 last_update.time = sensor_update.time;
                 last_update.sensor = sensor_update.sensor;
+
+
+                // update the current_landmark
+                current_landmark = g_track[indexFromSensorUpdate(sensor_update)]
+
+                // look up the next landmark
+                track_node *next_landmark = getNextLandmark(current_landmark);
+                if (next_landmark->type != sensor)
+                {
+                    // we don't need a landmark notifier if
+                    // the next landmark is sensor, since
+                    // the engineer courier will notify us!
+
+                    // assume that landmark notifier is send blocked on us
+                    // at this point. If that is not the case, then it might
+                    // be delayed for too long previously
+                    assert(landmarkNotifierTid > 0);
+
+                    track_edge *next_edge = getNextEdge(current_landmark);
+
+                    // calculate the time we want to landmark notifier to wake us up
+                    int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
+                    int wake_time = sensor_update.time + expected_time_to_next_landmark;
+                    Reply(landmarkNotifierTid, &wake_time, sizeof(int));
+                }
+
                 break;
             } // update
 
