@@ -74,6 +74,7 @@ typedef struct TaskDescriptor {
     struct TaskDescriptor *next;
     char name[TASK_MAX_NAME_SIZE];
     unsigned int cpu_time_used;
+    int originalReceiverId;
 } TaskDescriptor;
 
 int taskCreate(int priority, void (*code)(void), int parent_id);

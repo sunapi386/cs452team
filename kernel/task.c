@@ -33,6 +33,7 @@ void initTaskSystem() {
             task->name[j] = '\0';
         }
         task->cpu_time_used = 0;
+        task->originalReceiverId = -1;
     }
 }
 

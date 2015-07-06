@@ -29,7 +29,9 @@ void handleSend(TaskQueue *sendQueues, TaskDescriptor *sendingTask, Syscall *req
     if (!isValidTaskIndex(tid))
     {
         // -1: Task id is impossible
-        //sendingTask->ret = -1;
+        debug("-1");
+        assert(0);
+
         taskSetRet(sendingTask, -1);
         queueTask(sendingTask);
         return;
@@ -39,7 +41,8 @@ void handleSend(TaskQueue *sendQueues, TaskDescriptor *sendingTask, Syscall *req
     if (!receivingTask)
     {
         // -2: Task id is not an existing task
-        //sendingTask->ret = -2;
+        debug("-2");
+        assert(0);
         taskSetRet(sendingTask, -2);
         queueTask(sendingTask);
         return;
@@ -72,6 +75,7 @@ void handleSend(TaskQueue *sendQueues, TaskDescriptor *sendingTask, Syscall *req
 
         // update sending_task's status to reply_block
         sendingTask->status = reply_block;
+        sendingTask->originalReceiverId = taskGetIndex(receivingTask);
 
         // update receiving_task's status to ready and requeue it
         receivingTask->status = ready;
@@ -157,6 +161,7 @@ void handleReceive(TaskQueue *sendQueues, TaskDescriptor *receivingTask, Syscall
         // Clean up send buf and length
         sendingTask->send_len = 0;
         sendingTask->send_buf = NULL;
+        sendingTask->originalReceiverId = taskGetIndex(receivingTask);
 
         // sender: reply block
         // receiver: ready to run
@@ -178,7 +183,8 @@ void handleReply(TaskDescriptor *receivingTask, Syscall *request)
     if (!isValidTaskIndex(tid))
     {
         // -1: The task id is not a a possible task id
-        //receivingTask->ret = -1;
+        debug("-1");
+        assert(0);
         taskSetRet(receivingTask, -1);
         queueTask(receivingTask);
         return;
@@ -190,7 +196,8 @@ void handleReply(TaskDescriptor *receivingTask, Syscall *request)
     if (!sendingTask)
     {
         // -2: The task id is not an existing task
-        //receivingTask->ret = -2;
+        debug("-2");
+        assert(0);
         taskSetRet(receivingTask, -2);
         queueTask(receivingTask);
         return;
@@ -202,7 +209,20 @@ void handleReply(TaskDescriptor *receivingTask, Syscall *request)
     {
         // -3: The task is not reply blocked
         //receivingTask->ret = -3;
+        bwprintf(COM2, "-3: Tid %d trying to reply to task %d that is not reply blocked\n\r",
+            taskGetIndex(receivingTask), taskGetIndex(sendingTask));
+        assert(0);
         taskSetRet(receivingTask, -3);
+        queueTask(receivingTask);
+        return;
+    }
+
+    else if (sendingTask->originalReceiverId != taskGetIndex(receivingTask))
+    {
+        bwprintf(COM2, "-5: Task calling Reply() tid %d is not the original receiver (tid %d) of sender tid %d\n\r",
+            taskGetIndex(receivingTask), sendingTask->originalReceiverId, taskGetIndex(sendingTask));
+        assert(0);
+        taskSetRet(receivingTask, -5);
         queueTask(receivingTask);
         return;
     }
@@ -220,11 +240,9 @@ void handleReply(TaskDescriptor *receivingTask, Syscall *request)
     taskSetRet(receivingTask, replylen > sendingTask->recv_len ? -4 : 0);
     taskSetRet(sendingTask, replylen);
 
-    //sendingTask->ret = replylen;
-
     sendingTask->recv_len = 0;
     sendingTask->recv_buf = NULL;
-
+    sendingTask->originalReceiverId = -1;
     // set statuses and retvals
     receivingTask->status = ready;
     sendingTask->status = ready;
