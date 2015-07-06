@@ -9,4 +9,5 @@ void userTaskHwiTester();
 void clockServerTesterTask();
 void undefinedInstructionTesterTask();
 
+void clockWaiterTask(int task_to_notify);
 #endif

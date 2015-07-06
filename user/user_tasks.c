@@ -72,3 +72,18 @@ void undefinedInstructionTesterTask() {
     asm volatile( "#0xffffffff\n\t" );
     debug("after");
 }
+
+void clockWaiterTask(int task_to_notify) {
+    int time = Time();
+    while(1) {
+        int len = Send(task_to_notify, &time, sizeof(int), &time, sizeof(int));
+        assert(len == sizeof(int));
+        if(time >= 0) {
+            DelayUntil(time);
+        }
+        else {
+            // should never get here
+            return;
+        }
+    }
+}
