@@ -21,6 +21,25 @@ typedef struct Enstruction {
     int distance;   // how far to the target
 } Enstruction;
 
+typedef struct MessageToEngineer {
+    enum {
+        x_mark,
+        change_speed,
+        update_sensor,
+        update_landmark,
+    } type;
+    union {
+        struct SensorUpdate update_sensor;
+        struct {
+            int x_sensor;
+        } x_mark;
+        struct {
+            int speed;
+        } change_speed;
+    } data;
+} MessageToEngineer;
+
+
 void initEngineer();
 void engineerPleaseManThisTrain(); // returns id of engineer task
 void engineerParserGotReverseCommand();
