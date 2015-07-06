@@ -42,6 +42,8 @@
 #define VT_TURNOUT_COL          1
 #define VT_TRACK_GRAPH_ROW      4
 #define VT_TRACK_GRAPH_COL      24
+#define VT_ENGINEER_ROW         1
+#define VT_ENGINEER_COL         80
 
 #define VT_PARSER_TOP           18
 #define VT_PARSER_BOT           20
