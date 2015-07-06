@@ -13,7 +13,7 @@ static unsigned short speeds[NUM_TRAINS];
 
 void trainSetSpeed(int train_number, int train_speed) {
     // debug("trainSetSpeed %d %d", train_number, train_speed);
-    assert(0 <= train_number && train_number <= 80);
+    assert(1 <= train_number && train_number <= 80);
     assert(0 <= train_speed && train_speed <= 14);
     Putc(COM1, train_speed);
     Putc(COM1, train_number);
@@ -22,14 +22,14 @@ void trainSetSpeed(int train_number, int train_speed) {
 
 void trainSetReverse(int train_number) {
     // debug("trainSetReverse %d", train_number);
-    assert(0 <= train_number && train_number <= 80);
+    assert(1 <= train_number && train_number <= 80);
     Putc(COM1, REVERSE);
     Putc(COM1, train_number);
 }
 
 void trainSetReverseNicely(int train_number) {
     // debug("trainSetReverseNicely %d", train_number);
-    assert(0 <= train_number && train_number <= 80);
+    assert(1 <= train_number && train_number <= 80);
     unsigned short prev_speed = speeds[train_number];
     trainSetSpeed(train_number, 0);
     Delay(speeds[train_number] * 200);
@@ -48,6 +48,18 @@ void trainSetSwitch(int switch_number, char direction) {
     Putc(COM1, operation);
     Putc(COM1, switch_number);
     Putc(COM1, SOLENOID_OFF);
+}
+
+void trainSetLight(int train_number, int on) {
+    assert(1 <= train_number && train_number <= 80);
+    if(on) {
+        Putc(COM1, speeds[train_number] + 16);
+        Putc(COM1, train_number);
+    }
+    else {
+        Putc(COM1, speeds[train_number]);
+        Putc(COM1, train_number);
+    }
 }
 
 void initTrain() {

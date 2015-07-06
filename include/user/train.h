@@ -6,5 +6,6 @@ void trainSetSpeed(int train_number, int train_speed);
 void trainSetReverse(int train_number);
 void trainSetReverseNicely(int train_number);
 void trainSetSwitch(int switch_number, char direction); // only use in turnout.c
+void trainSetLightOn(int train_number, int on);
 
 #endif
