@@ -29,7 +29,10 @@ typedef struct MessageToEngineer {
         update_landmark,
     } type;
     union {
-        struct SensorUpdate update_sensor;
+        struct {
+            int sensor;
+            int time;
+        } update_sensor;
         struct {
             int x_sensor;
         } x_mark;

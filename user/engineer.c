@@ -28,12 +28,14 @@ static void engineerCourier() {
 
     SensorRequest sensorReq;  // courier <-> sensorServer
     sensorReq.type = MESSAGE_ENGINEER_COURIER;
-    SensorUpdate engineerReq; // courier <-> engineer
+    SensorUpdate result;  // courier <-> sensorServer
+    MessageToEngineer engineerReq; // courier <-> engineer
+    engineerReq.type = update_sensor;
 
     for (;;) {
-        Send(sensor, &sensorReq, sizeof(sensorReq), &engineerReq, sizeof(engineerReq));
-        // printf("Send wrote a engineerReq: t %d s %d\n\r",
-        //      engineerReq.time, engineerReq.sensor);
+        Send(sensor, &sensorReq, sizeof(sensorReq), &result, sizeof(result));
+        engineerReq.data.update_sensor.sensor = result.sensor;
+        engineerReq.data.update_sensor.time = result.time;
         Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
     }
 }
@@ -156,79 +158,111 @@ static void engineerTask() {
     // at this point the train is up-to-speed
     int tid;
     SensorUpdate last_update = {0,0};
-    SensorUpdate sensor_update = {0,0};
+    MessageToEngineer message;
     track_node *current_landmark;
 
     for(;;) {
-        int len = Receive(&tid, &sensor_update, sizeof(SensorUpdate));
-        if(len != sizeof(SensorUpdate)) {
+        int len = Receive(&tid, &message, sizeof(MessageToEngineer));
+        if(len != sizeof(MessageToEngineer)) {
             printf(COM2, "Warning engineer Received garbage\r\n");
             continue;
         }
+        switch(message.type) {
+
+            case x_mark: {
+                break;
+            }
+
+            case change_speed: {
+                int speed = message.data.change_speed.speed;
+                trainSetSpeed(active_train, speed);
+                break;
+            }
+
+
+            case update_landmark: {
+                break;
+            }
+
+            case update_sensor: {
+
+                break;
+            } // update
+
+            default: {
+                printf(COM2, "Warning engineer Received garbage\r\n");
+                break;
+            } // default
+        } // switch
+
+
+        /* this section needs to be moved into the switch statements
         if(speed_change_requested) {
-            trainSetSpeed(active_train, desired_speed);
-            speed_change_requested = false;
-        }
+                    trainSetSpeed(active_train, desired_speed);
+                    speed_change_requested = false;
+                }
 
-        // print out the direction of travel
+                // print out the direction of travel
 
-        // int group = sensor_update.sensor >> 8;
-        // int offset = sensor_update.sensor & 0xff;
-        // int index = indexFromSensorUpdate(sensor_update);
-        // int new_time = sensor_update.time;
-        // printf(COM2, "engineer read %c%d (%d idx) %d ticks\r\n",
-        //          group + 'A', offset, index, new_time);
+                // int group = sensor_update.sensor >> 8;
+                // int offset = sensor_update.sensor & 0xff;
+                // int index = indexFromSensorUpdate(sensor_update);
+                // int new_time = sensor_update.time;
+                // printf(COM2, "engineer read %c%d (%d idx) %d ticks\r\n",
+                //          group + 'A', offset, index, new_time);
 
-        Reply(tid, 0, 0);
+                Reply(tid, 0, 0);
 
-        // i. the real-time location of the train in form of landmark
-        // for now define landmark as only sensor, then location is:
+                // i. the real-time location of the train in form of landmark
+                // for now define landmark as only sensor, then location is:
 
-        int time_since_last_sensor = sensor_update.time - last_update.time;
-        int um_dist_segment = umDistanceBetween(last_update, sensor_update);
-        int current_velocity_in_um = um_dist_segment / time_since_last_sensor;
-        int est_dist_since_last_sensor = (current_velocity_in_um * time_since_last_sensor);
+                int time_since_last_sensor = sensor_update.time - last_update.time;
+                int um_dist_segment = umDistanceBetween(last_update, sensor_update);
+                int current_velocity_in_um = um_dist_segment / time_since_last_sensor;
+                int est_dist_since_last_sensor = (current_velocity_in_um * time_since_last_sensor);
 
-        printf(COM2, "velocity %d um/tick, actual distance %d estimated distance %d\n\r",
-            current_velocity_in_um,
-            um_dist_segment,
-            est_dist_since_last_sensor);
-
-
-        // for amusement, display:
-        // int average_velocity = length_of_track_circle / time_between_same_sensor
-        // current_deviation_from_avg_v = abs(current_velocity - average_velocity)
-
-        // ii. lookup the next landmark and display the estimate ETA to it
+                printf(COM2, "velocity %d um/tick, actual distance %d estimated distance %d\n\r",
+                    current_velocity_in_um,
+                    um_dist_segment,
+                    est_dist_since_last_sensor);
 
 
-        int last_index = indexFromSensorUpdate(last_update);
-        int index = indexFromSensorUpdate(sensor_update);
-        char group = (sensor_update.sensor >> 8) + 'A';
-        int offset = sensor_update.sensor & 0xff;
-        int expected_time = last_update.time + pairs[last_index][index];
-        int actual_time = sensor_update.time;
-        int error = abs(expected_time - actual_time);
-        updateScreen(group, offset, expected_time, actual_time, error);
-        // printf(COM2, "Last: %c%d Exp: %d Act: %d Err: %d\r\n",
-            // group, offset, expected_time, actual_time, error);
+                // for amusement, display:
+                // int average_velocity = length_of_track_circle / time_between_same_sensor
+                // current_deviation_from_avg_v = abs(current_velocity - average_velocity)
+
+                // ii. lookup the next landmark and display the estimate ETA to it
 
 
-        if(last_index >= 0) { // apply learning
-            int past_difference = pairs[last_index][index];
-            int new_difference = sensor_update.time - last_update.time;
-            pairs[last_index][index] =  (new_difference * ALPHA +
-                                        past_difference * (100 - ALPHA)) / 100;
-            printf(COM2, "time updated %d to %d \r\n",
-                past_difference, pairs[index][last_index]);
-        }
+                int last_index = indexFromSensorUpdate(last_update);
+                int index = indexFromSensorUpdate(sensor_update);
+                char group = (sensor_update.sensor >> 8) + 'A';
+                int offset = sensor_update.sensor & 0xff;
+                int expected_time = last_update.time + pairs[last_index][index];
+                int actual_time = sensor_update.time;
+                int error = abs(expected_time - actual_time);
+                updateScreen(group, offset, expected_time, actual_time, error);
+                // printf(COM2, "Last: %c%d Exp: %d Act: %d Err: %d\r\n",
+                    // group, offset, expected_time, actual_time, error);
 
-        last_index = index;
-        last_update.time = sensor_update.time;
-        last_update.sensor = sensor_update.sensor;
-    }
 
-}
+                if(last_index >= 0) { // apply learning
+                    int past_difference = pairs[last_index][index];
+                    int new_difference = sensor_update.time - last_update.time;
+                    pairs[last_index][index] =  (new_difference * ALPHA +
+                                                past_difference * (100 - ALPHA)) / 100;
+                    printf(COM2, "time updated %d to %d \r\n",
+                        past_difference, pairs[index][last_index]);
+                }
+
+                last_index = index;
+                last_update.time = sensor_update.time;
+                last_update.sensor = sensor_update.sensor;
+        */
+
+    } // for
+
+} // engineerTask
 
 static int engineerTaskId = -1;
 
@@ -277,24 +311,43 @@ track_node *backpropagateFrom(int sensorEncoding, int stopping_distance_in_cm) {
     return (track_node *) 0;
 }
 
+static int when_to_wakeup_engineer_in_ticks;
+// void clockwaiter() {
+//     int tid;
+//     Wait
+//     for(;;) {
+//         Receive(&tid, 0, 0);
+//         DelayUntil(when_to_wakeup_engineer_in_ticks);
+//         assert(engineerTaskId >= 0);
+//         int wakeupMessage = WAKEUP;
+//         Send(engineerTaskId, &wakeupMessage, sizeof(int), 0, 0);
+
+//     }
+// }
 
 void engineerXMarksTheSpot(char sensor_group, int sensor_number) {
     assert('a' <= sensor_group && sensor_group <= 'e');
     assert(1 <= sensor_number && sensor_number <= 16);
+    // Send(engineerTaskId, MessageToEngineer);
     // if the engineer is approaching said sensor within, say 2 landmarks,
     // engineer should calculate when to send the stop command to stop on
     // top of the sensor
     // this calculation requires knowing the stopping distance for
     // the current speed of travel
     // for now assume the stopping distance is 30 cm.
-    int stopping_distance_in_cm = (desired_speed > 10) ? 60 : 40;
+    // int stopping_distance_in_cm = (desired_speed > 10) ? 60 : 40;
     // calculate after which sensor should the engineer need to care about stopping
     // by backpropagating
-    int x_sensor = (sensor_group << 8) | sensor_number;
-    track_node *which_sensor = backpropagateFrom(x_sensor, stopping_distance_in_cm);
+    // int x_sensor = (sensor_group << 8) | sensor_number;
+    // track_node *caring_sensor = backpropagateFrom(x_sensor, stopping_distance_in_cm);
     // tell the train engineer he needs to stop after x-time
-    // int num_ticks_after_hitting_sensor = stopping_distance_in_cm +
-
+    // int ticks_after_caring_sensor = 10000 * stopping_distance_in_cm / velocity_um_per_tick;
+    // int distance_to_caring_sensor_in_um = umDistanceBetween(current_sensor, caring_sensor);
+    // sum up number of ticks from our current sensor to the caring sensor by
+    // looking up in the timing table
+    // int num_ticks_from_now_to_caring_sensor = ;
+    // when_to_wakeup_engineer_in_ticks =  ticks_after_caring_sensor +
+                                        // num_ticks_from_now_to_caring_sensor;
 }
 
 void engineerSpeedUpdate(int new_speed) {
