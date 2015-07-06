@@ -11,6 +11,7 @@
 
 #define ALPHA           85
 #define NUM_SENSORS     (5 * 16)
+#define NUM_TRAINS      80
 
 static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
@@ -20,6 +21,7 @@ static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
 static int pairs[NUM_SENSORS][NUM_SENSORS];
 static track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
+static bool activated_engineers[NUM_TRAINS];
 
 // Courier: sensorServer -> engineer
 static void engineerCourier() {
@@ -115,7 +117,6 @@ track_node *getNextLandmark(track_node *current_landmark) {
     return next_edge.dest;
 }
 
-static bool speed_change_requested = false;
 static bool direction_is_forward = true;
 static void updateScreen(char group, int offset, int expected_time,
                         int actual_time, int error) {
@@ -154,7 +155,6 @@ void landmarkNotifier()
 }
 
 static void engineerTask() {
-    speed_change_requested = false;
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
     printf(COM2, "debug: engineerTask started >>> active_train %d desired_speed %d\r\n",
         active_train, desired_speed);
@@ -176,15 +176,38 @@ static void engineerTask() {
         switch(message.type) {
 
             case x_mark: {
+                // if the engineer is approaching said sensor within, say 2 landmarks,
+                // engineer should calculate when to send the stop command to stop on
+                // top of the sensor
+
+                // this calculation requires knowing the stopping distance.
+                // we guess stopping distance for now
+                // int stop_dist_mm = (desired_speed < 10) ? 300 : 600;
+
+                // the current speed of travel
+                // int current_speed = velocity[desired_speed];
+                // calculate after which sensor should the engineer need to care about stopping
+                // by backpropagating
+                // int sensor_encoding = (sensor_group << 8) | sensor_number;
+                // track_node *caring_sensor = backpropagateFrom(sensor_encoding, stopping_distance_in_mm);
+
+                // tell the train engineer he needs to stop after x-time
+                // int ticks_after_caring_sensor = 10000 * stopping_distance_in_cm / velocity_um_per_tick;
+                // int distance_to_caring_sensor_in_um = umDistanceBetween(current_sensor, caring_sensor);
+                // sum up number of ticks from our current sensor to the caring sensor by
+                // looking up in the timing table
+                // int num_ticks_from_now_to_caring_sensor = ;
+                // when_to_wakeup_engineer_in_ticks =  ticks_after_caring_sensor +
+                                        // num_ticks_from_now_to_caring_sensor;
                 break;
             } // x_mark
 
             case change_speed: {
-                int speed = message.data.change_speed.speed;
-                trainSetSpeed(active_train, speed);
+                Reply(tid, 0, 0);
+                desired_speed = message.data.change_speed.speed;
+                trainSetSpeed(active_train, desired_speed);
                 break;
             } // change_speed
-
 
             case update_landmark: {
                 assert(tid == delayNotifierTid);
@@ -298,11 +321,18 @@ static void engineerTask() {
 static int engineerTaskId = -1;
 
 void initEngineer() {
+    if(engineerTaskId >= 0) {
+        // we already called initEngineer before
+        return;
+    }
     printf(COM2, "debug: initEngineer\r\n");
     for(int i = 0; i < NUM_SENSORS; i++) {
         for(int j = 0; j < NUM_SENSORS; j++) {
             pairs[i][j] = 0;
         }
+    }
+    for(int i = 0; i < NUM_TRAINS; i++) {
+        activated_engineers[i] = false;
     }
     direction_is_forward = true;
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
@@ -310,6 +340,12 @@ void initEngineer() {
 }
 
 void engineerPleaseManThisTrain(int train_number, int speed) {
+    assert(1 <= train_number && train_number <= 80 && 0 <= speed && speed <= 14);
+    if(activated_engineers[train_number - 1]) {
+        printf("Engineer for %d is already started", train_number);
+        return;
+    }
+    activated_engineers[train_number - 1] = true;
     active_train = train_number;
     desired_speed = speed;
 }
@@ -359,31 +395,17 @@ static int when_to_wakeup_engineer_in_ticks;
 void engineerXMarksTheSpot(char sensor_group, int sensor_number) {
     assert('a' <= sensor_group && sensor_group <= 'e');
     assert(1 <= sensor_number && sensor_number <= 16);
-    // Send(engineerTaskId, MessageToEngineer);
-    // if the engineer is approaching said sensor within, say 2 landmarks,
-    // engineer should calculate when to send the stop command to stop on
-    // top of the sensor
-    // this calculation requires knowing the stopping distance for
-    // the current speed of travel
-    // for now assume the stopping distance is 30 cm.
-    // int stopping_distance_in_cm = (desired_speed > 10) ? 60 : 40;
-    // calculate after which sensor should the engineer need to care about stopping
-    // by backpropagating
-    // int x_sensor = (sensor_group << 8) | sensor_number;
-    // track_node *caring_sensor = backpropagateFrom(x_sensor, stopping_distance_in_cm);
-    // tell the train engineer he needs to stop after x-time
-    // int ticks_after_caring_sensor = 10000 * stopping_distance_in_cm / velocity_um_per_tick;
-    // int distance_to_caring_sensor_in_um = umDistanceBetween(current_sensor, caring_sensor);
-    // sum up number of ticks from our current sensor to the caring sensor by
-    // looking up in the timing table
-    // int num_ticks_from_now_to_caring_sensor = ;
-    // when_to_wakeup_engineer_in_ticks =  ticks_after_caring_sensor +
-                                        // num_ticks_from_now_to_caring_sensor;
+    assert(engineerTaskId >= 0);
+    MessageToEngineer message;
+    message.type = x_mark;
+    message.data.x_mark.x_sensor = (sensor_group << 8) | sensor_number;
+    Send(engineerTaskId, &message, sizeof(MessageToEngineer), 0, 0);
 }
 
 void engineerSpeedUpdate(int new_speed) {
-    // speed changes only on a sensor (because engineer is receive blocked)
-    // in the future we can send to the engineer a speed request
-    desired_speed = new_speed;
-    speed_change_requested = true;
+    MessageToEngineer message;
+    message.type = change_speed;
+    message.data.change_speed.speed = new_speed;
+    assert(engineerTaskId >= 0);
+    Send(engineerTaskId, &message, sizeof(MessageToEngineer), 0, 0);
 }
