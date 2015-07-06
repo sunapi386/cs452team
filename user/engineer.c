@@ -111,15 +111,13 @@ track_node *getNextLandmark(track_node *current_landmark) {
 
 static bool speed_change_requested = false;
 static bool direction_is_forward = true;
-static int screen_row = 0;
 static void updateScreen(char group, int offset, int expected_time,
                         int actual_time, int error) {
     // draws the info nicely so we don't flood the screen with updates
     String s;
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
-    vt_pos(&s, VT_ENGINEER_ROW, VT_ENGINEER_COL + screen_row);
-    screen_row = (screen_row + 1) % 10;
+    vt_pos(&s, VT_ENGINEER_ROW, VT_ENGINEER_COL);
     sputstr(&s, "Last: ");
     sputc(&s, group);
     sputint(&s, offset, 10);
@@ -170,39 +168,24 @@ static void engineerTask() {
 
             case x_mark: {
                 break;
-            }
+            } // x_mark
 
             case change_speed: {
                 int speed = message.data.change_speed.speed;
                 trainSetSpeed(active_train, speed);
                 break;
-            }
+            } // change_speed
 
 
             case update_landmark: {
                 break;
-            }
+            } // update_landmark
 
             case update_sensor: {
-
-                break;
-            } // update
-
-            default: {
-                printf(COM2, "Warning engineer Received garbage\r\n");
-                break;
-            } // default
-        } // switch
-
-
-        /* this section needs to be moved into the switch statements
-        if(speed_change_requested) {
-                    trainSetSpeed(active_train, desired_speed);
-                    speed_change_requested = false;
-                }
-
-                // print out the direction of travel
-
+                SensorUpdate sensor_update = {
+                    message.data.update_sensor.sensor,
+                    message.data.update_sensor.time
+                };
                 // int group = sensor_update.sensor >> 8;
                 // int offset = sensor_update.sensor & 0xff;
                 // int index = indexFromSensorUpdate(sensor_update);
@@ -220,10 +203,10 @@ static void engineerTask() {
                 int current_velocity_in_um = um_dist_segment / time_since_last_sensor;
                 int est_dist_since_last_sensor = (current_velocity_in_um * time_since_last_sensor);
 
-                printf(COM2, "velocity %d um/tick, actual distance %d estimated distance %d\n\r",
-                    current_velocity_in_um,
-                    um_dist_segment,
-                    est_dist_since_last_sensor);
+                // printf(COM2, "velocity %d um/tick, actual distance %d estimated distance %d\n\r",
+                //     current_velocity_in_um,
+                //     um_dist_segment,
+                //     est_dist_since_last_sensor);
 
 
                 // for amusement, display:
@@ -250,14 +233,24 @@ static void engineerTask() {
                     int new_difference = sensor_update.time - last_update.time;
                     pairs[last_index][index] =  (new_difference * ALPHA +
                                                 past_difference * (100 - ALPHA)) / 100;
-                    printf(COM2, "time updated %d to %d \r\n",
-                        past_difference, pairs[index][last_index]);
+                    // printf(COM2, "time updated %d to %d \r\n",
+                        // past_difference, pairs[last_index][index]);
                 }
 
                 last_index = index;
                 last_update.time = sensor_update.time;
                 last_update.sensor = sensor_update.sensor;
-        */
+                break;
+            } // update
+
+            default: {
+                printf(COM2, "Warning engineer Received garbage\r\n");
+                break;
+            } // default
+        } // switch
+
+                // print out the direction of travel
+
 
     } // for
 
