@@ -108,7 +108,7 @@ track_node *getNextLandmark(track_node *current_landmark) {
     return next_node;
 }
 
-
+static bool speed_change_requested = false;
 static bool direction_is_forward = true;
 static int screen_row = 0;
 static void updateScreen(char group, int offset, int expected_time,
@@ -135,6 +135,7 @@ static void updateScreen(char group, int offset, int expected_time,
 }
 
 static void engineerTask() {
+    speed_change_requested = false;
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
     printf(COM2, "debug: engineerTask started >>> active_train %d desired_speed %d\r\n",
         active_train, desired_speed);
@@ -150,6 +151,10 @@ static void engineerTask() {
         if(len != sizeof(SensorUpdate)) {
             printf(COM2, "Warning engineer Received garbage\r\n");
             continue;
+        }
+        if(speed_change_requested) {
+            trainSetSpeed(active_train, desired_speed);
+            speed_change_requested = false;
         }
 
         // print out the direction of travel
@@ -244,4 +249,44 @@ void engineerLoadTrackStructure(char which_track) {
     else {
         init_trackb(g_track);
     }
+}
+
+track_node *getPrevLandmark(track_node *node) {
+
+    return (track_node *) 0;
+}
+
+// return the track node from which the engineer should start caring about
+track_node *backpropagateFrom(int sensor, int stopping_distance_in_cm) {
+    char group = sensor >> 8;
+    int offset = sensor & 0xff;
+    //
+    return (track_node *) 0;
+}
+
+
+void engineerXMarksTheSpot(char sensor_group, int sensor_number) {
+    assert('a' <= sensor_group && sensor_group <= 'e');
+    assert(1 <= sensor_number && sensor_number <= 16);
+    // if the engineer is approaching said sensor within, say 2 landmarks,
+    // engineer should calculate when to send the stop command to stop on
+    // top of the sensor
+    // this calculation requires knowing the stopping distance for
+    // the current speed of travel
+    // for now assume the stopping distance is 30 cm.
+    int stopping_distance_in_cm = (desired_speed > 10) ? 60 : 40;
+    // calculate after which sensor should the engineer need to care about stopping
+    // by backpropagating
+    int x_sensor = (sensor_group << 8) | sensor_number;
+    track_node *which_sensor = backpropagateFrom(x_sensor, stopping_distance_in_cm);
+    // tell the train engineer he needs to stop after x-time
+    // int num_ticks_after_hitting_sensor = stopping_distance_in_cm +
+
+}
+
+void engineerSpeedUpdate(int new_speed) {
+    // speed changes only on a sensor (because engineer is receive blocked)
+    // in the future we can send to the engineer a speed request
+    desired_speed = new_speed;
+    speed_change_requested = true;
 }

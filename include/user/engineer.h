@@ -24,6 +24,9 @@ typedef struct Enstruction {
 void initEngineer();
 void engineerPleaseManThisTrain(); // returns id of engineer task
 void engineerParserGotReverseCommand();
+// void engineerSpeedUpdate(int train_number, int train_speed);
+void engineerSpeedUpdate(int train_speed); // for now just use 1 train
 void engineerLoadTrackStructure(char which_track);
+void engineerXMarksTheSpot(char sensor_group, int sensor_number);
 
 #endif
