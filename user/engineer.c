@@ -104,7 +104,7 @@ track_edge *getNextEdge(track_node *current_landmark) {
         return &current_landmark->edge[DIR_AHEAD];
     }
     else {
-        printf(COM2, "getNextEdge: something went wrong: %c.\n\r", current_landmark->name);
+        printf(COM2, "gne?");
     }
     return 0;
 
@@ -139,7 +139,7 @@ static void updateScreen(char group, int offset, int expected_time,
     PutString(COM2, &s);
 }
 
-static void updateLandmark(track_node *current, track_node *next) {
+static void updateScreenLandmark(track_node *current, track_node *next) {
     String s;
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
@@ -237,18 +237,17 @@ static void engineerTask() {
                 }
                 int next_idx = next_landmark - &g_track[0];
                 current_landmark = &g_track[next_idx];
-                // updateLandmark(current_landmark, next_landmark);
                 // printf(COM2, "     current_landmark was %s, setting it to %d\r\n",
                 //     current_landmark->name, next_landmark->name);
 
                 if (next_landmark->type != NODE_SENSOR) {
-                    // we don't need a landmark notifier if
-                    // the next landmark is sensor, since
-                    // the engineer courier will notify us!
-
-                    // assume that landmark notifier is send blocked on us
-                    // at this point. If that is not the case, then it might
-                    // be delayed for too long previously
+                    next_landmark = getNextLandmark(current_landmark);
+                    if(next_landmark == 0) {
+                        // printf(COM2, "WTF next_landmark is null, what do?\r\n");
+                        Reply(tid, 0, 0);
+                        break;
+                    }
+                    updateScreenLandmark(current_landmark, next_landmark);
 
                     track_edge *next_edge = getNextEdge(current_landmark);
 
@@ -338,7 +337,7 @@ static void engineerTask() {
                 if(next_landmark == 0) {
                     break;
                 }
-                updateLandmark(current_landmark, next_landmark);
+                // updateScreenLandmark(current_landmark, next_landmark);
                 if (next_landmark->type != NODE_SENSOR) {
                     // we don't need a landmark notifier if
                     // the next landmark is sensor, since
