@@ -5,7 +5,6 @@
 #include <utils.h> // printf
 #include <user/train.h> // trainSetSpeed
 #include <user/sensor.h> // sizeof(MessageToEngineer)
-#include <user/nameserver.h>
 #include <user/track_data.h>
 #include <user/turnout.h> // turnoutIsCurved
 #include <user/vt100.h>
