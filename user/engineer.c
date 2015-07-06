@@ -133,7 +133,8 @@ static void updateScreen(char group, int offset, int expected_time,
 
 }
 
-void delayNotifier() {
+void delayNotifier()
+{
     int pid = MyParentTid();
     MessageToEngineer message;
     message.type = update_landmark;
@@ -269,10 +270,10 @@ track_node *getPrevLandmark(track_node *node) {
 }
 
 // return the track node from which the engineer should start caring about
-track_node *backpropagateFrom(int sensor, int stopping_distance_in_cm) {
-    char group = sensor >> 8;
-    int offset = sensor & 0xff;
-    //
+track_node *backpropagateFrom(int sensorEncoding, int stopping_distance_in_cm) {
+    int sensor = 16 * (sensorEncoding >> 8) + (sensorEncoding & 0xff) - 1;
+    assert (sensor >= 0 && sensor < NUM_SENSORS);
+
     return (track_node *) 0;
 }
 
