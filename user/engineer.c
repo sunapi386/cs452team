@@ -88,7 +88,7 @@ int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
             break;
         }
         // TODO: next_node = getNextLandmark(next_node);
-        if((next_node - &g_track[0]) == to_index) {
+        if(next_node->idx == to_index) {
             // printf(COM2, "\r\ndistanceBetween: total_distance %d.\n\r", total_distance);
             break;
         }
@@ -241,7 +241,7 @@ static void engineerTask() {
                     Reply(tid, 0, 0);
                     break;
                 }
-                int next_idx = next_landmark - &g_track[0];
+                int next_idx = next_landmark->idx;
                 current_landmark = &g_track[next_idx];
                 // printf(COM2, "     current_landmark was %s, setting it to %d\r\n",
                 //     current_landmark->name, next_landmark->name);

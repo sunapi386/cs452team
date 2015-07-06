@@ -297,7 +297,39 @@ fh = open(options.h, 'w')
 fh.write('''/* THIS FILE IS GENERATED CODE -- DO NOT EDIT */
 #ifndef __TRACK_DATA_H
 #define __TRACK_DATA_H
-#include "track_node.h"
+
+typedef enum {
+    NODE_NONE,
+    NODE_SENSOR,
+    NODE_BRANCH,
+    NODE_MERGE,
+    NODE_ENTER,
+    NODE_EXIT,
+} node_type;
+
+#define DIR_AHEAD 0
+#define DIR_STRAIGHT 0
+#define DIR_CURVED 1
+
+struct track_node;
+typedef struct track_node track_node;
+typedef struct track_edge track_edge;
+
+struct track_edge {
+    track_edge *reverse;
+    track_node *src, *dest;
+    int dist;             /* in millimetres */
+};
+
+struct track_node {
+    int idx;              /* index into the track table */
+    const char *name;
+    node_type type;
+    int num;              /* sensor or switch number */
+    track_node *reverse;  /* same location, but opposite direction */
+    track_edge edge[2];
+};
+
 
 // The track initialization functions expect an array of this size.
 #define TRACK_MAX %d
@@ -328,6 +360,7 @@ void %s(track_node *track) {
 ''' % fun)
   for nd in tracks[fun].nodes:
     idx = nd.index
+    fh.write("  track[%d].idx = %d;\n" % (idx, idx))
     fh.write("  track[%d].name = \"%s\";\n" % (idx, nd.name))
     nodetype = 'NODE_' + nd.nodetype.upper()
     fh.write("  track[%d].type = %s;\n" % (idx, nodetype))
