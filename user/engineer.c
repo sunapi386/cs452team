@@ -11,6 +11,7 @@
 
 #define ALPHA           85
 #define NUM_SENSORS     (5 * 16)
+#define NUM_TRAINS      80
 
 static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
@@ -20,6 +21,7 @@ static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
 static int pairs[NUM_SENSORS][NUM_SENSORS];
 static track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
+static bool activated_engineers[NUM_TRAINS];
 
 // Courier: sensorServer -> engineer
 static void engineerCourier() {
@@ -279,11 +281,18 @@ static void engineerTask() {
 static int engineerTaskId = -1;
 
 void initEngineer() {
+    if(engineerTaskId >= 0) {
+        // we already called initEngineer before
+        return;
+    }
     printf(COM2, "debug: initEngineer\r\n");
     for(int i = 0; i < NUM_SENSORS; i++) {
         for(int j = 0; j < NUM_SENSORS; j++) {
             pairs[i][j] = 0;
         }
+    }
+    for(int i = 0; i < NUM_TRAINS; i++) {
+        activated_engineers[i] = false;
     }
     direction_is_forward = true;
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
@@ -291,6 +300,12 @@ void initEngineer() {
 }
 
 void engineerPleaseManThisTrain(int train_number, int speed) {
+    assert(1 <= train_number && train_number <= 80 && 0 <= speed && speed <= 14);
+    if(activated_engineers[train_number - 1]) {
+        printf("Engineer for %d is already started", train_number);
+        return;
+    }
+    activated_engineers[train_number - 1] = true;
     active_train = train_number;
     desired_speed = speed;
 }

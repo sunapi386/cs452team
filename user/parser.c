@@ -661,7 +661,7 @@ static bool parse(Parser *p, char c) {
                 // check train_number and train_speed
                 int train_number = p->data.speed.train_number;
                 int train_speed = p->data.speed.train_speed;
-                if((0 <= train_number && train_number <= 80) &&
+                if((1 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
                     sputstr(&disp_msg,"setting train speed\r\n");
                     trainSetSpeed(train_number, train_speed);
@@ -676,7 +676,7 @@ static bool parse(Parser *p, char c) {
             case RV_train_number: {
                 // check train_number
                 int train_number = p->data.reverse.train_number;
-                if(0 <= train_number && train_number <= 80) {
+                if(1 <= train_number && train_number <= 80) {
                     sputstr(&disp_msg,"Reversing\r\n");
                     trainSetReverseNicely(train_number);
                 }
@@ -735,7 +735,7 @@ static bool parse(Parser *p, char c) {
                 sputstr(&disp_msg, "Setting last train speed 0!\r\n");
                 int train_number = p->data.speed.train_number;
                 int train_speed = p->data.speed.train_speed;
-                if(0 <= train_number && train_number <= 80) {
+                if(1 <= train_number && train_number <= 80) {
                     trainSetSpeed(train_number, 0);
                      if( ! (0 <= train_speed  && train_speed  <= 14) ) {
                         sputstr(&disp_msg,"   Warning last train speed.\r\n");
@@ -749,7 +749,7 @@ static bool parse(Parser *p, char c) {
                 sputstr(&disp_msg, "Going again at last speed!\r\n");
                 int train_number = p->data.speed.train_number;
                 int train_speed = p->data.speed.train_speed;
-                if((0 <= train_number && train_number <= 80) &&
+                if((1 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
                     trainSetSpeed(train_number, train_speed);
                 } else {
@@ -760,7 +760,7 @@ static bool parse(Parser *p, char c) {
             case E_train_speed: {
                 int train_number = p->data.engineer.train_number;
                 int train_speed = p->data.engineer.train_speed;
-                if((0 <= train_number && train_number <= 80) &&
+                if((1 <= train_number && train_number <= 80) &&
                     (0 <= train_speed && train_speed <= 14)) {
                     sputstr(&disp_msg, "Create engineer for ");
                     sputint(&disp_msg, train_number, 10);
@@ -807,7 +807,7 @@ static bool parse(Parser *p, char c) {
                 int sensor_number = p->data.calibration.sensor_number;
                 int num_loops = p->data.calibration.num_loops;
 
-                if( (0 <= train_number && train_number <= 80) &&
+                if( (1 <= train_number && train_number <= 80) &&
                     (0 <= train_speed && train_speed <= 14)   &&
                     ('a' <= sensor_group && sensor_group <= 'e') &&
                     (1 <= sensor_number && sensor_number <= 16)  &&
