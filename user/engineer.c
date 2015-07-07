@@ -188,57 +188,37 @@ void landmarkNotifier()
 
 void initializeEngineerDisplay()
 {
-    String s;
-    sinit(&s);
-    sprintf(&s, VT_CURSOR_SAVE
-                "\033[1;80HNext landmark:     "
-                "\033[2;80HPrevious landmark: "
-                "\033[3;80HDistance since:    "
-                "\033[4;80HExpected ticks:    "
-                "\033[5;80HActual ticks:      "
-                "\033[6;80HError ticks:       "
-                VT_CURSOR_RESTORE);
-    PutString(COM2, &s);
-}
-
-// TODO: convert distSince to cm
-void updateEngineerDisplay(const char *nextLandmark,
-                           const char *prevLandmark,
-                           int distToNext,
-                           int expectedTime,
-                           int actualTime,
-                           int errorTime)
-{
-    String s;
-    sinit(&s);
-    sprintf(&s, VT_CURSOR_SAVE
-                "\033[1;100H%s    "
-                "\033[2;100H%s    "
-                "\033[3;100H%d    "
-                "\033[4;100H%d    "
-                "\033[5;100H%d    "
-                "\033[6;100H%d    "
-                VT_CURSOR_RESTORE,
-                /* arguments */
-                nextLandmark,
-                prevLandmark,
-                distToNext,
-                expectedTime,
-                actualTime,
-                errorTime);
-    PutString(COM2, &s);
+    printf(COM2, VT_CURSOR_SAVE
+                 "\033[1;80HNext landmark:     "
+                 "\033[2;80HPrevious landmark: "
+                 "\033[3;80HDistance to next:  "
+                 "\033[4;80HPrevious sensor:   "
+                 "\033[5;80HExpected (ticks):  "
+                 "\033[6;80HActual   (ticks):  "
+                 "\033[7;80HError    (ticks):  "
+                 VT_CURSOR_RESTORE);
 }
 
 void updateScreenDistToNext(int distToNext)
 {
-
+    printf(COM2, VT_CURSOR_SAVE
+                 "\033[3;100H%d    "
+                 VT_CURSOR_RESTORE,
+                 distToNext);
 }
 
 void updateScreenNewLandmark(const char *nextLandmark,
                              const char *prevLandmark,
                              int distToNext)
 {
-
+    printf(COM2, VT_CURSOR_SAVE
+                 "\033[1;100H%s    "
+                 "\033[2;100H%s    "
+                 "\033[3;100H%d    "
+                 VT_CURSOR_RESTORE,
+                 nextLandmark,
+                 prevLandmark,
+                 distToNext);
 }
 
 void updateScreenNewSensor(const char *nextLandmark,
@@ -249,7 +229,22 @@ void updateScreenNewSensor(const char *nextLandmark,
                            int actualTime,
                            int error)
 {
-
+    printf(COM2, VT_CURSOR_SAVE
+                 "\033[1;100H%s    "
+                 "\033[2;100H%s    "
+                 "\033[3;100H%d    "
+                 "\033[4;100H%s    "
+                 "\033[5;100H%d    "
+                 "\033[6;100H%d    "
+                 "\033[7;100H%d    "
+                 VT_CURSOR_RESTORE,
+                 nextLandmark,
+                 prevLandmark,
+                 distToNext,
+                 prevSensor,
+                 expectedTime,
+                 actualTime,
+                 error);
 }
 
 
