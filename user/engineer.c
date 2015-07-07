@@ -244,9 +244,15 @@ static void engineerTask() {
     trainSetSpeed(active_train, desired_speed);
 
     // Variables that are needed to be persisted between iterations
-    int tid = 0, landmarkNotifierTid = 0, refreshNotifierTid = 0;
+    int tid = 0, refreshNotifierTid = 0;
     int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
-    track_node *currentLandmark = 0;
+
+    int timeOfReachingPrevLandmark = 0;
+    int distSincePrevLandmark = 0;
+    track_node *prevLandmark = 0;
+
+    int expectedSensorTime = 0;
+    int actualSensorTime = 0;
 
     SensorUpdate last_update = {0,0};
     MessageToEngineer message;
@@ -263,19 +269,19 @@ static void engineerTask() {
             case update_ui:
             {
                 // If we are just starting, initialize display and block
-                if (currentLandmark == 0)
+                if (prevLandmark == 0)
                 {
                     initializeEngineerDisplay();
                     refreshNotifierTid = tid;
                     break;
                 }
 
-                // If we have a current_landmark, compute the values needed
+                // If we have a prevLandmark, compute the values needed
                 // and update train display
-                track_node *nextLandmark = getNextLandmark(currentLandmark);
+                track_node *nextLandmark = getNextLandmark(prevLandmark);
 
-                // If landmark is null, block
-                if (nextLandmark == 0)
+                // If landmark is null or train is not moving, do not refresh UI
+                if (nextLandmark == 0 || desired_speed == 0)
                 {
                     refreshNotifierTid = tid;
                     break;
@@ -283,99 +289,32 @@ static void engineerTask() {
                 // else update the current information and update ui
                 else
                 {
-                    int expectedTime = 0;
-                    int actualTime = 0;
+                    // get the distance to next landmark
+                    track_edge *nextEdge = getNextEdge(prevLandmark);
+                    assert(nextEdge != 0);
+
+                    // compute expected time to next landmark
+                    int expectedTimeToNextLandmark =
+                        (nextEdge->dist * 1000 / current_velocity_in_um);
+
+                    if (Time() - timeOfReachingPrevLandmark >= expectedTimeToNextLandmark)
+                    {
+                        // we've "reached" the next landmark; update landmark information
+                        prevLandmark = nextLandmark;
+                        timeOfReachingPrevLandmark = 0;
+                        distSincePrevLandmark = 0;
+                    }
 
                     // refresh UI
-                    updateEngineerDisplay(currentLandmark->name,
+                    updateEngineerDisplay(prevLandmark->name,
                                           nextLandmark->name,
-                                          expectedTime,
-                                          actualTime,
-                                          abs(expectedTime - actualTime));
+                                          expectedSensorTime,
+                                          actualSensorTime,
+                                          abs(expectedSensorTime - actualSensorTime));
                 }
 
                 break;
             }
-
-            case x_mark: {
-                int node_number = message.data.x_mark.x_node_number;
-                Reply(tid, 0, 0);
-                // if the engineer is approaching said sensor within, say 2 landmarks,
-                // engineer should calculate when to send the stop command to stop on
-                // top of the sensor
-
-                // this calculation requires knowing the stopping distance.
-                // we guess stopping distance for now
-                // int stop_dist_mm = (desired_speed < 10) ? 300 : 600;
-
-                // the current speed of travel
-                // int current_speed = velocity[desired_speed];
-                // calculate after which sensor should the engineer need to care about stopping
-                // by backpropagating
-                // int sensor_encoding = (sensor_group << 8) | sensor_number;
-                // track_node *caring_sensor = backpropagateFrom(sensor_encoding, stopping_distance_in_mm);
-
-                // tell the train engineer he needs to stop after x-time
-                // int ticks_after_caring_sensor = 10000 * stopping_distance_in_cm / velocity_um_per_tick;
-                // int distance_to_caring_sensor_in_um = umDistanceBetween(current_sensor, caring_sensor);
-                // sum up number of ticks from our current sensor to the caring sensor by
-                // looking up in the timing table
-                // int num_ticks_from_now_to_caring_sensor = ;
-                // when_to_wakeup_engineer_in_ticks =  ticks_after_caring_sensor +
-                                        // num_ticks_from_now_to_caring_sensor;
-                break;
-            } // x_mark
-
-            case change_speed: {
-                // printf(COM2, "engineer got change speed... \r\n");
-                Reply(tid, 0, 0);
-                desired_speed = message.data.change_speed.speed;
-                trainSetSpeed(active_train, desired_speed);
-                break;
-            } // change_speed
-            case update_landmark: {
-                if(desired_speed == 0) {
-                    // stop updating landmarks when train is stopped
-                    Reply(tid, 0, 0);
-                }
-                // printf(COM2, "engineer got update_landmark... \r\n");
-                // engineer should update screen with new estimated current_landmark
-                track_node *next_landmark = getNextLandmark(currentLandmark);
-                if(next_landmark == 0) {
-                    // printf(COM2, "WTF next_landmark is null, what do?\r\n");
-                    Reply(tid, 0, 0);
-                    break;
-                }
-                int next_idx = next_landmark->idx;
-                currentLandmark = &g_track[next_idx];
-                // printf(COM2, "     currentLandmark was %s, setting it to %d\r\n",
-                //     currentLandmark->name, next_landmark->name);
-
-                if (next_landmark->type != NODE_SENSOR) {
-                    next_landmark = getNextLandmark(currentLandmark);
-                    if(next_landmark == 0) {
-                        // printf(COM2, "WTF next_landmark is null, what do?\r\n");
-                        Reply(tid, 0, 0);
-                        break;
-                    }
-                    updateScreenLandmark(currentLandmark, next_landmark);
-
-                    track_edge *next_edge = getNextEdge(currentLandmark);
-
-                    // calculate the time we want to landmark notifier to wake us up
-                    int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
-                    int wake_time = Time() + expected_time_to_next_landmark;
-                    // printf(COM2, "replying to landmark notifier: expected_time_to_next_landmark %d wake_time %d",
-                        // expected_time_to_next_landmark, wake_time);
-                    Reply(tid, &wake_time, sizeof(int));
-                }
-                else {
-                    // printf(COM2, "next landmark is a sensor node, so no reply to notifier\r\n");
-                    landmarkNotifierTid = tid;
-                }
-
-                break;
-            } // update_landmark
 
             case update_sensor: {
                 Reply(tid, 0, 0);
@@ -385,13 +324,8 @@ static void engineerTask() {
                     message.data.update_sensor.time
                 };
 
-                // int group = sensor_update.sensor >> 8;
-                // int offset = sensor_update.sensor & 0xff;
-                // int index = indexFromSensorUpdate(sensor_update);
-                // int new_time = sensor_update.time;
-                // printf(COM2, "engineer read %c%d (%d idx) %d ticks\r\n",
-                //          group + 'A', offset, index, new_time);
-
+                // update some stuff
+                prevLandmark = &g_track[indexFromSensorUpdate(sensor_update)];
 
                 // i. the real-time location of the train in form of landmark
                 // for now define landmark as only sensor, then location is:
@@ -441,15 +375,13 @@ static void engineerTask() {
                 last_update.sensor = sensor_update.sensor;
 
 
-                // update the currentLandmark
-                currentLandmark = &g_track[indexFromSensorUpdate(sensor_update)];
 
                 // look up the next landmark
-                track_node *next_landmark = getNextLandmark(currentLandmark);
+                track_node *next_landmark = getNextLandmark(prevLandmark);
                 if(next_landmark == 0) {
                     break;
                 }
-                // updateScreenLandmark(currentLandmark, next_landmark);
+                // updateScreenLandmark(prevLandmark, next_landmark);
                 if (next_landmark->type != NODE_SENSOR) {
                     // we don't need a landmark notifier if
                     // the next landmark is sensor, since
@@ -460,19 +392,54 @@ static void engineerTask() {
                     // be delayed for too long previously
                     // assert(landmarkNotifierTid > 0);
 
-                    track_edge *next_edge = getNextEdge(currentLandmark);
+                    track_edge *next_edge = getNextEdge(prevLandmark);
 
                     // calculate the time we want to landmark notifier to wake us up
                     int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
                     int wake_time = sensor_update.time + expected_time_to_next_landmark;
                     // printf(COM2, "expected_time_to_next_landmark %d wake_time %d",
                         // expected_time_to_next_landmark, wake_time);
-                    Reply(landmarkNotifierTid, &wake_time, sizeof(int));
-                    landmarkNotifierTid = -1;
                 }
 
                 break;
             } // update
+
+            case x_mark: {
+                int node_number = message.data.x_mark.x_node_number;
+                Reply(tid, 0, 0);
+                // if the engineer is approaching said sensor within, say 2 landmarks,
+                // engineer should calculate when to send the stop command to stop on
+                // top of the sensor
+
+                // this calculation requires knowing the stopping distance.
+                // we guess stopping distance for now
+                // int stop_dist_mm = (desired_speed < 10) ? 300 : 600;
+
+                // the current speed of travel
+                // int current_speed = velocity[desired_speed];
+                // calculate after which sensor should the engineer need to care about stopping
+                // by backpropagating
+                // int sensor_encoding = (sensor_group << 8) | sensor_number;
+                // track_node *caring_sensor = backpropagateFrom(sensor_encoding, stopping_distance_in_mm);
+
+                // tell the train engineer he needs to stop after x-time
+                // int ticks_after_caring_sensor = 10000 * stopping_distance_in_cm / velocity_um_per_tick;
+                // int distance_to_caring_sensor_in_um = umDistanceBetween(current_sensor, caring_sensor);
+                // sum up number of ticks from our current sensor to the caring sensor by
+                // looking up in the timing table
+                // int num_ticks_from_now_to_caring_sensor = ;
+                // when_to_wakeup_engineer_in_ticks =  ticks_after_caring_sensor +
+                                        // num_ticks_from_now_to_caring_sensor;
+                break;
+            } // x_mark
+
+            case change_speed: {
+                // printf(COM2, "engineer got change speed... \r\n");
+                Reply(tid, 0, 0);
+                desired_speed = message.data.change_speed.speed;
+                trainSetSpeed(active_train, desired_speed);
+                break;
+            } // change_speed
 
             default: {
                 printf(COM2, "Warning engineer Received garbage\r\n");
