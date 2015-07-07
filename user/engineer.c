@@ -157,6 +157,22 @@ static void updateScreenLandmark(track_node *current, track_node *next) {
     PutString(COM2, &s);
 }
 
+static void updateScreenVelocities(int vel, int dist, int d_since) {
+    String s;
+    sinit(&s);
+    sputstr(&s, VT_CURSOR_SAVE);
+    vt_pos(&s, VT_ENGINEER_ROW + 2, VT_ENGINEER_COL);
+    sputstr(&s, "Velocity: ");
+    sputint(&s, vel, 10);
+    sputstr(&s, "  Distance: ");
+    sputint(&s, dist, 10);
+    sputstr(&s, "  Estimated: ");
+    sputint(&s, d_since, 10);
+    sputstr(&s, "         "); // to cover up the tail
+    sputstr(&s, VT_CURSOR_RESTORE);
+    PutString(COM2, &s);
+}
+
 void landmarkNotifier()
 {
     int pid = MyParentTid();
@@ -233,6 +249,10 @@ static void engineerTask() {
             } // change_speed
 
             case update_landmark: {
+                if(desired_speed == 0) {
+                    // stop updating landmarks when train is stopped
+                    Reply(tid, 0, 0);
+                }
                 // printf(COM2, "engineer got update_landmark... \r\n");
                 // engineer should update screen with new estimated current_landmark
                 track_node *next_landmark = getNextLandmark(current_landmark);
@@ -296,10 +316,11 @@ static void engineerTask() {
                 current_velocity_in_um = um_dist_segment / time_since_last_sensor;
                 int est_dist_since_last_sensor = (current_velocity_in_um * time_since_last_sensor);
 
+                updateScreenVelocities(current_velocity_in_um, um_dist_segment, est_dist_since_last_sensor);
                 // printf(COM2, "velocity %d um/tick, actual distance %d estimated distance %d\n\r",
-                //     current_velocity_in_um,
-                //     um_dist_segment,
-                //     est_dist_since_last_sensor);
+                //    current_velocity_in_um,
+                //    um_dist_segment,
+                //    est_dist_since_last_sensor);
 
 
                 // for amusement, display:
