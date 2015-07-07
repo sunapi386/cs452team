@@ -24,6 +24,7 @@ typedef struct Enstruction {
 typedef struct MessageToEngineer {
     enum {
         x_mark,
+        update_ui,
         change_speed,
         update_sensor,
         update_landmark,

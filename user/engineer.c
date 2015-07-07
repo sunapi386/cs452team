@@ -17,10 +17,6 @@ static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
 }
 
-static inline int abs(int num) {
-    return (num < 0 ? -1 * num : num);
-}
-
 static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
 static int pairs[NUM_SENSORS][NUM_SENSORS];
@@ -189,27 +185,117 @@ void landmarkNotifier()
     }
 }
 
+void initializeEngineerDisplay()
+{
+    String s;
+    sinit(&s);
+    sprintf(&s, VT_CURSOR_SAVE
+                "\033[1;80HNext landmark:     "
+                "\033[2;80HPrevious landmark: "
+                "\033[3;80HExpected ticks:    "
+                "\033[4;80HActual ticks:      "
+                "\033[5;80HError ticks:       "
+                "\033[6;80HDistance Since:    "
+                VT_CURSOR_RESTORE);
+    PutString(COM2, &s);
+}
+
+void updateEngineerDisplay(const char *current,
+                           const char *next,
+                           int expectedTime,
+                           int actualTime,
+                           int errorTime)
+{
+    String s;
+    sinit(&s);
+    sprintf(&s, VT_CURSOR_SAVE
+                "\033[1;100H%s    "
+                "\033[2;100H%s    "
+                "\033[3;100H%d    "
+                "\033[4;100H%d    "
+                "\033[5;100H%d    "
+                "\033[6;100H%d    "
+                VT_CURSOR_RESTORE,
+                /* arguments */
+                current,
+                next,
+                expectedTime,
+                actualTime,
+                errorTime);
+    PutString(COM2, &s);
+}
+
+void refreshNotifier()
+{
+    int pid = MyParentTid();
+    MessageToEngineer message;
+    message.type = update_ui;
+
+    for (;;)
+    {
+        Send(pid, &message, sizeof(MessageToEngineer), 0, 0);
+        Delay(10); // update UI ever
+    }
+}
+
 static void engineerTask() {
-    Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
     printf(COM2, "debug: engineerTask started >>> active_train %d desired_speed %d\r\n",
         active_train, desired_speed);
     trainSetSpeed(active_train, desired_speed);
-    // at this point the train is up-to-speed
-    int tid = 0, landmarkNotifierTid = 0;
+
+    // Variables that are needed to be persisted between iterations
+    int tid = 0, landmarkNotifierTid = 0, refreshNotifierTid = 0;
+    int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
+    track_node *currentLandmark = 0;
+
     SensorUpdate last_update = {0,0};
     MessageToEngineer message;
-    track_node *current_landmark = 0;
 
+    // Create child tasks
     Create(PRIORITY_ENGINEER_COURIER, landmarkNotifier);
-    int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
+    Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
 
     for(;;) {
         int len = Receive(&tid, &message, sizeof(MessageToEngineer));
-        if(len != sizeof(MessageToEngineer)) {
-            printf(COM2, "Warning engineer Received garbage\r\n");
-            continue;
-        }
+        assert(len == sizeof(MessageToEngineer));
+
         switch(message.type) {
+            case update_ui:
+            {
+                // If we are just starting, initialize display and block
+                if (currentLandmark == 0)
+                {
+                    initializeEngineerDisplay();
+                    refreshNotifierTid = tid;
+                    break;
+                }
+
+                // If we have a current_landmark, compute the values needed
+                // and update train display
+                track_node *nextLandmark = getNextLandmark(currentLandmark);
+
+                // If landmark is null, block
+                if (nextLandmark == 0)
+                {
+                    refreshNotifierTid = tid;
+                    break;
+                }
+                // else update the current information and update ui
+                else
+                {
+                    int expectedTime = 0;
+                    int actualTime = 0;
+
+                    // refresh UI
+                    updateEngineerDisplay(currentLandmark->name,
+                                          nextLandmark->name,
+                                          expectedTime,
+                                          actualTime,
+                                          abs(expectedTime - actualTime));
+                }
+
+                break;
+            }
 
             case x_mark: {
                 int node_number = message.data.x_mark.x_node_number;
@@ -247,7 +333,6 @@ static void engineerTask() {
                 trainSetSpeed(active_train, desired_speed);
                 break;
             } // change_speed
-
             case update_landmark: {
                 if(desired_speed == 0) {
                     // stop updating landmarks when train is stopped
@@ -255,27 +340,27 @@ static void engineerTask() {
                 }
                 // printf(COM2, "engineer got update_landmark... \r\n");
                 // engineer should update screen with new estimated current_landmark
-                track_node *next_landmark = getNextLandmark(current_landmark);
+                track_node *next_landmark = getNextLandmark(currentLandmark);
                 if(next_landmark == 0) {
                     // printf(COM2, "WTF next_landmark is null, what do?\r\n");
                     Reply(tid, 0, 0);
                     break;
                 }
                 int next_idx = next_landmark->idx;
-                current_landmark = &g_track[next_idx];
-                // printf(COM2, "     current_landmark was %s, setting it to %d\r\n",
-                //     current_landmark->name, next_landmark->name);
+                currentLandmark = &g_track[next_idx];
+                // printf(COM2, "     currentLandmark was %s, setting it to %d\r\n",
+                //     currentLandmark->name, next_landmark->name);
 
                 if (next_landmark->type != NODE_SENSOR) {
-                    next_landmark = getNextLandmark(current_landmark);
+                    next_landmark = getNextLandmark(currentLandmark);
                     if(next_landmark == 0) {
                         // printf(COM2, "WTF next_landmark is null, what do?\r\n");
                         Reply(tid, 0, 0);
                         break;
                     }
-                    updateScreenLandmark(current_landmark, next_landmark);
+                    updateScreenLandmark(currentLandmark, next_landmark);
 
-                    track_edge *next_edge = getNextEdge(current_landmark);
+                    track_edge *next_edge = getNextEdge(currentLandmark);
 
                     // calculate the time we want to landmark notifier to wake us up
                     int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
@@ -356,15 +441,15 @@ static void engineerTask() {
                 last_update.sensor = sensor_update.sensor;
 
 
-                // update the current_landmark
-                current_landmark = &g_track[indexFromSensorUpdate(sensor_update)];
+                // update the currentLandmark
+                currentLandmark = &g_track[indexFromSensorUpdate(sensor_update)];
 
                 // look up the next landmark
-                track_node *next_landmark = getNextLandmark(current_landmark);
+                track_node *next_landmark = getNextLandmark(currentLandmark);
                 if(next_landmark == 0) {
                     break;
                 }
-                // updateScreenLandmark(current_landmark, next_landmark);
+                // updateScreenLandmark(currentLandmark, next_landmark);
                 if (next_landmark->type != NODE_SENSOR) {
                     // we don't need a landmark notifier if
                     // the next landmark is sensor, since
@@ -375,7 +460,7 @@ static void engineerTask() {
                     // be delayed for too long previously
                     // assert(landmarkNotifierTid > 0);
 
-                    track_edge *next_edge = getNextEdge(current_landmark);
+                    track_edge *next_edge = getNextEdge(currentLandmark);
 
                     // calculate the time we want to landmark notifier to wake us up
                     int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
