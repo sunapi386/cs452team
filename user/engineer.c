@@ -311,7 +311,8 @@ static void engineerTask() {
                     }
 
                     // delta is the difference between now and when we reached last landmark
-                    int delta = Time() - timeOfReachingPrevLandmark;
+                    int currentTime = Time();
+                    int delta = currentTime - timeOfReachingPrevLandmark;
                     assert(delta >= 0);
 
                     // compute distance to next landmark
@@ -322,7 +323,7 @@ static void engineerTask() {
                         // We've "reached" the next non-sensor landmark
                         // Update previous landmark
                         prevLandmark = nextLandmark;
-                        timeOfReachingPrevLandmark = 0;
+                        timeOfReachingPrevLandmark = currentTime;
 
                         // update the next landmark
                         nextLandmark = getNextLandmark(prevLandmark);
@@ -383,6 +384,8 @@ static void engineerTask() {
 
                 // Update some stuff
                 prevLandmark = &g_track[indexFromSensorUpdate(sensor_update)];
+                timeOfReachingPrevLandmark = sensor_update.time;
+
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
                 track_edge *nextEdge = getNextEdge(prevLandmark);
                 if (nextLandmark == 0 || nextEdge == 0)
