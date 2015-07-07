@@ -163,6 +163,400 @@ Program Operation
 > go
 \end_layout
 
+\begin_layout Standard
+Additional commands have been built.
+ The list of commands can be viewed by typing 
+\family typewriter
+?
+\family default
+ and hitting enter.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Tabular
+<lyxtabular version="3" rows="17" columns="2">
+<features rotate="0" booktabs="true" tabularvalignment="middle">
+<column alignment="left" valignment="top" width="5cm">
+<column alignment="left" valignment="top" width="5cm">
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Command
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Action
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+tr train_num speed
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+set train speed
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+rv train_num
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+reverse train
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+sw train_num direction
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+switch a turnout 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+e train_num speed
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+create engineer for train and give speed
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+h train_num sensor_char sensor_num
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+halt on sensor
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+m sensor1_char sensor1_num sensor2_char sensor2_num
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+display timing from sensor1 to sensor2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+g
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+go at previous train, speed
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+stop previous train
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+c train_number speed sensor_group sensor_num num_loops
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Calibration mode: stop at sensor and delay, then repeat
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+k track_A_or_B
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Load track A or B
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+x track_node_index
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+X marks the spot: stop the train at that node
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+q
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Quit
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+o
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Print turnouts again
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+p
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Print track drawing again
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+d
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Debug printout of active tasks
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+?
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Prints out help message
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
 \begin_layout Section
 Program Output
 \end_layout
@@ -2341,6 +2735,8 @@ Train Control
 
 \begin_layout Standard
 There is one controller for many trains.
+ At the moment there is just one train control supported so we have one
+ engineer and no controller.
 \end_layout
 
 \begin_layout Subsection
@@ -2348,7 +2744,8 @@ Controller
 \end_layout
 
 \begin_layout Standard
-The train controller manages: 
+Not implemented in tc1.
+ The train controller manages: 
 \end_layout
 
 \begin_layout Enumerate
@@ -2360,28 +2757,10 @@ Expected sensor that would be triggered for a train engineer, and does path
  planning.
 \end_layout
 
-\begin_layout Enumerate
-Speed on the track, and keeps a mapping of train number to their associated
- profiles.
- 
-\end_layout
-
-\begin_deeper
-\begin_layout Enumerate
-Feedback loop for accurate train velocity estimation 
-\begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
-\end_inset
-
- where 
-\begin_inset Formula $\alpha$
-\end_inset
-
- is the learning rate.
-\end_layout
-
-\end_deeper
 \begin_layout Standard
-Train has to be able to stop at arbitrarily far from a sensor position.
+When the controller is implemented in the future, the engineer would receive
+ commands from the controller and execute the command that was replied.
+ 
 \end_layout
 
 \begin_layout Subsection
@@ -2409,9 +2788,91 @@ Velocity
 Last hit sensors and time pair
 \end_layout
 
+\begin_layout Itemize
+Upon starting the engineer it drives until it hits a sensor.
+ This tells it where it is and it updates its landmarks.
+ When it receives a sensor update, or a timeout, it recalculates its current
+ landmark.
+ 
+\end_layout
+
+\begin_layout Itemize
+It also keeps track of which sensor will be hit next and when.
+ There is a table that stores timing between sensor reads.
+ The table is updated in a feedback loop fashion for accurate train velocity
+ estimation 
+\begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
+\end_inset
+
+ where 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ is the learning rate.
+ We have 
+\begin_inset Formula $\alpha=85\%$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+In the future the engineer would have accurate mapping of its speed and
+ its actual velocity.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+X Marks The Spot
+\end_layout
+
 \begin_layout Standard
-In an infinite loop, it sends to the planner, and execute the command that
- was replied.
+For the train has to be able to stop at arbitrarily far from a sensor position,
+ the engineer spawns 2 helper tasks.
+ 
+\end_layout
+
+\begin_layout Enumerate
+One task that delays for a certain duration then replies to the engineer.
+ This is used so the engineer can update its landmark references after certain
+ time has passed and it should be at a new landmark.
+ The engineer wakes up, replies to the timer task, prints to the screen
+ and sleeps again.
+\end_layout
+
+\begin_layout Enumerate
+One task that shuffles sensor updates from the sensor task to engineer,
+ to update the engineer of a sensor reading.
+ As it keeps moving, the model of its speed is corrected in a feedback loop
+ fashion.
+\end_layout
+
+\begin_layout Standard
+The stopping distance is derived from the current calculated speed.
+ When the position is exactly the stopping distance ahead of it, it starts
+ decelerating, to stop (at its best estimate) on X.
+\end_layout
+
+\begin_layout Standard
+There is no reverse.
+\end_layout
+
+\begin_layout Subsubsection
+Path Finding
+\end_layout
+
+\begin_layout Standard
+Pathing is not implemented.
+ But in the future, when the engineer sent an instruction to navigate to
+ another position, it calculate a path using Djikstra's algorithm, and avoid
+ revisiting the same nodes over and over.
+ Exit nodes would have a distance of infinity to make the path avoid using
+ it.
+ After planning, the engineer requests ownership of the track it needs before
+ it starts moving forward.
+ As it moves, it sets the turnouts (which it owns) that are at most its
+ stopping distance along its path.
+ 
 \end_layout
 
 \begin_layout Section
@@ -2419,202 +2880,19 @@ Sensors Calibration
 \end_layout
 
 \begin_layout Standard
-This is not implemented in K4.
- 
-\end_layout
-
-\begin_layout Standard
-There is a delay from the moment a sensor is triggered, to the moment that
- it gets registers with the task responsible.
- These delay arises from a combination of the following.
-\end_layout
-
-\begin_layout Standard
-\begin_inset Tabular
-<lyxtabular version="3" rows="5" columns="3">
-<features rotate="0" tabularvalignment="middle">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<column alignment="center" valignment="top">
-<row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Delay
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Time
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Reason
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Polling
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-100
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Train controller
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-?
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Communication
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-\begin_inset Formula $4(2+10)=48msec$
+We drive the train, and give it a stop command when it hits a desired sensor
+ (set via our command) so that the pickup is right at the sensor.
+ Then measure the distance that it takes the train to stop, and calculate
+ the deceleration.
+ This number is used for stopping at a desired node by 
+\begin_inset Quotes eld
 \end_inset
 
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Computation
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-0
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Very low number of assembly instructions required
-\end_layout
-
-\end_inset
-</cell>
-</row>
-</lyxtabular>
-
+looking ahead
+\begin_inset Quotes erd
 \end_inset
 
-
-\end_layout
-
-\begin_layout Standard
-Train is approximately 50 cm/s and in 1 ms can move 5 cm.
- The best precision in the demos are within 1 cm.
- Passing by different sensors is correlated.
- 
-\end_layout
-
-\begin_layout Subsection
-Calibration
-\end_layout
-
-\begin_layout Standard
-This is not implemented in K4.
- 
-\end_layout
-
-\begin_layout Standard
-Drive the train, give it a stop command so that the pickup is right at the
- sensor.
- Measure the time that you get the stop command and the time when the sensor
- trips, and calculate the time.
- Calculate it as a distance, so the constant part of the error go away and
- only the random parts are left.
- 
+ by such distance to check if it is the desired node.
 \end_layout
 
 \end_body
