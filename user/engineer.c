@@ -276,6 +276,9 @@ static void engineerTask() {
     Create(PRIORITY_ENGINEER_COURIER, landmarkNotifier);
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
 
+    // All sensor reports with timestamp before this time are invalid
+    int timeAtReceive = Time();
+
     for(;;) {
         int len = Receive(&tid, &message, sizeof(MessageToEngineer));
         assert(len == sizeof(MessageToEngineer));
@@ -410,6 +413,28 @@ static void engineerTask() {
             }
 
             case update_sensor: {
+                /*
+                    If we are here, we know:
+                        1. A sensor has been triggered;
+                        2. We've received a sensor update, consists of a sensor and a time stamp
+                    We need to update:
+                        1. Previous landmark
+                        2. Next landmark
+                        3. Distance to next landmark
+                        4. Next sensor
+                        5. Previous sensor
+                        6. Expected time
+                        7. Actual time
+                        8. Error
+                */
+
+                // Reject sensor updates with timestamp before timeAtReceive
+                if (message.data.update_sensor.time <= timeAtReceive)
+                {
+                    Reply(tid, 0, 0);
+                    continue;
+                }
+
                 Reply(tid, 0, 0);
 
                 SensorUpdate sensor_update = {
@@ -524,15 +549,11 @@ static void engineerTask() {
 
             default: {
                 printf(COM2, "Warning engineer Received garbage\r\n");
+                assert(0)
                 break;
             } // default
         } // switch
-
-                // print out the direction of travel
-
-
     } // for
-
 } // engineerTask
 
 static int engineerTaskId = -1;
