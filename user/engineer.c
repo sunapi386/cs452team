@@ -9,9 +9,10 @@
 #include <user/turnout.h> // turnoutIsCurved
 #include <user/vt100.h>
 
-#define ALPHA           85
-#define NUM_SENSORS     (5 * 16)
-#define NUM_TRAINS      80
+#define ALPHA               85
+#define NUM_SENSORS         (5 * 16)
+#define NUM_TRAINS          80
+#define UI_REFRESH_INTERVAL 10
 
 static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
@@ -192,16 +193,18 @@ void initializeEngineerDisplay()
     sprintf(&s, VT_CURSOR_SAVE
                 "\033[1;80HNext landmark:     "
                 "\033[2;80HPrevious landmark: "
-                "\033[3;80HExpected ticks:    "
-                "\033[4;80HActual ticks:      "
-                "\033[5;80HError ticks:       "
-                "\033[6;80HDistance Since:    "
+                "\033[3;80HDistance since:    "
+                "\033[4;80HExpected ticks:    "
+                "\033[5;80HActual ticks:      "
+                "\033[6;80HError ticks:       "
                 VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }
 
-void updateEngineerDisplay(const char *current,
-                           const char *next,
+// TODO: convert distSince to cm
+void updateEngineerDisplay(const char *nextLandmark,
+                           const char *prevLandmark,
+                           int distToNext,
                            int expectedTime,
                            int actualTime,
                            int errorTime)
@@ -217,12 +220,25 @@ void updateEngineerDisplay(const char *current,
                 "\033[6;100H%d    "
                 VT_CURSOR_RESTORE,
                 /* arguments */
-                current,
-                next,
+                nextLandmark,
+                prevLandmark,
+                distToNext,
                 expectedTime,
                 actualTime,
                 errorTime);
     PutString(COM2, &s);
+}
+
+void updateScreenDistToNext(int distToNext)
+{
+
+}
+
+void updateScreenNewLandmark(const char *nextLandmark,
+                             const char *prevLandmark,
+                             int distToNext)
+{
+
 }
 
 void refreshNotifier()
@@ -234,7 +250,7 @@ void refreshNotifier()
     for (;;)
     {
         Send(pid, &message, sizeof(MessageToEngineer), 0, 0);
-        Delay(10); // update UI ever
+        Delay(UI_REFRESH_INTERVAL); // update UI every 10 seconds
     }
 }
 
@@ -248,7 +264,6 @@ static void engineerTask() {
     int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
 
     int timeOfReachingPrevLandmark = 0;
-    int distSincePrevLandmark = 0;
     track_node *prevLandmark = 0;
 
     int expectedSensorTime = 0;
@@ -286,31 +301,104 @@ static void engineerTask() {
                     refreshNotifierTid = tid;
                     break;
                 }
-                // else update the current information and update ui
-                else
+                // If the next landmark is a sensor, we know:
+                //      1. We have not reached the next landmark yet
+                // We need to do:
+                //      1. compute the distance to next landmark (even it becomes negative)
+                //      2. Output distance to next landmark
+                else if (nextLandmark.type == NODE_SENSOR)
                 {
-                    // get the distance to next landmark
+                    /*
+                        Compute the distance to next landmark
+                    */
+
+                    // get the edge from previous to next landmark
                     track_edge *nextEdge = getNextEdge(prevLandmark);
                     assert(nextEdge != 0);
 
-                    // compute expected time to next landmark
-                    int expectedTimeToNextLandmark =
-                        (nextEdge->dist * 1000 / current_velocity_in_um);
+                    // delta is the difference between now and when we reached last landmark
+                    int delta = Time() - timeOfReachingPrevLandmark;
+                    assert(delta >= 0);
 
-                    if (Time() - timeOfReachingPrevLandmark >= expectedTimeToNextLandmark)
+                    // compute distance to next landmark
+                    int distToNextLandmark = nextEdge->dist - delta * current_velocity_in_um;
+
+                    /*
+                        Output the distance to next landmark
+                    */
+
+                    // print to screen
+                    updateScreenDistToNext(distToNextLandmark);
+
+                    // unblock the notifier
+                    Reply(tid, 0, 0);
+                }
+                // If the next landmark is a non-sensor, we know:
+                //      1. We may/may not have reached the next landmark
+                // Therefore, we need to do:
+                //      1. Compute the time difference from now to the time of reaching the previous landmark
+                //      2. Using that, compute the distance until we reach the next landmark
+                //      3. If that distance is <= 0
+                //          a. we know we've reached the next landmark
+                //          b. we update prevLandmark, set distance to next to 0, set time of reaching previous to 0
+                //          c. we update the screen for next landmark, prev landmark, distance to next
+                //          d. we unblock the refreshNotifier
+                //      4. Else if that distance is positive
+                //          a. we know we haven't reached the next landmark
+                //          b. we update screen for distance to next
+                else
+                {
+                    /*
+                        Compute some stuff to decide exactly what we need to do here
+                    */
+
+                    // get the edge from previous to next landmark
+                    track_edge *nextEdge = getNextEdge(prevLandmark);
+                    if (nextEdge == 0)
                     {
-                        // we've "reached" the next landmark; update landmark information
-                        prevLandmark = nextLandmark;
-                        timeOfReachingPrevLandmark = 0;
-                        distSincePrevLandmark = 0;
+                        assert(0); // TODO (shuo): remove
+                        Reply(tid, 0, 0);
+                        break;
                     }
 
-                    // refresh UI
-                    updateEngineerDisplay(prevLandmark->name,
-                                          nextLandmark->name,
-                                          expectedSensorTime,
-                                          actualSensorTime,
-                                          abs(expectedSensorTime - actualSensorTime));
+                    // delta is the difference between now and when we reached last landmark
+                    int delta = Time() - timeOfReachingPrevLandmark;
+                    assert(delta >= 0);
+
+                    // compute distance to next landmark
+                    int distToNextLandmark = nextEdge->dist - delta * current_velocity_in_um;
+
+                    if (distToNextLandmark <= 0)
+                    {
+                        // We've "reached" the next non-sensor landmark
+                        // Update previous landmark
+                        prevLandmark = nextLandmark;
+                        timeOfReachingPrevLandmark = 0;
+
+                        // update the next landmark
+                        nextLandmark = getNextLandmark(prevLandmark);
+                        track_edge *nextEdge = getNextEdge(prevLandmark);
+                        if (nextLandmark == 0 || nextEdge == 0)
+                        {
+                            assert(0); // TODO (shuo): remove
+                            Reply(tid, 0, 0);
+                            break;
+                        }
+
+                        // update the distance to next landmark
+                        distToNextLandmark = nextEdge->dist;
+
+                        // Output: next landmark, prev landmark, dist to next
+                        updateScreenNewLandmark(nextLandmark, prevLandmark, distToNextLandmark);
+                    }
+                    else
+                    {
+                        // We haven't reached the next landmark;
+                        // Output: distance to next (already computed)
+                        updateScreenDistToNext(distToNextLandmark);
+                    }
+
+                    Reply(tid, 0, 0);
                 }
 
                 break;
@@ -335,19 +423,7 @@ static void engineerTask() {
                 current_velocity_in_um = um_dist_segment / time_since_last_sensor;
                 int est_dist_since_last_sensor = (current_velocity_in_um * time_since_last_sensor);
 
-                updateScreenVelocities(current_velocity_in_um, um_dist_segment, est_dist_since_last_sensor);
-                // printf(COM2, "velocity %d um/tick, actual distance %d estimated distance %d\n\r",
-                //    current_velocity_in_um,
-                //    um_dist_segment,
-                //    est_dist_since_last_sensor);
-
-
-                // for amusement, display:
-                // int average_velocity = length_of_track_circle / time_between_same_sensor
-                // current_deviation_from_avg_v = abs(current_velocity - average_velocity)
-
                 // ii. lookup the next landmark and display the estimate ETA to it
-
 
                 int last_index = indexFromSensorUpdate(last_update);
                 int index = indexFromSensorUpdate(sensor_update);
@@ -356,7 +432,7 @@ static void engineerTask() {
                 int expected_time = last_update.time + pairs[last_index][index];
                 int actual_time = sensor_update.time;
                 int error = abs(expected_time - actual_time);
-                updateScreen(group, offset, expected_time, actual_time, error);
+                //updateScreen(group, offset, expected_time, actual_time, error);
                 // printf(COM2, "Last: %c%d Exp: %d Act: %d Err: %d\r\n",
                     // group, offset, expected_time, actual_time, error);
 
