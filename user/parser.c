@@ -30,7 +30,7 @@ static char *help_message =
 "0                                  | set last train speed to 0\r\n"
 "c tr_num speed char num loops      | Calibration: at speed delay loop\r\n"
 "k track_A_or_B_char                | load tracK A or B\r\n"
-"x sensor_char sensor_group         | x marks the spot: try to stop on that sensor\r\n"
+"x track_node_index                 | x mark the track node\r\n"
 "------------------ Misc. commands\r\n"
 "q                                  | Quit\r\n"
 "o                                  | redraw turnOuts\r\n"
@@ -102,11 +102,9 @@ typedef struct Parser {
         K,          // k A or k B (load track data)
         K_space,
         K_which_track,
-        X,          // x A 10 (tries to stop on sensor A10 for example)
-        X_space_1,
-        X_sensor_group,
-        X_space_2,
-        X_sensor_number,
+        X,          // x 50, for example
+        X_space,
+        X_node_number,
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -148,8 +146,7 @@ typedef struct Parser {
             char which_track;
         } track;
         struct XMarksTheSpot {
-            char sensor_group;
-            int sensor_number;
+            int node_number;
         } x_marks_the_spot;
     } data;
 
@@ -207,32 +204,18 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case X: {
-                REQUIRE(' ', X_space_1);
+                REQUIRE(' ', X_space);
                 break;
             }          // x A 10 (tries to stop on sensor A10 for example)
-            case X_space_1: {
-                if('a' <= c && c <= 'e') {
-                    p->data.x_marks_the_spot.sensor_group = c;
-                    p->state = X_sensor_group;
-                }
-                else {
-                    p->state = Error;
-                }
-                break;
-            }
-            case X_sensor_group: {
-                REQUIRE(' ', X_space_2);
-                break;
-            }
-            case X_space_2: {
-                p->data.x_marks_the_spot.sensor_number = 0;
-                p->state =  append_number(c, &(p->data.x_marks_the_spot.sensor_number)) ?
-                            X_sensor_number :
+            case X_space: {
+                p->data.x_marks_the_spot.node_number = 0;
+                p->state =  append_number(c, &(p->data.x_marks_the_spot.node_number)) ?
+                            X_node_number :
                             Error;
                 break;
             }
-            case X_sensor_number: {
-                if(! append_number(c, &(p->data.x_marks_the_spot.sensor_number))) {
+            case X_node_number: {
+                if(! append_number(c, &(p->data.x_marks_the_spot.node_number))) {
                     p->state = Error;
                 }
                 break;
@@ -781,15 +764,15 @@ static bool parse(Parser *p, char c) {
                 sputstr(&disp_msg, help_message);
                 break;
             }
-            case X_sensor_number: {
-                int sensor_group = p->data.x_marks_the_spot.sensor_group;
-                int sensor_number = p->data.x_marks_the_spot.sensor_number;
-                if( ('a' <= sensor_group && sensor_group <= 'e') &&
-                    (1 <= sensor_number && sensor_number <= 16) ) {
-                    engineerXMarksTheSpot(sensor_group, sensor_number);
+            case X_node_number: {
+                int node_number = p->data.x_marks_the_spot.node_number;
+                if(0 <= node_number && node_number <= 139) {
+                    engineerXMarksTheSpot(node_number);
                 }
                 else {
-                    sputstr(&disp_msg, "Error bad XMarksTheSpot command\r\n");
+                    sputstr(&disp_msg, "Error bad XMarksTheSpot, expects node number ");
+                    sputint(&disp_msg, node_number, 10);
+                    sputstr(&disp_msg, " be between 0 to 139\r\n");
                 }
                 break;
             }

@@ -52,7 +52,7 @@ inline void drawIdle(unsigned int diff) {
     sputuint(&s, diff / 100, BASE10);
     sputc(&s, '.');
     sputuint(&s, diff % 100, BASE10);
-    sputstr(&s, " %");
+    sputstr(&s, " %    ");
     sputstr(&s, VT_CURSOR_RESTORE);
     PutString(COM2, &s);
 }

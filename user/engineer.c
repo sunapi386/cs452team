@@ -196,6 +196,8 @@ static void engineerTask() {
         switch(message.type) {
 
             case x_mark: {
+                int node_number = message.data.x_mark.x_node_number;
+                Reply(tid, 0, 0);
                 // if the engineer is approaching said sensor within, say 2 landmarks,
                 // engineer should calculate when to send the stop command to stop on
                 // top of the sensor
@@ -453,13 +455,12 @@ static int when_to_wakeup_engineer_in_ticks;
 //     }
 // }
 
-void engineerXMarksTheSpot(char sensor_group, int sensor_number) {
-    assert('a' <= sensor_group && sensor_group <= 'e');
-    assert(1 <= sensor_number && sensor_number <= 16);
+void engineerXMarksTheSpot(int node_number) {
+    assert(0 <= node_number && node_number <= 139);
     assert(engineerTaskId >= 0);
     MessageToEngineer message;
     message.type = x_mark;
-    message.data.x_mark.x_sensor = (sensor_group << 8) | sensor_number;
+    message.data.x_mark.x_node_number = node_number;
     Send(engineerTaskId, &message, sizeof(MessageToEngineer), 0, 0);
 }
 
