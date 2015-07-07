@@ -241,6 +241,18 @@ void updateScreenNewLandmark(const char *nextLandmark,
 
 }
 
+void updateScreenNewSensor(const char *nextLandmark,
+                           const char *prevLandmark,
+                           int distToNext,
+                           const char *prevSensor,
+                           int expectedTime,
+                           int actualTime,
+                           int error)
+{
+
+}
+
+
 void refreshNotifier()
 {
     int pid = MyParentTid();
@@ -260,7 +272,7 @@ static void engineerTask() {
     trainSetSpeed(active_train, desired_speed);
 
     // Variables that are needed to be persisted between iterations
-    int tid = 0, refreshNotifierTid = 0;
+    int tid = 0, refreshNotifierTid = 0, sensorReadingCount = 0;
     int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
 
     int timeOfReachingPrevLandmark = 0;
@@ -273,7 +285,7 @@ static void engineerTask() {
     MessageToEngineer message;
 
     // Create child tasks
-    Create(PRIORITY_ENGINEER_COURIER, landmarkNotifier);
+    Create(PRIORITY_ENGINEER_COURIER, refreshNotifier);
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
 
     // All sensor reports with timestamp before this time are invalid
@@ -321,7 +333,7 @@ static void engineerTask() {
                     {
                         assert(0); // TODO (shuo): remove
                         Reply(tid, 0, 0);
-                        break;
+                        continue;
                     }
 
                     // delta is the difference between now and when we reached last landmark
@@ -366,7 +378,7 @@ static void engineerTask() {
                     {
                         assert(0); // TODO (shuo): remove
                         Reply(tid, 0, 0);
-                        break;
+                        continue;
                     }
 
                     // delta is the difference between now and when we reached last landmark
@@ -390,7 +402,7 @@ static void engineerTask() {
                         {
                             assert(0); // TODO (shuo): remove
                             Reply(tid, 0, 0);
-                            break;
+                            continue;
                         }
 
                         // update the distance to next landmark
@@ -421,91 +433,78 @@ static void engineerTask() {
                         1. Previous landmark
                         2. Next landmark
                         3. Distance to next landmark
-                        4. Next sensor
-                        5. Previous sensor
-                        6. Expected time
-                        7. Actual time
-                        8. Error
+                        4. Previous sensor
+                        5. Expected time
+                        6. Actual time
+                        7. Error
                 */
 
-                // Reject sensor updates with timestamp before timeAtReceive
-                if (message.data.update_sensor.time <= timeAtReceive)
-                {
-                    Reply(tid, 0, 0);
-                    continue;
-                }
-
-                Reply(tid, 0, 0);
-
+                // Get sensor update data
                 SensorUpdate sensor_update = {
                     message.data.update_sensor.sensor,
                     message.data.update_sensor.time
                 };
 
-                // update some stuff
+                // Reject sensor updates with timestamp before timeAtReceive
+                if (sensor_update.time <= timeAtReceive)
+                {
+                    Reply(tid, 0, 0);
+                    continue;
+                }
+
+                // Update some stuff
                 prevLandmark = &g_track[indexFromSensorUpdate(sensor_update)];
+                track_node *nextLandmark = getNextLandmark(prevLandmark);
+                track_edge *nextEdge = getNextEdge(prevLandmark);
+                if (nextLandmark == 0 || nextEdge == 0)
+                {
+                    assert(0); // TODO (shuo): remove
+                    Reply(tid, 0, 0);
+                    continue;
+                }
 
-                // i. the real-time location of the train in form of landmark
-                // for now define landmark as only sensor, then location is:
-
+                // update the current velocity
                 int time_since_last_sensor = sensor_update.time - last_update.time;
                 int um_dist_segment = umDistanceBetween(last_update, sensor_update);
                 current_velocity_in_um = um_dist_segment / time_since_last_sensor;
-                int est_dist_since_last_sensor = (current_velocity_in_um * time_since_last_sensor);
 
-                // ii. lookup the next landmark and display the estimate ETA to it
-
+                // update constant velocity calibration data
                 int last_index = indexFromSensorUpdate(last_update);
                 int index = indexFromSensorUpdate(sensor_update);
-                char group = (sensor_update.sensor >> 8) + 'A';
-                int offset = sensor_update.sensor & 0xff;
+
                 int expected_time = last_update.time + pairs[last_index][index];
                 int actual_time = sensor_update.time;
                 int error = abs(expected_time - actual_time);
-                //updateScreen(group, offset, expected_time, actual_time, error);
-                // printf(COM2, "Last: %c%d Exp: %d Act: %d Err: %d\r\n",
-                    // group, offset, expected_time, actual_time, error);
-
 
                 if(last_index >= 0) { // apply learning
                     int past_difference = pairs[last_index][index];
                     int new_difference = sensor_update.time - last_update.time;
                     pairs[last_index][index] =  (new_difference * ALPHA +
                                                 past_difference * (100 - ALPHA)) / 100;
-                    // printf(COM2, "time updated %d to %d \r\n",
-                        // past_difference, pairs[last_index][index]);
+
+                    // output prevLandmark, nextLandmark, distance to next,
+                    // previous sensor, expected time, actual time, error
+                    updateScreenNewSensor(nextLandmark->name,
+                                          prevLandmark->name,
+                                          nextEdge->dist,
+                                          prevLandmark->name,
+                                          expected_time,
+                                          actual_time,
+                                          error);
                 }
 
-                last_index = index;
                 last_update.time = sensor_update.time;
                 last_update.sensor = sensor_update.sensor;
 
-
-
-                // look up the next landmark
-                track_node *next_landmark = getNextLandmark(prevLandmark);
-                if(next_landmark == 0) {
-                    break;
+                if (sensorReadingCount == 0 && refreshNotifierTid > 0)
+                {
+                    // kick start UI refresh
+                    Reply(refreshNotifierTid, 0, 0);
+                    ++sensorReadingCount;
                 }
-                // updateScreenLandmark(prevLandmark, next_landmark);
-                if (next_landmark->type != NODE_SENSOR) {
-                    // we don't need a landmark notifier if
-                    // the next landmark is sensor, since
-                    // the engineer courier will notify us!
 
-                    // assume that landmark notifier is send blocked on us
-                    // at this point. If that is not the case, then it might
-                    // be delayed for too long previously
-                    // assert(landmarkNotifierTid > 0);
-
-                    track_edge *next_edge = getNextEdge(prevLandmark);
-
-                    // calculate the time we want to landmark notifier to wake us up
-                    int expected_time_to_next_landmark = (next_edge->dist * 1000 / current_velocity_in_um);
-                    int wake_time = sensor_update.time + expected_time_to_next_landmark;
-                    // printf(COM2, "expected_time_to_next_landmark %d wake_time %d",
-                        // expected_time_to_next_landmark, wake_time);
-                }
+                // unblock sensor courier
+                Reply(tid, 0, 0);
 
                 break;
             } // update
@@ -549,7 +548,7 @@ static void engineerTask() {
 
             default: {
                 printf(COM2, "Warning engineer Received garbage\r\n");
-                assert(0)
+                assert(0);
                 break;
             } // default
         } // switch
