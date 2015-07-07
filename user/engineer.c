@@ -12,7 +12,23 @@
 #define ALPHA               85
 #define NUM_SENSORS         (5 * 16)
 #define NUM_TRAINS          80
-#define UI_REFRESH_INTERVAL 10
+
+#define UI_REFRESH_INTERVAL 5
+#define UI_MESSAGE_INIT     20
+#define UI_MESSAGE_DIST     21
+#define UI_MESSAGE_LANDMARK 22
+#define UI_MESSAGE_SENSOR   23
+
+typedef struct UIMessage {
+    int type;
+    int error;
+    int distToNext;
+    int expectedTime;
+    int actualTime;
+    const char *prevSensor;
+    const char *nextLandmark;
+    const char *prevLandmark;
+} UIMessage;
 
 static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
@@ -120,7 +136,7 @@ track_node *getNextLandmark(track_node *current_landmark) {
 
 static bool direction_is_forward = true;
 
-void initializeEngineerDisplay()
+void initializeScreen()
 {
     printf(COM2, VT_CURSOR_SAVE
                  "\033[1;80HNext landmark:     "
@@ -135,10 +151,12 @@ void initializeEngineerDisplay()
 
 void updateScreenDistToNext(int distToNext)
 {
+    // convert from um to cm
     printf(COM2, VT_CURSOR_SAVE
-                 "\033[3;100H%d    "
+                 "\033[3;100H%d.%d cm     "
                  VT_CURSOR_RESTORE,
-                 distToNext);
+                 distToNext / 10000,
+                 abs(distToNext) % 10000);
 }
 
 void updateScreenNewLandmark(const char *nextLandmark,
@@ -148,11 +166,12 @@ void updateScreenNewLandmark(const char *nextLandmark,
     printf(COM2, VT_CURSOR_SAVE
                  "\033[1;100H%s    "
                  "\033[2;100H%s    "
-                 "\033[3;100H%d    "
+                 "\033[3;100H%d.%d cm     "
                  VT_CURSOR_RESTORE,
                  nextLandmark,
                  prevLandmark,
-                 distToNext);
+                 distToNext / 10000,
+                 abs(distToNext) % 10000);
 }
 
 void updateScreenNewSensor(const char *nextLandmark,
@@ -166,7 +185,7 @@ void updateScreenNewSensor(const char *nextLandmark,
     printf(COM2, VT_CURSOR_SAVE
                  "\033[1;100H%s    "
                  "\033[2;100H%s    "
-                 "\033[3;100H%d    "
+                 "\033[3;100H%d.%d cm     "
                  "\033[4;100H%s    "
                  "\033[5;100H%d    "
                  "\033[6;100H%d    "
@@ -174,47 +193,83 @@ void updateScreenNewSensor(const char *nextLandmark,
                  VT_CURSOR_RESTORE,
                  nextLandmark,
                  prevLandmark,
-                 distToNext,
+                 distToNext / 10000,
+                 abs(distToNext) % 10000,
                  prevSensor,
                  expectedTime,
                  actualTime,
                  error);
 }
 
-
-void refreshNotifier()
+void UIWorker()
 {
     int pid = MyParentTid();
-    MessageToEngineer message;
-    message.type = update_ui;
+
+    UIMessage uiMessage;
+    MessageToEngineer engMessage;
+    engMessage.type = update_ui;
+
+    initializeScreen();
 
     for (;;)
     {
-        Send(pid, &message, sizeof(MessageToEngineer), 0, 0);
-        Delay(UI_REFRESH_INTERVAL); // update UI every 10 seconds
+        // receive data to display
+        int len = Send(pid, &engMessage, sizeof(engMessage), &uiMessage, sizeof(uiMessage));
+        assert(len == sizeof(uiMessage));
+
+        // update display
+        switch (uiMessage.type)
+        {
+        case UI_MESSAGE_DIST:
+            updateScreenDistToNext(uiMessage.distToNext);
+            break;
+        case UI_MESSAGE_LANDMARK:
+            updateScreenNewLandmark(uiMessage.nextLandmark,
+                                    uiMessage.prevLandmark,
+                                    uiMessage.distToNext);
+            break;
+        case UI_MESSAGE_SENSOR:
+            updateScreenNewSensor(uiMessage.nextLandmark,
+                                  uiMessage.prevLandmark,
+                                  uiMessage.distToNext,
+                                  uiMessage.prevSensor,
+                                  uiMessage.expectedTime,
+                                  uiMessage.actualTime,
+                                  uiMessage.error);
+
+            break;
+        case UI_MESSAGE_INIT:
+            initializeScreen();
+            break;
+        default:
+            printf(COM2, "UIWorker received garbage\n\r");
+            assert(0);
+            break;
+        }
+
+        // delay until the next update
+        Delay(UI_REFRESH_INTERVAL);
     }
 }
 
 static void engineerTask() {
-    printf(COM2, "debug: engineerTask started >>> active_train %d desired_speed %d\r\n",
-        active_train, desired_speed);
     trainSetSpeed(active_train, desired_speed);
 
     // Variables that are needed to be persisted between iterations
-    int tid = 0, refreshNotifierTid = 0, sensorReadingCount = 0;
+    int tid = 0, sensorReadingCount = 0;
+    int uiWorkerTid = 0, shouldRefreshSensor = 0;
+
     int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
 
     int timeOfReachingPrevLandmark = 0;
     track_node *prevLandmark = 0;
 
-    int expectedSensorTime = 0;
-    int actualSensorTime = 0;
-
     SensorUpdate last_update = {0,0};
+    UIMessage uiMessage;
     MessageToEngineer message;
 
     // Create child tasks
-    Create(PRIORITY_ENGINEER_COURIER, refreshNotifier);
+    Create(PRIORITY_ENGINEER_COURIER, UIWorker);
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
 
     // All sensor reports with timestamp before this time are invalid
@@ -230,8 +285,15 @@ static void engineerTask() {
                 // If we are just starting, initialize display and block
                 if (prevLandmark == 0)
                 {
-                    initializeEngineerDisplay();
-                    refreshNotifierTid = tid;
+                    uiWorkerTid = tid;
+                    break;
+                }
+
+                // If sensor was just hit, reply directly to update last sensor
+                if (shouldRefreshSensor)
+                {
+                    Reply(tid, &uiMessage, sizeof(uiMessage));
+                    shouldRefreshSensor = 0;
                     break;
                 }
 
@@ -242,7 +304,7 @@ static void engineerTask() {
                 // If landmark is null or train is not moving, do not refresh UI
                 if (nextLandmark == 0 || desired_speed == 0)
                 {
-                    refreshNotifierTid = tid;
+                    uiWorkerTid = tid;
                     break;
                 }
                 // If the next landmark is a sensor, we know:
@@ -270,17 +332,22 @@ static void engineerTask() {
                     assert(delta >= 0);
 
                     // compute distance to next landmark
-                    int distToNextLandmark = nextEdge->dist - delta * current_velocity_in_um;
+                    int distToNextLandmark = nextEdge->dist * 1000 - delta * current_velocity_in_um;
+
 
                     /*
                         Output the distance to next landmark
                     */
 
                     // print to screen
-                    updateScreenDistToNext(distToNextLandmark);
-
-                    // unblock the notifier
-                    Reply(tid, 0, 0);
+                    // if (distToNextLandmark < 0)
+                    // {
+                    //     printf(COM2, "[SENSOR CASE] dist is negative: %d", distToNextLandmark);
+                    //     assert(0);
+                    // }
+                    uiMessage.type = UI_MESSAGE_DIST;
+                    uiMessage.distToNext = distToNextLandmark;
+                    Reply(tid, &uiMessage, sizeof(uiMessage));
                 }
                 // If the next landmark is a non-sensor, we know:
                 //      1. We may/may not have reached the next landmark
@@ -316,7 +383,7 @@ static void engineerTask() {
                     assert(delta >= 0);
 
                     // compute distance to next landmark
-                    int distToNextLandmark = nextEdge->dist - delta * current_velocity_in_um;
+                    int distToNextLandmark = nextEdge->dist * 1000 - delta * current_velocity_in_um;
 
                     if (distToNextLandmark <= 0)
                     {
@@ -336,19 +403,24 @@ static void engineerTask() {
                         }
 
                         // update the distance to next landmark
-                        distToNextLandmark = nextEdge->dist;
+                        distToNextLandmark = nextEdge->dist * 1000;
 
                         // Output: next landmark, prev landmark, dist to next
-                        updateScreenNewLandmark(nextLandmark->name, prevLandmark->name, distToNextLandmark);
+                        uiMessage.type = UI_MESSAGE_LANDMARK;
+                        uiMessage.nextLandmark = nextLandmark->name;
+                        uiMessage.prevLandmark = prevLandmark->name;
+                        uiMessage.distToNext = distToNextLandmark;
+                        Reply(tid, &uiMessage, sizeof(uiMessage));
+
                     }
                     else
                     {
                         // We haven't reached the next landmark;
                         // Output: distance to next (already computed)
-                        updateScreenDistToNext(distToNextLandmark);
+                        uiMessage.type = UI_MESSAGE_DIST;
+                        uiMessage.distToNext = distToNextLandmark;
+                        Reply(tid, &uiMessage, sizeof(uiMessage));
                     }
-
-                    Reply(tid, 0, 0);
                 }
 
                 break;
@@ -414,24 +486,29 @@ static void engineerTask() {
                     pairs[last_index][index] =  (new_difference * ALPHA +
                                                 past_difference * (100 - ALPHA)) / 100;
 
+                    int distanceToNextLandmark = nextEdge->dist * 1000;
+
                     // output prevLandmark, nextLandmark, distance to next,
                     // previous sensor, expected time, actual time, error
-                    updateScreenNewSensor(nextLandmark->name,
-                                          prevLandmark->name,
-                                          nextEdge->dist,
-                                          prevLandmark->name,
-                                          expected_time,
-                                          actual_time,
-                                          error);
+                    uiMessage.type = UI_MESSAGE_SENSOR;
+                    uiMessage.nextLandmark = nextLandmark->name;
+                    uiMessage.prevLandmark = prevLandmark->name;
+                    uiMessage.distToNext = distanceToNextLandmark;
+                    uiMessage.prevSensor = prevLandmark->name;
+                    uiMessage.expectedTime = expected_time;
+                    uiMessage.actualTime = actual_time;
+                    uiMessage.error = error;
+                    shouldRefreshSensor = 1;
                 }
 
                 last_update.time = sensor_update.time;
                 last_update.sensor = sensor_update.sensor;
 
-                if (sensorReadingCount == 0 && refreshNotifierTid > 0)
+                if (sensorReadingCount == 0 && uiWorkerTid > 0)
                 {
                     // kick start UI refresh
-                    Reply(refreshNotifierTid, 0, 0);
+                    uiMessage.type = UI_MESSAGE_INIT;
+                    Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
                     ++sensorReadingCount;
                 }
 
