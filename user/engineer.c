@@ -306,7 +306,7 @@ static void engineerTask() {
                 // We need to do:
                 //      1. compute the distance to next landmark (even it becomes negative)
                 //      2. Output distance to next landmark
-                else if (nextLandmark.type == NODE_SENSOR)
+                else if (nextLandmark->type == NODE_SENSOR)
                 {
                     /*
                         Compute the distance to next landmark
@@ -314,7 +314,12 @@ static void engineerTask() {
 
                     // get the edge from previous to next landmark
                     track_edge *nextEdge = getNextEdge(prevLandmark);
-                    assert(nextEdge != 0);
+                    if (nextEdge == 0)
+                    {
+                        assert(0); // TODO (shuo): remove
+                        Reply(tid, 0, 0);
+                        break;
+                    }
 
                     // delta is the difference between now and when we reached last landmark
                     int delta = Time() - timeOfReachingPrevLandmark;
@@ -389,7 +394,7 @@ static void engineerTask() {
                         distToNextLandmark = nextEdge->dist;
 
                         // Output: next landmark, prev landmark, dist to next
-                        updateScreenNewLandmark(nextLandmark, prevLandmark, distToNextLandmark);
+                        updateScreenNewLandmark(nextLandmark->name, prevLandmark->name, distToNextLandmark);
                     }
                     else
                     {
