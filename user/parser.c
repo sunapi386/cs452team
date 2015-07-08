@@ -839,6 +839,8 @@ void parserTask() {
     // draw the parsing window, etc
     String s;
     sinit(&s);
+    vt_pos(&s, 9, 45);
+    sputstr(&s, "Please load track.");
     vt_pos(&s, VT_PARSER_ROW, VT_PARSER_COL);
     sputstr(&s, "> ");
     PutString(COM2, &s);

@@ -253,7 +253,7 @@ static void engineerTask() {
 
     // Stopping distance related
     track_node *targetLandmark = 0;
-    int forwardStoppingDist[15] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int forwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1250000, 1250000, 1250000, 1250000};
     int backwardStoppingDist[15] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     UIMessage uiMessage;
@@ -315,9 +315,9 @@ static void engineerTask() {
                 int distToNextLandmark = nextEdge->dist * 1000 - distSoFar;
 
                 // check for X
-                if (distanceBetween(prevLandmark, targetLandmark) - distSoFar
-                    <= forwardStoppingDist[desired_speed])
-                {
+                if (targetLandmark != 0 &&
+                    (distanceBetween(prevLandmark, targetLandmark) - distSoFar
+                    <= forwardStoppingDist[desired_speed]) )   {
                     // issue stop command now
                     desired_speed = 0;
                     trainSetSpeed(active_train, desired_speed);
