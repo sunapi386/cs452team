@@ -253,8 +253,8 @@ static void engineerTask() {
 
     // Stopping distance related
     track_node *targetLandmark = 0;
-    int forwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1250000, 1250000, 1250000, 1250000};
-    int backwardStoppingDist[15] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int forwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 1250000, 1250000};
+    int backwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 1250000, 1250000};
 
     UIMessage uiMessage;
     MessageToEngineer message;
@@ -315,9 +315,16 @@ static void engineerTask() {
                 int distToNextLandmark = nextEdge->dist * 1000 - distSoFar;
 
                 // check for X
-                if (targetLandmark != 0 &&
+                if (direction_is_forward && targetLandmark != 0 &&
                     (distanceBetween(prevLandmark, targetLandmark) - distSoFar
                     <= forwardStoppingDist[desired_speed]) )   {
+                    // issue stop command now
+                    desired_speed = 0;
+                    trainSetSpeed(active_train, desired_speed);
+                }// check for X
+                else if (! direction_is_forward && targetLandmark != 0 &&
+                    (distanceBetween(prevLandmark, targetLandmark) - distSoFar
+                    <= backwardStoppingDist[desired_speed]) )   {
                     // issue stop command now
                     desired_speed = 0;
                     trainSetSpeed(active_train, desired_speed);
@@ -471,29 +478,6 @@ static void engineerTask() {
 
                 targetLandmark = &g_track[message.data.x_mark.x_node_number];
                 Reply(tid, 0, 0);
-                // if the engineer is approaching said sensor within, say 2 landmarks,
-                // engineer should calculate when to send the stop command to stop on
-                // top of the sensor
-
-                // this calculation requires knowing the stopping distance.
-                // we guess stopping distance for now
-                // int stop_dist_mm = (desired_speed < 10) ? 300 : 600;
-
-                // the current speed of travel
-                // int current_speed = velocity[desired_speed];
-                // calculate after which sensor should the engineer need to care about stopping
-                // by backpropagating
-                // int sensor_encoding = (sensor_group << 8) | sensor_number;
-                // track_node *caring_sensor = backpropagateFrom(sensor_encoding, stopping_distance_in_mm);
-
-                // tell the train engineer he needs to stop after x-time
-                // int ticks_after_caring_sensor = 10000 * stopping_distance_in_cm / velocity_um_per_tick;
-                // int distance_to_caring_sensor_in_um = umDistanceBetween(current_sensor, caring_sensor);
-                // sum up number of ticks from our current sensor to the caring sensor by
-                // looking up in the timing table
-                // int num_ticks_from_now_to_caring_sensor = ;
-                // when_to_wakeup_engineer_in_ticks =  ticks_after_caring_sensor +
-                                        // num_ticks_from_now_to_caring_sensor;
                 break;
             } // x_mark
 
@@ -501,10 +485,19 @@ static void engineerTask() {
                 // printf(COM2, "engineer got change speed... \r\n");
                 Reply(tid, 0, 0);
                 desired_speed = message.data.change_speed.speed;
+                targetLandmark = 0;
                 trainSetSpeed(active_train, desired_speed);
                 break;
             } // change_speed
 
+            case reverse_direction: {
+                Reply(tid, 0, 0);
+                direction_is_forward = (! direction_is_forward);
+                targetLandmark = 0;
+                trainSetReverseNicely(active_train);
+                trainSetLight(active_train, (int)direction_is_forward);
+                break;
+            }
             default: {
                 printf(COM2, "Warning engineer Received garbage\r\n");
                 assert(0);
@@ -547,7 +540,9 @@ void engineerPleaseManThisTrain(int train_number, int speed) {
 }
 
 void engineerParserGotReverseCommand() {
-    direction_is_forward = ! direction_is_forward;
+    MessageToEngineer message;
+    message.type = reverse_direction;
+    Send(engineerTaskId, &message, sizeof(MessageToEngineer), 0, 0);
 }
 
 void engineerLoadTrackStructure(char which_track) {
@@ -560,20 +555,6 @@ void engineerLoadTrackStructure(char which_track) {
         init_trackb(g_track);
     }
 }
-
-static int when_to_wakeup_engineer_in_ticks;
-// void clockwaiter() {
-//     int tid;
-//     Wait
-//     for(;;) {
-//         Receive(&tid, 0, 0);
-//         DelayUntil(when_to_wakeup_engineer_in_ticks);
-//         assert(engineerTaskId >= 0);
-//         int wakeupMessage = WAKEUP;
-//         Send(engineerTaskId, &wakeupMessage, sizeof(int), 0, 0);
-
-//     }
-// }
 
 void engineerXMarksTheSpot(int node_number) {
     assert(0 <= node_number && node_number <= 139);

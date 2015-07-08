@@ -26,7 +26,8 @@ typedef struct MessageToEngineer {
         x_mark,
         change_speed,
         update_sensor,
-        update_location
+        update_location,
+        reverse_direction,
     } type;
     union {
         struct {
