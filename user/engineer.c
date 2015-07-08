@@ -251,13 +251,14 @@ static void engineerTask() {
     int uiWorkerTid = 0, shouldRefreshSensor = 0;
     int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
     int timeOfReachingPrevLandmark = 0;
+    int reversing = 0;
     track_node *prevLandmark = 0;
     SensorUpdate last_update = {0,0};
 
     // Stopping distance related
     track_node *targetLandmark = 0;
     int forwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200,  948200};
-    int backwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200, 948200};
+    int backwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200, 1000000};
 
     UIMessage uiMessage;
     MessageToEngineer message;
@@ -276,6 +277,13 @@ static void engineerTask() {
         switch(message.type) {
             case update_location:
             {
+                // If we are reversing, don't do anything until we get a new sensor update
+                if (reversing == 1)
+                {
+                    uiWorkerTid = tid;
+                    break;
+                }
+
                 // If we are just starting, initialize display and block
                 if (prevLandmark == 0)
                 {
@@ -306,9 +314,8 @@ static void engineerTask() {
                 track_edge *nextEdge = getNextEdge(prevLandmark);
                 if (nextEdge == 0)
                 {
-                    assert(0); // TODO (shuo): remove
-                    Reply(tid, 0, 0);
-                    continue;
+                    uiWorkerTid = tid;
+                    break;
                 }
 
                 // compute some stuff
@@ -354,9 +361,8 @@ static void engineerTask() {
                         track_edge *nextEdge = getNextEdge(prevLandmark);
                         if (nextLandmark == 0 || nextEdge == 0)
                         {
-                            assert(0); // TODO (shuo): remove
-                            Reply(tid, 0, 0);
-                            continue;
+                            uiWorkerTid = tid;
+                            break;
                         }
 
                         // update the distance to next landmark
@@ -414,6 +420,14 @@ static void engineerTask() {
                 prevLandmark = &g_track[indexFromSensorUpdate(&sensor_update)];
                 timeOfReachingPrevLandmark = sensor_update.time;
 
+                if (reversing == 1 && uiWorkerTid > 0)
+                {
+                    reversing = 0;
+                    uiMessage.type = UI_MESSAGE_RESTART;
+                    Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
+                    uiWorkerTid = 0;
+                }
+
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
                 track_edge *nextEdge = getNextEdge(prevLandmark);
                 if (nextLandmark == 0 || nextEdge == 0)
@@ -467,6 +481,7 @@ static void engineerTask() {
                     uiMessage.type = UI_MESSAGE_INIT;
                     Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
                     ++sensorReadingCount;
+                    uiWorkerTid = 0;
                 }
 
                 // unblock sensor courier
@@ -490,7 +505,9 @@ static void engineerTask() {
                 desired_speed = message.data.change_speed.speed;
                 targetLandmark = 0;
                 trainSetSpeed(active_train, desired_speed);
+
                 if (uiWorkerTid > 0) {
+                    uiMessage.type = UI_MESSAGE_RESTART;
                     Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
                     uiWorkerTid = 0;
                 }
@@ -502,12 +519,9 @@ static void engineerTask() {
                 Reply(tid, 0, 0);
                 targetLandmark = 0;
                 direction_is_forward = (! direction_is_forward);
-                printf(COM2, "trainSetReverseNicely %d\r\n", active_train);
-                // trainSetReverseNicely(active_train);
-                timeOfReachingPrevLandmark = 0;
-                prevLandmark = 0;
                 last_update.time = 0;
                 last_update.sensor = 0;
+                reversing = 1;
                 break;
             }
             default: {
