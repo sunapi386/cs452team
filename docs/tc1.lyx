@@ -2410,6 +2410,43 @@ The sensor updates from the track is received by the trainOutServer.
  the buffer.
 \end_layout
 
+\begin_layout Subsection
+Sensor Courier
+\end_layout
+
+\begin_layout Standard
+The sensor courier is created by the sensor server.
+ On start, the sensor courier calls Putc(COM1, 133) to request for sensor
+ data for all sensors.
+ It then receives 10 bytes of sensor data.
+ When the first of the 10 bytes is received, the courier calls Time(), which
+ is used as the timestamp for all 10 sensor updates.
+ On receiving each byte, the sensor courier prints out the triggered sensors
+ onto the screen.
+ For each byte, the sensor courier then sends to the sensor server with
+ both the sensor and the timestamp.
+\end_layout
+
+\begin_layout Standard
+To prevent stuck sensor from repeatedly triggered, the courier saves each
+ byte it receives in an character array of size 10.
+ When a 0 byte is received by the courier, it sets the stored state to 0;
+ else, the sensor courier AND the byte with the NEGATION of the stored byte.
+ The result is printed and delivered only when the AND result is non-zero.
+\end_layout
+
+\begin_layout Subsection
+Sensor Server
+\end_layout
+
+\begin_layout Standard
+The sensor server receives from both the engineer courier and and the sensor
+ courier.
+ The sensor courier moves sensor updates from the trackOutServer to the
+ sensor server; the engineer courier moves sensor updates from the buffer
+ of sensor server to the engineer task.
+\end_layout
+
 \begin_layout Section
 Train Control
 \end_layout
@@ -2421,11 +2458,15 @@ There is one controller for many trains.
 \end_layout
 
 \begin_layout Subsection
+Track Data Structure
+\end_layout
+
+\begin_layout Subsection
 Track Controller
 \end_layout
 
 \begin_layout Standard
-Not implemented in tc1.
+Not implemented in TC1.
  The train controller manages: 
 \end_layout
 
