@@ -2398,17 +2398,16 @@ Train Control and Related Tasks
 \end_layout
 
 \begin_layout Section
-Sensor Polling
+Sensor Update
 \end_layout
 
 \begin_layout Standard
-A sensor task polls the sensors continously.
- It records the poll into a circular buffer, and draws onto screen.
- 
-\end_layout
-
-\begin_layout Standard
-An improvement can be made, which is to only draw if data has changed.
+The sensor updates from the track is received by the trainOutServer.
+ It is polled by the sensorCourier task, time-stamped, displayed onto the
+ screen, then delivered to the sensor server.
+ The sensor server then stores them inside a buffer; the engineerCourier
+ then calls Send() to the sensor server, which is replied with data from
+ the buffer.
 \end_layout
 
 \begin_layout Section
