@@ -2768,7 +2768,10 @@ Engineer
 \end_layout
 
 \begin_layout Standard
-A train engineer is the task that drives the train.
+A train engineer is the task that calculates immediete information regarding
+ the train.
+ It is a server which receives from the UIWorker, engineerCourier, and the
+ parser.
  Associated with the Engineer are data such as: 
 \end_layout
 
@@ -2791,8 +2794,8 @@ Last hit sensors and time pair
 \begin_layout Itemize
 Upon starting the engineer it drives until it hits a sensor.
  This tells it where it is and it updates its landmarks.
- When it receives a sensor update, or a timeout, it recalculates its current
- landmark.
+ When it receives a sensor update, or an location update from the UI worker,
+ it recalculates its current landmark.
  
 \end_layout
 
@@ -2816,10 +2819,74 @@ It also keeps track of which sensor will be hit next and when.
 .
 \end_layout
 
-\begin_layout Itemize
-In the future the engineer would have accurate mapping of its speed and
- its actual velocity.
- 
+\begin_layout Subsubsection
+Sensor Update
+\end_layout
+
+\begin_layout Standard
+The engineer task is notified of sensor update via the engineerCourier,
+ with the other end being the sensorServer.
+ The engineerCourier first calls Send() to the sensorServer, and when the
+ sensor server receives an update, the engineerCourier is replied with the
+ sensor ID and a timestamp.
+ The courier then call Send() to the engineer task.
+\end_layout
+
+\begin_layout Standard
+When a sensor update is delivered to the engineer, the engineer knows that
+ a sensor has been triggered.
+ The sensor updates the sensor-time table that stores time between pairs
+ of sensors, updates the previous landmark, next landmark, distance to next
+ landmark, previous sensor (which is the sensor in this sensor update),
+ current velocity (length of segment between two sensors / time since last
+ sensor ), expected time (which is computed from the time of previous sensor
+ update plus the value in the sensor-time table), the actual time (which
+ is the timestamp of the sensor update), and error (abs(actual time - expected
+ time)).
+\end_layout
+
+\begin_layout Subsubsection
+Display Of Location Information
+\end_layout
+
+\begin_layout Standard
+The display of location information is managed by both the engineer and
+ the UIWorker.
+ The UIWorker is a worker task that Send() an 
+\begin_inset Quotes eld
+\end_inset
+
+update_location
+\begin_inset Quotes erd
+\end_inset
+
+ request to the engineer every 5 ticks.
+ After the engineer process the request, it is replied with updates to the
+ screen.
+ It then prints out the replied data to COM2 via a printf() call, and then
+ calls Send() to the engineer again.
+\end_layout
+
+\begin_layout Standard
+On receiving an 
+\begin_inset Quotes eld
+\end_inset
+
+update_location
+\begin_inset Quotes erd
+\end_inset
+
+ request, the engineer computes how far it's gone over previous landmark,
+ then computes the next landmark.
+ If the next landmark is a sensor, then the engineer replies to the UIWorker
+ with the distance to the next sensor.
+ If the next landmark is not a sensor, then the engineer get the distance
+ from previous landmark to next landmark from the track graph; it checks
+ to see if the distance that the train has gone past the previous landmark
+ is greater or equal to that distance.
+ If it is, then we assume that we've reached the next landmark and output
+ all of the related information; else, only the distance to the next landmark
+ is printed.
 \end_layout
 
 \begin_layout Subsubsection
