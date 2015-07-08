@@ -2461,6 +2461,12 @@ There is one controller for many trains.
 Track Data Structure
 \end_layout
 
+\begin_layout Standard
+The provided track data structure is used.
+ On start of the kernel, the user could load either track A or track B using
+ the k {a|b} command.
+\end_layout
+
 \begin_layout Subsection
 Track Controller
 \end_layout
