@@ -2331,7 +2331,32 @@ Notifiers are very simple, they wait for input interrupts by calling AwaitEvent(
 \end_layout
 
 \begin_layout Part
-Train Control and Related Tasks
+User Tasks
+\end_layout
+
+\begin_layout Section
+Input Parsing
+\end_layout
+
+\begin_layout Standard
+Parsing takes place after a complete string has been read in, meaning the
+ user has pressed the return key.
+ Then each character is fed into a parser.
+ The parser is a finite state machine, and transitions the state upon acceptable
+ valid.
+ Upon unacceptable input the machine goes into Error state and all subsequent
+ characters are colored red.
+ For valid instruction, it calls the appropriate functions.
+ 
+\end_layout
+
+\begin_layout Standard
+Quitting calls the syscall 
+\family typewriter
+Halt()
+\family default
+, which breaks out of the main loop of the kernel.
+ Essentially it dumps all the active tasks on the floor.
 \end_layout
 
 \begin_layout Section
@@ -2368,29 +2393,8 @@ DelayUntil is used instead of Delay to avoid clock slew, because the clockserver
  Calculating the DelayUntil time ourselves therefore eliminates clock slewing.
 \end_layout
 
-\begin_layout Section
-Input Parsing
-\end_layout
-
-\begin_layout Standard
-Parsing takes place after a complete string has been read in, meaning the
- user has pressed the return key.
- Then each character is fed into a parser.
- The parser is a finite state machine, and transitions the state upon acceptable
- valid.
- Upon unacceptable input the machine goes into Error state and all subsequent
- characters are colored red.
- For valid instruction, it calls the appropriate functions.
- 
-\end_layout
-
-\begin_layout Standard
-Quitting calls the syscall 
-\family typewriter
-Halt()
-\family default
-, which breaks out of the main loop of the kernel.
- Essentially it dumps all the active tasks on the floor.
+\begin_layout Part
+Train Control and Related Tasks
 \end_layout
 
 \begin_layout Section
@@ -2650,6 +2654,12 @@ The stopping distance of of the train is manually measured, with the help
  the head of the train and the sensor.
  There is one stopping distance for each train speed of a particular calibrated
  train.
+\end_layout
+
+\begin_layout Standard
+Currently the data for stopping distances, which consists of two arrays
+ of size 15, are stored within the engineer task since we assume that only
+ a single calibrated train is on the track.
 \end_layout
 
 \end_body
