@@ -28,11 +28,11 @@ void trainSetReverse(int train_number) {
 }
 
 void trainSetReverseNicely(int train_number) {
-    // debug("trainSetReverseNicely %d", train_number);
+    debug("trainSetReverseNicely %d", train_number);
     assert(1 <= train_number && train_number <= 80);
     unsigned short prev_speed = speeds[train_number];
     trainSetSpeed(train_number, 0);
-    Delay(speeds[train_number] * 200);
+    Delay(280);
     trainSetReverse(train_number);
     trainSetSpeed(train_number, prev_speed);
 }

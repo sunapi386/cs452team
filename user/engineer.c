@@ -18,6 +18,7 @@
 #define UI_MESSAGE_DIST     21
 #define UI_MESSAGE_LANDMARK 22
 #define UI_MESSAGE_SENSOR   23
+#define UI_MESSAGE_RESTART  24
 
 typedef struct UIMessage {
     int type;
@@ -228,6 +229,8 @@ void UIWorker()
             break;
         case UI_MESSAGE_INIT:
             initializeScreen();
+            break;
+        case UI_MESSAGE_RESTART:
             break;
         default:
             printf(COM2, "UIWorker received garbage\n\r");
@@ -487,15 +490,24 @@ static void engineerTask() {
                 desired_speed = message.data.change_speed.speed;
                 targetLandmark = 0;
                 trainSetSpeed(active_train, desired_speed);
+                if (uiWorkerTid > 0) {
+                    Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
+                    uiWorkerTid = 0;
+                }
+
                 break;
             } // change_speed
 
             case reverse_direction: {
                 Reply(tid, 0, 0);
-                direction_is_forward = (! direction_is_forward);
                 targetLandmark = 0;
-                trainSetReverseNicely(active_train);
-                trainSetLight(active_train, (int)direction_is_forward);
+                direction_is_forward = (! direction_is_forward);
+                printf(COM2, "trainSetReverseNicely %d\r\n", active_train);
+                // trainSetReverseNicely(active_train);
+                timeOfReachingPrevLandmark = 0;
+                prevLandmark = 0;
+                last_update.time = 0;
+                last_update.sensor = 0;
                 break;
             }
             default: {
@@ -514,7 +526,7 @@ void initEngineer() {
         // we already called initEngineer before
         // return;
     // }
-    printf(COM2, "debug: initEngineer\r\n");
+    // printf(COM2, "debug: initEngineer\r\n");
     for(int i = 0; i < NUM_SENSORS; i++) {
         for(int j = 0; j < NUM_SENSORS; j++) {
             pairs[i][j] = 0;

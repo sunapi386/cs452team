@@ -647,7 +647,7 @@ static bool parse(Parser *p, char c) {
                 if((1 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
                     sputstr(&disp_msg,"setting train speed\r\n");
-                    trainSetSpeed(train_number, train_speed);
+                    // trainSetSpeed(train_number, train_speed);
                     engineerSpeedUpdate(train_speed);
                 }
                 else {
@@ -661,12 +661,12 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.reverse.train_number;
                 if(1 <= train_number && train_number <= 80) {
                     sputstr(&disp_msg,"Reversing\r\n");
+                    engineerParserGotReverseCommand();
                     trainSetReverseNicely(train_number);
                 }
                 else {
                     sputstr(&disp_msg, "RV: bad train_number\r\n");
                 }
-                engineerParserGotReverseCommand();
                 break;
             }
             case SW_turnout_dir: {
