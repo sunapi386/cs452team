@@ -123,17 +123,15 @@ tc1
 \end_layout
 
 \begin_layout Itemize
-Or, checkout by SHA1 hash: 
-\family typewriter
-FIXME
+Or, checkout by SHA1 hash: ff5d16e4
 \end_layout
 
 \begin_layout Itemize
 Compiling by running
 \family typewriter
- make k4
+ make k
 \family default
-, which also copies the local
+5, which also copies the local
 \family typewriter
  kernel.elf
 \family default
@@ -2635,7 +2633,13 @@ Constant Velocity
 \end_layout
 
 \begin_layout Standard
-Constant velocity is calibrated by populating the sensor-time table.
+A two dimensional array is declared in the engineer task to store time differenc
+es between any two sensors: int pairs[NUM_SENSORS][NUM_SENSOR];
+\end_layout
+
+\begin_layout Standard
+Constant velocity is calibrated by populating the sensor-time table described
+ above.
  The actual data recorded in the two-dimensional table, with the two indices
  being sensor node indices, are time difference between the two sensors.
  The table is updated in a feedback loop fashion for accurate train velocity
