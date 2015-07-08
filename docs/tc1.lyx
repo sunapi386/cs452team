@@ -164,15 +164,6 @@ Program Operation
 \end_layout
 
 \begin_layout Standard
-Additional commands have been built.
- The list of commands can be viewed by typing 
-\family typewriter
-?
-\family default
- and hitting enter.
-\end_layout
-
-\begin_layout Standard
 \begin_inset Tabular
 <lyxtabular version="3" rows="17" columns="2">
 <features rotate="0" booktabs="true" tabularvalignment="middle">
@@ -555,30 +546,6 @@ Prints out help message
 \end_inset
 
 
-\end_layout
-
-\begin_layout Section
-Program Output
-\end_layout
-
-\begin_layout LyX-Code
-RedBoot> go
-\end_layout
-
-\begin_layout LyX-Code
-FIXME
-\end_layout
-
-\begin_layout LyX-Code
-
-\end_layout
-
-\begin_layout Subsection
-Output Explanation
-\end_layout
-
-\begin_layout Standard
-FIXME
 \end_layout
 
 \begin_layout Part
@@ -1958,6 +1925,79 @@ Load the rest of the kernel registers from stack
 
 \end_layout
 
+\begin_layout Section
+AwaitEvent
+\end_layout
+
+\begin_layout Standard
+Description of int 
+\family typewriter
+AwaitEvent(int eventType)
+\family default
+.
+ A table of 64 task descriptor pointers keeps track which task is registered
+ to await a given interrupt.
+\end_layout
+
+\begin_layout Itemize
+When AwaitEvent is called, it adds the calling task into the table and sets
+ the enable bit for that interrupt code.
+\end_layout
+
+\begin_layout Itemize
+At most one task to block on a single event.
+ Although if needed, multiple tasks can be changed up through the next field
+ in the task descriptor if needed.
+\end_layout
+
+\begin_layout Itemize
+If the event is related to IO, then the interrupt is set to enabled.
+\end_layout
+
+\begin_layout Section
+Hardware Interrupt Handler
+\end_layout
+
+\begin_layout Standard
+The interrupt handler handles 6 interrupts (listed in order of handling
+ priority): 
+\end_layout
+
+\begin_layout Itemize
+Timer 3 underflow interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 1 modem interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 1 transmit interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 1 receive interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 2 receive interrupt
+\end_layout
+
+\begin_layout Itemize
+UART 2 transmit interrupt
+\end_layout
+
+\begin_layout Standard
+When an interrupt occurs, the highest priority interrupt is handled.
+ Only one interrupt is handled per kernel entry.
+ If the interrupt is related to UARTs, then the interrupt is disabled in
+ the UART.
+ Furthermore, the handling of UART 1 transmit event is slightly different
+ than the other interrupts; the waiting task is only unblocked when the
+ kernel handles a transmit interrupt as well as a modem interrupt where
+ both the CTS bit and the DCTS bit are asserted.
+\end_layout
+
 \begin_layout Part
 Core Servers
 \end_layout
@@ -2156,79 +2196,6 @@ The SoC contains 2 PL190 interrupt controllers.
  mode.
  When the program is about to exit, the 20th bit of the second interrupt
  controller is cleared.
-\end_layout
-
-\begin_layout Section
-AwaitEvent
-\end_layout
-
-\begin_layout Standard
-Description of int 
-\family typewriter
-AwaitEvent(int eventType)
-\family default
-.
- A table of 64 task descriptor pointers keeps track which task is registered
- to await a given interrupt.
-\end_layout
-
-\begin_layout Itemize
-When AwaitEvent is called, it adds the calling task into the table and sets
- the enable bit for that interrupt code.
-\end_layout
-
-\begin_layout Itemize
-At most one task to block on a single event.
- Although if needed, multiple tasks can be changed up through the next field
- in the task descriptor if needed.
-\end_layout
-
-\begin_layout Itemize
-If the event is related to IO, then the interrupt is set to enabled.
-\end_layout
-
-\begin_layout Section
-Hardware Interrupt Handler
-\end_layout
-
-\begin_layout Standard
-The interrupt handler handles 6 interrupts (listed in order of handling
- priority): 
-\end_layout
-
-\begin_layout Itemize
-Timer 3 underflow interrupt
-\end_layout
-
-\begin_layout Itemize
-UART 1 modem interrupt
-\end_layout
-
-\begin_layout Itemize
-UART 1 transmit interrupt
-\end_layout
-
-\begin_layout Itemize
-UART 1 receive interrupt
-\end_layout
-
-\begin_layout Itemize
-UART 2 receive interrupt
-\end_layout
-
-\begin_layout Itemize
-UART 2 transmit interrupt
-\end_layout
-
-\begin_layout Standard
-When an interrupt occurs, the highest priority interrupt is handled.
- Only one interrupt is handled per kernel entry.
- If the interrupt is related to UARTs, then the interrupt is disabled in
- the UART.
- Furthermore, the handling of UART 1 transmit event is slightly different
- than the other interrupts; the waiting task is only unblocked when the
- kernel handles a transmit interrupt as well as a modem interrupt where
- both the CTS bit and the DCTS bit are asserted.
 \end_layout
 
 \begin_layout Section
