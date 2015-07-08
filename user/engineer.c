@@ -59,27 +59,17 @@ static void engineerCourier() {
     }
 }
 
-static inline int indexFromSensorUpdate(SensorUpdate update) {
-    return 16 * (update.sensor >> 8) + (update.sensor & 0xff) - 1;
+static inline int indexFromSensorUpdate(SensorUpdate *update) {
+    return 16 * (update->sensor >> 8) + (update->sensor & 0xff) - 1;
 }
 
-// function that looks up the distance between any two landmarks
-// returns a distance in micrometre.
-int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
-    if(from.sensor == to.sensor) return 0;
-    // int group = sensor_update.sensor >> 8;
-    // int offset = sensor_update.sensor & 0xff;
-    // int index = 16 * group + offset - 1;
+int distanceBetween(track_node *from, track_node *to) {
+    assert(from != 0);
+    assert(to != 0);
 
-    int from_index = indexFromSensorUpdate(from);
-    int to_index = indexFromSensorUpdate(to);
     int total_distance = 0;
-    // printf(COM2, ">>>>>>>>>>>>>> from %d (sensor %s), to %d (sensor %s)\r\n",
-        // from_index, g_track[from_index].name, to_index, g_track[to_index].name);
-
     int i;
-    track_node *next_node = &g_track[from_index];
-    // TODO: track_node *next_node = getNextLandmark(&g_track[from_index]);
+    track_node *next_node = from;
     for(i = 0; i < TRACK_MAX; i++) {
         // printf(COM2, "[%s].", next_node->name);
         if(next_node->type == NODE_BRANCH) {
@@ -101,13 +91,13 @@ int umDistanceBetween(SensorUpdate from, SensorUpdate to) {
             break;
         }
         // TODO: next_node = getNextLandmark(next_node);
-        if(next_node->idx == to_index) {
+        if(next_node == to) {
             // printf(COM2, "\r\ndistanceBetween: total_distance %d.\n\r", total_distance);
             break;
         }
     }
     if(i == TRACK_MAX) {
-        printf(COM2, "umDistanceBetween: something went wrong: %d.\n\r", i);
+        printf(COM2, "distanceBetween: something went wrong: %d.\n\r", i);
     }
     return 1000 * total_distance;
 }
@@ -207,9 +197,7 @@ void UIWorker()
 
     UIMessage uiMessage;
     MessageToEngineer engMessage;
-    engMessage.type = update_ui;
-
-    initializeScreen();
+    engMessage.type = update_location;
 
     for (;;)
     {
@@ -258,13 +246,16 @@ static void engineerTask() {
     // Variables that are needed to be persisted between iterations
     int tid = 0, sensorReadingCount = 0;
     int uiWorkerTid = 0, shouldRefreshSensor = 0;
-
     int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
-
     int timeOfReachingPrevLandmark = 0;
     track_node *prevLandmark = 0;
-
     SensorUpdate last_update = {0,0};
+
+    // Stopping distance related
+    track_node *targetLandmark = 0;
+    int forwardStoppingDist[15] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int backwardStoppingDist[15] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
     UIMessage uiMessage;
     MessageToEngineer message;
 
@@ -280,7 +271,7 @@ static void engineerTask() {
         assert(len == sizeof(MessageToEngineer));
 
         switch(message.type) {
-            case update_ui:
+            case update_location:
             {
                 // If we are just starting, initialize display and block
                 if (prevLandmark == 0)
@@ -307,84 +298,40 @@ static void engineerTask() {
                     uiWorkerTid = tid;
                     break;
                 }
-                // If the next landmark is a sensor, we know:
-                //      1. We have not reached the next landmark yet
-                // We need to do:
-                //      1. compute the distance to next landmark (even it becomes negative)
-                //      2. Output distance to next landmark
-                else if (nextLandmark->type == NODE_SENSOR)
+
+                // get the edge from previous to next landmark
+                track_edge *nextEdge = getNextEdge(prevLandmark);
+                if (nextEdge == 0)
                 {
-                    /*
-                        Compute the distance to next landmark
-                    */
+                    assert(0); // TODO (shuo): remove
+                    Reply(tid, 0, 0);
+                    continue;
+                }
 
-                    // get the edge from previous to next landmark
-                    track_edge *nextEdge = getNextEdge(prevLandmark);
-                    if (nextEdge == 0)
-                    {
-                        assert(0); // TODO (shuo): remove
-                        Reply(tid, 0, 0);
-                        continue;
-                    }
+                // compute some stuff
+                int currentTime = Time();
+                int delta = currentTime - timeOfReachingPrevLandmark;
+                int distSoFar = delta * current_velocity_in_um;
+                int distToNextLandmark = nextEdge->dist * 1000 - distSoFar;
 
-                    // delta is the difference between now and when we reached last landmark
-                    int delta = Time() - timeOfReachingPrevLandmark;
-                    assert(delta >= 0);
+                // check for X
+                if (distanceBetween(prevLandmark, targetLandmark) - distSoFar
+                    <= forwardStoppingDist[desired_speed])
+                {
+                    // issue stop command now
+                    desired_speed = 0;
+                    trainSetSpeed(active_train, desired_speed);
+                }
 
-                    // compute distance to next landmark
-                    int distToNextLandmark = nextEdge->dist * 1000 - delta * current_velocity_in_um;
-
-
-                    /*
-                        Output the distance to next landmark
-                    */
-
-                    // print to screen
-                    // if (distToNextLandmark < 0)
-                    // {
-                    //     printf(COM2, "[SENSOR CASE] dist is negative: %d", distToNextLandmark);
-                    //     assert(0);
-                    // }
+                if (nextLandmark->type == NODE_SENSOR)
+                {
+                    // output the distance to next landmark
                     uiMessage.type = UI_MESSAGE_DIST;
                     uiMessage.distToNext = distToNextLandmark;
                     Reply(tid, &uiMessage, sizeof(uiMessage));
                 }
-                // If the next landmark is a non-sensor, we know:
-                //      1. We may/may not have reached the next landmark
-                // Therefore, we need to do:
-                //      1. Compute the time difference from now to the time of reaching the previous landmark
-                //      2. Using that, compute the distance until we reach the next landmark
-                //      3. If that distance is <= 0
-                //          a. we know we've reached the next landmark
-                //          b. we update prevLandmark, set distance to next to 0, set time of reaching previous to 0
-                //          c. we update the screen for next landmark, prev landmark, distance to next
-                //          d. we unblock the refreshNotifier
-                //      4. Else if that distance is positive
-                //          a. we know we haven't reached the next landmark
-                //          b. we update screen for distance to next
                 else
                 {
-                    /*
-                        Compute some stuff to decide exactly what we need to do here
-                    */
-
-                    // get the edge from previous to next landmark
-                    track_edge *nextEdge = getNextEdge(prevLandmark);
-                    if (nextEdge == 0)
-                    {
-                        assert(0); // TODO (shuo): remove
-                        Reply(tid, 0, 0);
-                        continue;
-                    }
-
-                    // delta is the difference between now and when we reached last landmark
-                    int currentTime = Time();
-                    int delta = currentTime - timeOfReachingPrevLandmark;
-                    assert(delta >= 0);
-
-                    // compute distance to next landmark
-                    int distToNextLandmark = nextEdge->dist * 1000 - delta * current_velocity_in_um;
-
                     if (distToNextLandmark <= 0)
                     {
                         // We've "reached" the next non-sensor landmark
@@ -422,7 +369,6 @@ static void engineerTask() {
                         Reply(tid, &uiMessage, sizeof(uiMessage));
                     }
                 }
-
                 break;
             }
 
@@ -455,7 +401,7 @@ static void engineerTask() {
                 }
 
                 // Update some stuff
-                prevLandmark = &g_track[indexFromSensorUpdate(sensor_update)];
+                prevLandmark = &g_track[indexFromSensorUpdate(&sensor_update)];
                 timeOfReachingPrevLandmark = sensor_update.time;
 
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
@@ -469,12 +415,13 @@ static void engineerTask() {
 
                 // update the current velocity
                 int time_since_last_sensor = sensor_update.time - last_update.time;
-                int um_dist_segment = umDistanceBetween(last_update, sensor_update);
+                int um_dist_segment = distanceBetween(&g_track[indexFromSensorUpdate(&last_update)],
+                                                      &g_track[indexFromSensorUpdate(&sensor_update)]);
                 current_velocity_in_um = um_dist_segment / time_since_last_sensor;
 
                 // update constant velocity calibration data
-                int last_index = indexFromSensorUpdate(last_update);
-                int index = indexFromSensorUpdate(sensor_update);
+                int last_index = indexFromSensorUpdate(&last_update);
+                int index = indexFromSensorUpdate(&sensor_update);
 
                 int expected_time = last_update.time + pairs[last_index][index];
                 int actual_time = sensor_update.time;
@@ -519,7 +466,10 @@ static void engineerTask() {
             } // update
 
             case x_mark: {
-                int node_number = message.data.x_mark.x_node_number;
+                assert(message.data.x_mark.x_node_number >= 0 &&
+                    message.data.x_mark.x_node_number < TRACK_MAX);
+
+                targetLandmark = &g_track[message.data.x_mark.x_node_number];
                 Reply(tid, 0, 0);
                 // if the engineer is approaching said sensor within, say 2 landmarks,
                 // engineer should calculate when to send the stop command to stop on
@@ -609,19 +559,6 @@ void engineerLoadTrackStructure(char which_track) {
     else {
         init_trackb(g_track);
     }
-}
-
-track_node *getPrevLandmark(track_node *node) {
-
-    return (track_node *) 0;
-}
-
-// return the track node from which the engineer should start caring about
-track_node *backpropagateFrom(int sensorEncoding, int stopping_distance_in_cm) {
-    int sensor = 16 * (sensorEncoding >> 8) + (sensorEncoding & 0xff) - 1;
-    assert (sensor >= 0 && sensor < NUM_SENSORS);
-
-    return (track_node *) 0;
 }
 
 static int when_to_wakeup_engineer_in_ticks;
