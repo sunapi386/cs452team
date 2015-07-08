@@ -586,328 +586,6 @@ Kernel Structure Details
 \end_layout
 
 \begin_layout Section
-Context Switch
-\end_layout
-
-\begin_layout Subsection
-From kernel space to user space
-\end_layout
-
-\begin_layout Enumerate
-
-\family typewriter
-TaskDescriptor *td
-\family default
-, 
-\family typewriter
-Syscall **request
-\family default
- are passed to 
-\family typewriter
-KernelExit()
-\family default
- 
-\end_layout
-
-\begin_layout Enumerate
-Store all kernel registers onto kernel stack 
-\end_layout
-
-\begin_layout Enumerate
-Change to system mode 
-\end_layout
-
-\begin_layout Enumerate
-Put 
-\family typewriter
-td->sp
-\family default
- to user's 
-\family typewriter
-sp
-\family default
- 
-\end_layout
-
-\begin_layout Enumerate
-Put 
-\family typewriter
-td->ret
-\family default
- to 
-\family typewriter
-r0
-\family default
- which returns result of system calls to user task 
-\end_layout
-
-\begin_layout Enumerate
-Load all user registers: 
-\family typewriter
-r1
-\family default
- contains 
-\family typewriter
-pc
-\family default
- of user mode, whereas 
-\family typewriter
-r2
-\family default
- contains the saved 
-\family typewriter
-cpsr
-\family default
- of user mode 
-\end_layout
-
-\begin_layout Enumerate
-Change back to supervisor mode 
-\end_layout
-
-\begin_layout Enumerate
-Put saved user mode 
-\family typewriter
-cpsr
-\family default
- into 
-\family typewriter
-spsr
-\family default
- of supervisor mode 
-\end_layout
-
-\begin_layout Enumerate
-
-\family typewriter
-movs pc, r1
-\family default
- to jump to user code while simultaneously change 
-\family typewriter
-cpsr
-\end_layout
-
-\begin_layout Subsection
-From user space to kernel space 
-\end_layout
-
-\begin_layout Enumerate
-Put 
-\family typewriter
-lr
-\family default
- of supervisor mode in 
-\family typewriter
-r1
-\family default
- 
-\end_layout
-
-\begin_layout Enumerate
-Put 
-\family typewriter
-spsr
-\family default
- of supervisor mode, which is the saved 
-\family typewriter
-cpsr
-\family default
- of user mode, into 
-\family typewriter
-r2
-\family default
- 
-\end_layout
-
-\begin_layout Enumerate
-Change to system mode 
-\end_layout
-
-\begin_layout Enumerate
-Store user registers 
-\family typewriter
-r1-r12
-\family default
- and 
-\family typewriter
-lr
-\family default
-, to user stack 
-\end_layout
-
-\begin_layout Enumerate
-Move 
-\family typewriter
-sp
-\family default
-, 
-\family typewriter
-r0
-\family default
- to 
-\family typewriter
-r2
-\family default
-,
-\family typewriter
- r3
-\family default
- 
-\end_layout
-
-\begin_layout Enumerate
-Change back to supervisor mode 
-\end_layout
-
-\begin_layout Enumerate
-Load multiple from stack into 
-\family typewriter
-r0
-\family default
-, and 
-\family typewriter
-r1
-\family default
-: 
-\family typewriter
-r0
-\family default
- contains pointer to task descriptor, 
-\family typewriter
-r1
-\family default
- contains pointer to pointer to request 
-\end_layout
-
-\begin_layout Enumerate
-Store 
-\family typewriter
-r2
-\family default
- to 
-\family typewriter
-td->sp
-\family default
-, 
-\family typewriter
-r3
-\family default
- to 
-\family typewriter
-*request
-\family default
- 
-\end_layout
-
-\begin_layout Enumerate
-Load the rest of the kernel’s registers (
-\family typewriter
-r2-r12
-\family default
-) from stack
-\end_layout
-
-\begin_layout Subsection
-ARM Assembly Code
-\end_layout
-
-\begin_layout Standard
-The piece of code responsible for context switch is: 
-\end_layout
-
-\begin_layout LyX-Code
-KernelExit: 	
-\end_layout
-
-\begin_deeper
-\begin_layout LyX-Code
-stmfd   sp!, {r0-r12, lr} 	
-\end_layout
-
-\begin_layout LyX-Code
-msr cpsr_c, #0xdf 	
-\end_layout
-
-\begin_layout LyX-Code
-ldr sp, [r0, #12] 	
-\end_layout
-
-\begin_layout LyX-Code
-ldr r0, [r0, #8] 	
-\end_layout
-
-\begin_layout LyX-Code
-ldmfd   sp!, {r1-r12, lr} 	
-\end_layout
-
-\begin_layout LyX-Code
-msr cpsr_c, #0xd3 	
-\end_layout
-
-\begin_layout LyX-Code
-msr spsr, r2 	
-\end_layout
-
-\begin_layout LyX-Code
-movs pc, r1 
-\end_layout
-
-\begin_layout LyX-Code
-
-\end_layout
-
-\end_deeper
-\begin_layout LyX-Code
-KernelEnter: 	
-\end_layout
-
-\begin_deeper
-\begin_layout LyX-Code
-mov r1, lr 	
-\end_layout
-
-\begin_layout LyX-Code
-mrs r2, spsr 	
-\end_layout
-
-\begin_layout LyX-Code
-msr cpsr_c, #0xdf 	
-\end_layout
-
-\begin_layout LyX-Code
-stmfd   sp!, {r1-r12, lr} 	
-\end_layout
-
-\begin_layout LyX-Code
-mov r2, sp 	
-\end_layout
-
-\begin_layout LyX-Code
-mov r3, r0 	
-\end_layout
-
-\begin_layout LyX-Code
-msr cpsr_c, #0xd3 	
-\end_layout
-
-\begin_layout LyX-Code
-ldmfd sp!, {r0, r1} 	
-\end_layout
-
-\begin_layout LyX-Code
-str r2, [r0, #12] 	
-\end_layout
-
-\begin_layout LyX-Code
-str r3, [r1] 	
-\end_layout
-
-\begin_layout LyX-Code
-ldmfd sp!, {r2-r12, pc}
-\end_layout
-
-\end_deeper
-\begin_layout Section
 Trap Frame
 \end_layout
 
@@ -2740,7 +2418,7 @@ There is one controller for many trains.
 \end_layout
 
 \begin_layout Subsection
-Controller
+Track Controller
 \end_layout
 
 \begin_layout Standard
@@ -2749,12 +2427,15 @@ Not implemented in tc1.
 \end_layout
 
 \begin_layout Enumerate
-A train's position
+Sensor attribution
 \end_layout
 
 \begin_layout Enumerate
-Expected sensor that would be triggered for a train engineer, and does path
- planning.
+Track reservation
+\end_layout
+
+\begin_layout Enumerate
+Path finding
 \end_layout
 
 \begin_layout Standard
@@ -2801,22 +2482,6 @@ Upon starting the engineer it drives until it hits a sensor.
 
 \begin_layout Itemize
 It also keeps track of which sensor will be hit next and when.
- There is a table that stores timing between sensor reads.
- The table is updated in a feedback loop fashion for accurate train velocity
- estimation 
-\begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
-\end_inset
-
- where 
-\begin_inset Formula $\alpha$
-\end_inset
-
- is the learning rate.
- We have 
-\begin_inset Formula $\alpha=85\%$
-\end_inset
-
-.
 \end_layout
 
 \begin_layout Subsubsection
@@ -2895,33 +2560,29 @@ X Marks The Spot
 
 \begin_layout Standard
 For the train has to be able to stop at arbitrarily far from a sensor position,
- the engineer spawns 2 helper tasks.
- 
-\end_layout
+ the engineer receives a 
+\begin_inset Quotes eld
+\end_inset
 
-\begin_layout Enumerate
-One task that delays for a certain duration then replies to the engineer.
- This is used so the engineer can update its landmark references after certain
- time has passed and it should be at a new landmark.
- The engineer wakes up, replies to the timer task, prints to the screen
- and sleeps again.
-\end_layout
+X Marks The Spot
+\begin_inset Quotes erd
+\end_inset
 
-\begin_layout Enumerate
-One task that shuffles sensor updates from the sensor task to engineer,
- to update the engineer of a sensor reading.
- As it keeps moving, the model of its speed is corrected in a feedback loop
- fashion.
-\end_layout
+ command from the parser.
+ The user inputs 
+\begin_inset Quotes eld
+\end_inset
 
-\begin_layout Standard
-The stopping distance is derived from the current calculated speed.
- When the position is exactly the stopping distance ahead of it, it starts
- decelerating, to stop (at its best estimate) on X.
-\end_layout
+x [node index]
+\begin_inset Quotes erd
+\end_inset
 
-\begin_layout Standard
-There is no reverse.
+ from the terminal, and the parser task would Send() to the engineer task.
+ On receiving the message, the track node is retrieved using the track index.
+ In subsequent update_location messages, the displacement between the current
+ landmark and the target landmark is checked.
+ If the distance is smaller or equal to the stopping distance of the current
+ speed, the stop command is issued.
 \end_layout
 
 \begin_layout Subsubsection
@@ -2943,23 +2604,52 @@ Pathing is not implemented.
 \end_layout
 
 \begin_layout Section
-Sensors Calibration
+Calibration
 \end_layout
 
 \begin_layout Standard
-We drive the train, and give it a stop command when it hits a desired sensor
- (set via our command) so that the pickup is right at the sensor.
- Then measure the distance that it takes the train to stop, and calculate
- the deceleration.
- This number is used for stopping at a desired node by 
-\begin_inset Quotes eld
+Two kinds of data are needed in order to achieve the goal of stopping at
+ a given landmark on the track: the constant velocity and the stopping distance.
+ 
+\end_layout
+
+\begin_layout Subsection
+Constant Velocity
+\end_layout
+
+\begin_layout Standard
+Constant velocity is calibrated by populating the sensor-time table.
+ The actual data recorded in the two-dimensional table, with the two indices
+ being sensor node indices, are time difference between the two sensors.
+ The table is updated in a feedback loop fashion for accurate train velocity
+ estimation 
+\begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
 \end_inset
 
-looking ahead
-\begin_inset Quotes erd
+ where 
+\begin_inset Formula $\alpha$
 \end_inset
 
- by such distance to check if it is the desired node.
+ is the learning rate.
+ We have 
+\begin_inset Formula $\alpha=85\%$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Stopping Distance
+\end_layout
+
+\begin_layout Standard
+The stopping distance of of the train is manually measured, with the help
+ of our calibration command, which issues stopping command when a particular
+ sensor is measured.
+ The stopping distance is then measured by measuring the distance between
+ the head of the train and the sensor.
+ There is one stopping distance for each train speed of a particular calibrated
+ train.
 \end_layout
 
 \end_body
