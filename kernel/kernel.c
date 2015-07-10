@@ -133,6 +133,7 @@ int main()
             break;
         }
     }
+    shutdownTasks();
     resetKernel();
     return 0;
 }

@@ -1,6 +1,7 @@
 #ifndef _NAMESERVER_H
 #define _NAMESERVER_H
 
-void nameserverTask();
+void initNameserver();
+void exitNameserver();
 
 #endif

@@ -5,8 +5,7 @@
 #include <user/syscall.h>
 #include <utils.h> // strlen
 #include <debug.h> // assert
-
-#define NS_TID  2
+#include <priority.h>
 
 #define NS_MAX_NAME 32
 #define NS_MAX_REGIST_SIZE 32
@@ -19,11 +18,12 @@ static const int NO_TASK = -4;
 
 typedef struct {
     char name[NS_MAX_NAME];
-    enum { REGISTER_AS, WHO_IS, } type;
+    enum { REGISTER_AS, WHO_IS, EXIT, } type;
 } NSRequest;
 
+static int ns_tid;
 
-void nameserverTask() {
+static void nameserverTask() {
     struct {
         char name[NS_MAX_NAME];
         int tid;
@@ -82,11 +82,19 @@ void nameserverTask() {
                 break; // WHO_IS
             }
 
+            case EXIT: {
+                Reply(sender_tid, 0, 0);
+                goto cleanup;
+            }
+
             default:
                 debug("nameserver got a bad request from tid %d", sender_tid);
                 assert(0);
         } // switch
     } // for
+
+cleanup:
+    Exit();
 }
 
 int RegisterAs(char *name) {
@@ -95,7 +103,7 @@ int RegisterAs(char *name) {
     request.type = REGISTER_AS;
     strncpy(request.name, name, NS_MAX_NAME);
     int reply;
-    int ret = Send( NS_TID, &request, sizeof(NSRequest), &reply, sizeof(int));
+    int ret = Send(ns_tid, &request, sizeof(NSRequest), &reply, sizeof(int));
     // if -2 then task id is not an existing task
     return ret == sizeof(int) ? reply : (ret == -2 ? NO_NAMESERVER : ERROR);
 }
@@ -106,8 +114,19 @@ int WhoIs(char *name) {
     request.type = WHO_IS;
     strncpy(request.name, name, NS_MAX_NAME);
     int reply;
-    int ret = Send( NS_TID, &request, sizeof(NSRequest), &reply, sizeof(int));
+    int ret = Send(ns_tid, &request, sizeof(NSRequest), &reply, sizeof(int));
     // if -2 then task id is not an existing task
     return ret == sizeof(int) ? reply : (ret == -2 ? NO_NAMESERVER : ERROR);
 }
 
+void initNameserver() {
+    // Create name server
+    ns_tid = Create(PRIORITY_NAMESERVER, nameserverTask);
+    assert(ns_tid > 0);
+}
+
+void exitNameserver() {
+    NSRequest request;
+    request.type = EXIT;
+    Send(ns_tid, &request, sizeof(NSRequest), 0, 0);
+}

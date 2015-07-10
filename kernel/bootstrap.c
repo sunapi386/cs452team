@@ -14,9 +14,7 @@
 #include <user/user_tasks.h>
 
 void bootstrapTask() {
-    // Create name server
-    Create(PRIORITY_NAMESERVER, nameserverTask);
-
+    initNameserver();
     // Create clock server
     Create(PRIORITY_CLOCK_SERVER, clockServerTask);
 
@@ -40,4 +38,8 @@ void bootstrapTask() {
     Create(PRIORITY_IDLE, idleProfiler);
 
     Exit();
+}
+
+void shutdownTasks() {
+    exitNameserver();
 }
