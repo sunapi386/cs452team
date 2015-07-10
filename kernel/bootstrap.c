@@ -33,6 +33,8 @@ void bootstrapTask() {
 }
 
 void shutdownTasks() {
+    exitSensor();
+    // parser does not need exit
     exitTurnout();
     exitTrain();
     exitTrackServer();

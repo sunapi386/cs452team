@@ -272,8 +272,7 @@ void sensorCourier()
     }
 }
 
-void sensorServer()
-{
+void sensorServer() {
     RegisterAs("sensorServer");
     int tid = 0;
     int engieCourierTid = 0;
@@ -286,21 +285,17 @@ void sensorServer()
     IBufferInit(&timeBuf, tb, SENSOR_BUF_SIZE);
 
     // create the sensor courier
-    Create(PRIORITY_SENSOR_COURIER, sensorCourier);
+    int sensorCourierId = Create(PRIORITY_SENSOR_COURIER, sensorCourier);
 
-    for (;;)
-    {
+    for (;;) {
         Receive(&tid, &req, sizeof(req));
 
-        switch (req.type)
-        {
-            case MESSAGE_SENSOR_COURIER:
-            {
+        switch (req.type) {
+            case MESSAGE_SENSOR_COURIER: {
                 // push the sensor into buffer
                 pushSensorData(&(req.data.sm), &sensorBuf, &timeBuf);
 
-                if (engieCourierTid)
-                {
+                if (engieCourierTid) {
                     assert(engieCourierTid > 0);
 
                     // Pop a sensor and a timestamp then reply to the engineer
@@ -318,14 +313,11 @@ void sensorServer()
 
                 break;
             }
-            case MESSAGE_ENGINEER_COURIER:
-            {
-                if (IBufferIsEmpty(&sensorBuf))
-                {
+            case MESSAGE_ENGINEER_COURIER: {
+                if (IBufferIsEmpty(&sensorBuf)) {
                     engieCourierTid = tid;
                 }
-                else
-                {
+                else {
                     // Pop a sensor and a timestamp then reply to the engineer
                     SensorUpdate su;
                     su.sensor = IBufferPop(&sensorBuf);
@@ -335,13 +327,21 @@ void sensorServer()
                 }
                 break;
             }
+            case EXIT: {
+                Reply(tid, 0, 0);
+                goto cleanup;
+            }
             default:
                 assert(0);
                 break;
         }
     }
+cleanup:
+    Kill(sensorCourierId);
+    Exit();
 }
 
+static int sensorServerId;
 void initSensor() {
     assert(STR_MAX_LEN > strlen(trackA));
     assert(STR_MAX_LEN > strlen(trackB));
@@ -359,5 +359,10 @@ void initSensor() {
         recent_sensors[i].offset = 0;
     }
 
-    Create(PRIORITY_SENSOR_SERVER, sensorServer);
+    sensorServerId = Create(PRIORITY_SENSOR_SERVER, sensorServer);
+}
+
+void exitSensor() {
+    SensorRequest request = { .type = EXIT };
+    Send(sensorServerId, &request, sizeof(SensorRequest), 0, 0);
 }

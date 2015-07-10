@@ -3,6 +3,7 @@
 
 #define MESSAGE_SENSOR_COURIER      11
 #define MESSAGE_ENGINEER_COURIER    12
+#define EXIT                        13
 
 // sensorCourier -> sensorServer
 typedef struct SensorMessage {
@@ -33,6 +34,7 @@ a certain sensor.
 struct SensorData; // defined in trackserver.h
 
 void initSensor();
+void exitSensor();
 // displays the time taken to tigger sensor1 then sensor2
 void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2);
 // e.g. sensorHalt(42, 'a', 3);

@@ -868,6 +868,7 @@ void parserTask() {
 
     // write output
     Halt();
+    Exit();
 }
 
 void initParser() {
