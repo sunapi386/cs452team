@@ -17,6 +17,7 @@ struct IOReq {
         PUTSTR,
         GETCHAR,
         ECHO,
+        EXIT,
     } type;
     unsigned int data;
 } IOReq;
@@ -88,9 +89,8 @@ static void monitorInServer() {
     com2RecvSrvTid = MyTid();
     RegisterAs("monitorInServer");
 
-    Create(PRIORITY_NOTIFIER, &echoCourier);
-    Create(PRIORITY_NOTIFIER, &monitorInNotifier);
-
+    int echoId = Create(PRIORITY_NOTIFIER, &echoCourier);
+    int MonInNotifierId = Create(PRIORITY_NOTIFIER, &monitorInNotifier);
     for (;;) {
         Receive(&tid, &req, sizeof(req));
 
@@ -142,10 +142,18 @@ static void monitorInServer() {
             courierTid = tid;
             break;
         }
+        case EXIT: {
+            Reply(tid, 0, 0);
+            goto cleanupMI;
+        }
         default:
             break;
         }
     }
+cleanupMI:
+    Kill(echoId);
+    Kill(MonInNotifierId);
+    Exit();
 }
 
 static void monitorOutNotifier() {
@@ -169,7 +177,6 @@ static void monitorOutServer() {
     RegisterAs("monitorOutServer");
 
     int notifierTid = Create(PRIORITY_MONITOR_OUT_NOTIFIER, &monitorOutNotifier);
-
     for (;;) {
         Receive(&tid, &req, sizeof(req));
 
@@ -243,10 +250,17 @@ static void monitorOutServer() {
             }
             break;
         }
+        case EXIT: {
+            Reply(tid, 0, 0);
+            goto cleanupMO;
+        }
         default:
             break;
         }
     }
+cleanupMO:
+    Kill(notifierTid);
+    Exit();
 }
 
 static void trainInNotifier() {
@@ -273,7 +287,7 @@ static void trainInServer() {
 
     IOReq req = { .type = -1, .data = '\0' };
 
-    Create(PRIORITY_NOTIFIER, &trainInNotifier);
+    int trainInNotifierId = Create(PRIORITY_NOTIFIER, &trainInNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
@@ -312,10 +326,17 @@ static void trainInServer() {
             }
             break;
         }
+        case EXIT: {
+            Reply(tid, 0, 0);
+            goto cleanupTI;
+        }
         default:
             break;
         }
     }
+cleanupTI:
+    Kill(trainInNotifierId);
+    Exit();
 }
 
 static void trainOutNotifier() {
@@ -373,8 +394,7 @@ static void trainOutServer() {
 
             // We've seen a xmit but did not
             // have a char to send at the moment
-            if (sendAddr != 0)
-            {
+            if (sendAddr != 0) {
                 // send the char directly
                 // also clears the xmit interrupt
                 *sendAddr = (char)(req.data);
@@ -388,8 +408,7 @@ static void trainOutServer() {
                 sendAddr = 0;
             }
             // Have not seen a xmit; just buffer that shit
-            else
-            {
+            else {
                 CBufferPush(&charBuffer, (char)(req.data));
             }
             break;
@@ -406,9 +425,7 @@ static void trainOutServer() {
 
             // unblock notifier we've previously
             // got a xmit but had nothing to send
-            if (!CBufferIsEmpty(&charBuffer) &&
-                sendAddr != 0)
-            {
+            if (!CBufferIsEmpty(&charBuffer) && sendAddr != 0) {
                 *sendAddr = CBufferPop(&charBuffer);
 
                 // unblock the notifier which will
@@ -420,19 +437,31 @@ static void trainOutServer() {
                 sendAddr = 0;
             }
         }
+        case EXIT: {
+            Reply(tid, 0, 0);
+            goto cleanupTO;
+        }
         default:
             break;
         }
     }
+cleanupTO:
+    Kill(notifierTid);
+    Exit();
 }
 
+static int tidTO, tidTI, tidMO, tidMI;
 void initIOServers() {
-    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
-    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
-    Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
-    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
+    tidTO = Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
+    tidTI = Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
+    tidMO = Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
+    tidMI = Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
 }
 
 void exitIOServers() {
-
+    IOReq request = { .type = EXIT };
+    Send(tidMI, &request, sizeof(IOReq), 0, 0);
+    Send(tidMO, &request, sizeof(IOReq), 0, 0);
+    Send(tidTI, &request, sizeof(IOReq), 0, 0);
+    Send(tidTO, &request, sizeof(IOReq), 0, 0);
 }
