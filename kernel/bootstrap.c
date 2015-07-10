@@ -15,8 +15,7 @@
 
 void bootstrapTask() {
     initNameserver();
-    // Create clock server
-    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
+    initClockserver();
 
     // Create IO Servers
     Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
@@ -41,5 +40,6 @@ void bootstrapTask() {
 }
 
 void shutdownTasks() {
+    exitClockserver();
     exitNameserver();
 }

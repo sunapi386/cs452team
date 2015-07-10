@@ -4,53 +4,41 @@
 #include <events.h>
 #include <priority.h>
 
-#define NOTIFICATION 5
-#define TIME         6
-#define DELAY        7
-#define DELAY_UNTIL  8
-
 #define MAX_DELAYED_TASKS 128
 #define CLOCK_SERVER_NAME "clockServer"
 
-typedef
-struct ClockReq {
-    int type;
+typedef struct ClockReq {
+    enum {
+        NOTIFICATION,
+        TIME,
+        DELAY,
+        DELAY_UNTIL,
+        EXIT,
+    } type;
     int data;
 } ClockReq;
 
-typedef
-struct DelayedTask {
+typedef struct DelayedTask {
     int tid;
     unsigned int finalTick;
     struct DelayedTask *next;
 } DelayedTask;
 
-typedef
-struct DelayedQueue {
+typedef struct DelayedQueue {
     DelayedTask tasks[MAX_DELAYED_TASKS];
     DelayedTask *tail;
 } DelayedQueue;
 
-int Time()
-{
-    static int clockServerTid = -1;
-    if (clockServerTid < 0)
-    {
-        clockServerTid = WhoIs(CLOCK_SERVER_NAME);
-    }
+static int clockServerTid = -1;
+
+int Time() {
     ClockReq req;
     req.type = TIME;
     Send(clockServerTid, &req, sizeof(req), &(req.data), sizeof(int));
     return req.data;
 }
 
-int Delay(int ticks)
-{
-    static int clockServerTid = -1;
-    if (clockServerTid < 0)
-    {
-        clockServerTid = WhoIs(CLOCK_SERVER_NAME);
-    }
+int Delay(int ticks) {
     ClockReq req;
     req.type = DELAY;
     req.data = ticks;
@@ -58,13 +46,7 @@ int Delay(int ticks)
     return 0;
 }
 
-int DelayUntil(int ticks)
-{
-    static int clockServerTid = -1;
-    if (clockServerTid < 0)
-    {
-        clockServerTid = WhoIs(CLOCK_SERVER_NAME);
-    }
+int DelayUntil(int ticks) {
     ClockReq req;
     req.type = DELAY_UNTIL;
     req.data = ticks;
@@ -72,46 +54,32 @@ int DelayUntil(int ticks)
     return 0;
 }
 
-void initDelayedTasks(DelayedQueue *q)
-{
-    // Initialize delayed task pool
-    int i;
-    for (i = 0; i < MAX_DELAYED_TASKS; i++)
-    {
+static void initDelayedTasks(DelayedQueue *q) {
+    for (int i = 0; i < MAX_DELAYED_TASKS; i++) {
         q->tasks[i].tid = i;
         q->tasks[i].finalTick = 0;
         q->tasks[i].next = 0;
     }
-
-    // Initialize delayed queue
     q->tail = 0;
 }
 
-void insertDelayedTask(DelayedQueue *q,
-                       int tid,
-                       unsigned int finalTick)
-{
-    // Setup delayed task struct
+static void insertDelayedTask(DelayedQueue *q, int tid, unsigned int finalTick) {
     DelayedTask *task = &(q->tasks[tid]);
     task->finalTick = finalTick;
 
-    if (q->tail == 0)
-    {
+    if (q->tail == 0) {
         q->tail = task;
         task->next = task;
         return;
     }
     DelayedTask *curr = q->tail;
-    for (;;)
-    {
-        if (curr->next->finalTick >= finalTick)
-        {
+    for (;;) {
+        if (curr->next->finalTick >= finalTick) {
             // Insert node here
             task->next = curr->next;
             curr->next = task;
             return;
         }
-
         if (curr->next == q->tail) {
             // Reached the end of the list;
             // insert node and update tail here
@@ -124,7 +92,7 @@ void insertDelayedTask(DelayedQueue *q,
     }
 }
 
-void removeExpiredTasks(DelayedQueue *q, unsigned int currTick) {
+static void removeExpiredTasks(DelayedQueue *q, unsigned int currTick) {
     if (q->tail == 0) return;
     DelayedTask *curr = q->tail->next;
     for (;;) {
@@ -147,43 +115,31 @@ void removeExpiredTasks(DelayedQueue *q, unsigned int currTick) {
     }
 }
 
-void clockNotifier()
-{
-    // Initialize variabels
-    int pid = MyParentTid();
+static void clockNotifier() {
     ClockReq req;
     req.type = NOTIFICATION;
     req.data = 0xdeadbeaf;
-    for (;;)
-    {
+    for (;;) {
         AwaitEvent(TIMER_EVENT);
-        Send(pid, &req, sizeof(req), 0, 0);
+        Send(clockServerTid, &req, sizeof(req), 0, 0);
     }
 }
 
-void clockServerTask()
-{
-    // Initialize variables
-    int tid = 0;
+static void clockServerTask() {
+    clockServerTid = MyTid();
+    int tid;
     unsigned tick = 0;
     ClockReq req;
     req.type = 0;
     req.data = 0;
     DelayedQueue q;
     initDelayedTasks(&q);
-
-    // Register with name server
     RegisterAs("clockServer");
-
-    // Spawn notifier
     Create(PRIORITY_CLOCK_NOTIFIER, &clockNotifier);
 
-    // Main loop for serving requests
-    for (;;)
-    {
+    for (;;) {
         Receive(&tid, &req, sizeof(req));
-        switch (req.type)
-        {
+        switch (req.type) {
         case NOTIFICATION:
             Reply(tid, 0, 0);
             tick++;
@@ -198,10 +154,25 @@ void clockServerTask()
         case DELAY_UNTIL:
             insertDelayedTask(&q, tid, req.data);
             break;
+        case EXIT:
+            Reply(tid, 0, 0);
+            goto cleanup;
         default:
-            bwprintf(COM2, "[Clockserver] Invalid request type: %d\n\r", req.type);
-            for (;;);
+            debug("[Clockserver] Invalid request type: %d\n\r", req.type);
+            assert(0);
             break;
         }
     }
+cleanup:
+    Exit();
+}
+
+void initClockserver() {
+    Create(PRIORITY_CLOCK_SERVER, clockServerTask);
+}
+
+void exitClockserver() {
+    ClockReq request;
+    request.type = EXIT;
+    Send(clockServerTid, &request, sizeof(ClockReq), 0, 0);
 }
