@@ -160,6 +160,25 @@ bool turnoutIsCurved(int turnout_number) {
     return (track_bitmap >> bit_address) & 0x1;
 }
 
+static int turnoutId;
 void initTurnout() {
-    Create(PRIORITY_TURNOUT_TASK, turnoutTask);
+    turnoutId = Create(PRIORITY_TURNOUT_TASK, turnoutTask);
+}
+
+void exitTurnout() {
+    String s;
+    sinit(&s);
+    sputstr(&s, VT_CURSOR_SAVE);
+    vt_pos(&s, VT_TURNOUT_ROW, VT_TURNOUT_COL);
+    sputstr(&s, "                 \r\n");
+    sputstr(&s, "                 \r\n");
+    sputstr(&s, "                 \r\n");
+    sputstr(&s, "     shutdown    \r\n");
+    sputstr(&s, "                 \r\n");
+    sputstr(&s, "                 \r\n");
+    sputstr(&s, "                 \r\n");
+    sputstr(&s, VT_CURSOR_RESTORE);
+    PutString(COM2, &s);
+
+    Kill(turnoutId);
 }

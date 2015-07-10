@@ -4,6 +4,7 @@
 // handles turnout manipulation, and draws onto screen
 
 void initTurnout();
+void exitTurnout();
 // sets the turnout curved or straight
 
 bool turnoutIsCurved(int turnout_number);
