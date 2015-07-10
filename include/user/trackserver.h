@@ -37,5 +37,6 @@ typedef struct {
 void sensorTrigger(char group, int offset);
 
 void initTrackServer();
+void exitTrackServer();
 
 #endif  //__TRACKSERVER_H

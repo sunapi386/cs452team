@@ -4,24 +4,19 @@
 #include <user/nameserver.h>
 #include <user/trackserver.h>
 
-void sensorTrigger(char group, int offset)
-{
+void sensorTrigger(char group, int offset) {
     SensorData sd;
     sd.group = group;
     sd.offset = offset;
     //Send();
 }
 
-void trackServer()
-{
+void trackServer() {
     int tid;
-    //void *data[DATA_BUF_SIZE] = {0, 0, 0, 0}; // 16 byte, 4 ints
     TrackRequest req;
-
     RegisterAs("trackServer");
 
-    for (;;)
-    {
+    for (;;) {
         // Receive the message
         Receive(&tid, &req, sizeof(req));
 
@@ -29,8 +24,7 @@ void trackServer()
         // Reply(tid, 0, 0);
 
         // switch on the type of the message
-        switch (req.type)
-        {
+        switch (req.type) {
         case type_sensor:
             break;
         case type_turnout:
@@ -42,6 +36,12 @@ void trackServer()
     Exit();
 }
 
+static int trackServerTid;
 void initTrackServer() {
-    Create(PRIORITY_TRACKSERVER, trackServer);
+    trackServerTid = Create(PRIORITY_TRACKSERVER, trackServer);
+}
+
+void exitTrackServer() {
+    // Send(trackServerTid, request, sizeof(TrackR))
+    Kill(trackServerTid);
 }
