@@ -30,3 +30,12 @@ void clockDrawer() {
         DelayUntil(t);
     }
 }
+
+static int clockDrawerTid;
+void initClockDrawer() {
+    clockDrawerTid = Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
+}
+
+void exitClockDrawer() {
+    Kill(clockDrawerTid);
+}

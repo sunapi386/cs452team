@@ -17,9 +17,7 @@ void bootstrapTask() {
     initNameserver();
     initClockserver();
     initIOServers();
-
-    // Create user task
-    Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
+    initClockDrawer();
     // initLogger();
     initTrackServer();
     initTrain();
@@ -35,6 +33,7 @@ void bootstrapTask() {
 }
 
 void shutdownTasks() {
+    exitClockDrawer();
     exitIOServers();
     exitClockserver();
     exitNameserver();
