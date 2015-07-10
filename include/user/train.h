@@ -2,6 +2,7 @@
 #define __TRAIN_H
 
 void initTrain();
+void exitTrain();
 void trainSetSpeed(int train_number, int train_speed);
 void trainSetReverse(int train_number);
 void trainSetReverseNicely(int train_number);

@@ -9,7 +9,7 @@
 #define SOLENOID_OFF 32
 #define NUM_TRAINS 80
 
-static unsigned short speeds[NUM_TRAINS];
+static unsigned short speeds[NUM_TRAINS + 1];
 
 void trainSetSpeed(int train_number, int train_speed) {
     // debug("trainSetSpeed %d %d", train_number, train_speed);
@@ -64,4 +64,13 @@ void trainSetLight(int train_number, int on) {
 
 void initTrain() {
     for(int i = 0; i < NUM_TRAINS; i++) speeds[i] = 0;
+}
+
+void exitTrain() {
+    for(int i = 0; i < NUM_TRAINS; i++) {
+        if (speeds[i] != 0) {
+            trainSetSpeed(i, 0);
+            Delay(2);
+        }
+    }
 }

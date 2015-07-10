@@ -33,6 +33,7 @@ void bootstrapTask() {
 }
 
 void shutdownTasks() {
+    exitTrain();
     exitTrackServer();
     exitClockDrawer();
     exitIOServers();
