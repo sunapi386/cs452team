@@ -1,5 +1,6 @@
 #include <debug.h>
 #include <utils.h>
+#include <priority.h>
 #include <kernel/task.h> // taskIdleRatio
 #include <user/vt100.h>
 #include <user/syscall.h>
@@ -57,7 +58,7 @@ inline void drawIdle(unsigned int diff) {
     PutString(COM2, &s);
 }
 
-void idleProfiler() {
+static void idleProfiler() {
     int i = 0;
     for (;;) {
         if(i++ % 2000000 == 0) {
@@ -66,6 +67,14 @@ void idleProfiler() {
     }
 }
 
+static int idleId;
+void initIdleTask() {
+    idleId = Create(PRIORITY_IDLE, idleProfiler);
+}
+
+void exitIdleTask() {
+    Kill(idleId);
+}
 
 void undefinedInstructionTesterTask() {
 // Use online disassembler https://www.onlinedisassembler.com/odaweb/uSE7Vq1w/0

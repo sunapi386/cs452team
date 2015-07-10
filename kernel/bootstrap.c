@@ -24,15 +24,13 @@ void bootstrapTask() {
     initTurnout();
     initParser();
     initSensor();
-
     // now created in parser //initEngineer();
-    // Create idle task
-    Create(PRIORITY_IDLE, idleProfiler);
-
+    initIdleTask();
     Exit();
 }
 
-void shutdownTasks() {
+void shutdownTask() {
+    exitIdleTask();
     exitSensor();
     // parser does not need exit
     exitTurnout();

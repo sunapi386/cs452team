@@ -138,7 +138,7 @@ int main() {
             break;
         }
     }
-    shutdownTasks();
+    taskCreate(PRIORITY_INIT, shutdownTask, 0);
     resetKernel();
     return 0;
 }

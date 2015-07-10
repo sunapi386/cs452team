@@ -3,7 +3,8 @@
 
 void userTaskMessage();
 void userTaskRip();
-void idleProfiler();
+void initIdleTask();
+void exitIdleTask();
 
 void userTaskHwiTester();
 void clockServerTesterTask();
