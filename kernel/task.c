@@ -8,6 +8,29 @@ static int global_next_unique_task_id;
 static unsigned int *global_current_stack_address;
 static TaskDescriptor global_task_table[TASK_MAX_TASKS];
 
+inline int isValidTaskIndex(int index) {
+    return (index > 0) && (index < TASK_MAX_TASKS);
+}
+
+// Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
+inline int makeId(int index, int priority, int unique) {
+    return  (index << TASK_INDEX_OFFSET) |
+            (priority << TASK_PRIORITY_OFFSET) |
+            (unique << TASK_UNIQUE_OFFSET);
+}
+
+inline int taskGetIndex(TaskDescriptor *task) {
+    return (TASK_INDEX_MASK & task->id) >> TASK_INDEX_OFFSET;
+}
+
+inline int taskGetPriority(TaskDescriptor *task) {
+    return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
+}
+
+static inline int taskGetIndexById(int task_id) {
+    return (TASK_INDEX_MASK & task_id) >> TASK_INDEX_OFFSET;
+}
+
 // TODO: Implement recycling here
 static inline int taskFindFreeTaskTableIndex() {
     return global_next_unique_task_id;
@@ -205,4 +228,8 @@ int taskGetUnique(TaskDescriptor *task) {
 
 int taskGetMyParentUnique(TaskDescriptor *task) {
     return (TASK_UNIQUE_MASK & task->parent_id) >> TASK_UNIQUE_OFFSET;
+}
+
+void taskForceKill(TaskDescriptor *task) {
+    // TODO: Implment killing tasks
 }

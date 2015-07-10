@@ -1,13 +1,6 @@
 #ifndef __TASK_H
 #define __TASK_H
 
-// Trap size is # of registers pushed on stack during c-switch. Layout:
-// sp + 0 = r1 (pc)
-// sp + 1 = r2 (cpsr_user)
-// ...
-// sp + 11 = r12
-// sp + 12 = lr
-
 #define TASK_TRAP_SIZE      15
 #define TASK_BITS           7   // 2^8 = 128
 #define TASK_PRIORITY_BITS  5   // 2^5 = 32  Warning: Brujin table is 32.
@@ -56,18 +49,20 @@ A good rule-of-thumb is that values accessed only by the context switch can be
 on the stack of the user task; other values should be in the task descriptor.
 */
 
-typedef enum {
-    ready,         // ready to be activated
-    send_block,  // task executed Send(), waiting for it to be received
-    receive_block, // task executed Receive(), waiting for task to Send()
-    reply_block,   // task executed Send(), its message received, waiting on reply
-} Status;
+/// Warning! Do not modify the ordering in the TaskDescriptor struct!
+/// The context switch assembly file sets these fields. Modifying ordering
+/// means wrong fields will be set! (Unless you modify context switching too.)
 
 typedef struct TaskDescriptor {
     int id;
     int parent_id;
     unsigned int *sp;
-    Status status;
+    enum {
+        ready,         // ready to be activated
+        send_block,     // task executed Send(), waiting for it to be received
+        receive_block, // task executed Receive(), waiting for task to Send()
+        reply_block,   // task executed Send(), its message received, waiting on reply
+    } status;
     int *send_id;
     void *send_buf, *recv_buf;
     unsigned int send_len, recv_len;
@@ -78,47 +73,27 @@ typedef struct TaskDescriptor {
 } TaskDescriptor;
 
 int taskCreate(int priority, void (*code)(void), int parent_id);
-void taskExit(TaskDescriptor *task);
-void initTaskSystem();
-void taskSetName(TaskDescriptor *task, char *name);
-int taskGetMyId(TaskDescriptor *task);
-int taskGetMyParentId(TaskDescriptor *task);
-void taskDisplayAll();
 unsigned int taskIdleRatio();
+void initTaskSystem();
+void taskDisplayAll();
+void taskExit(TaskDescriptor *task);
+void taskForceKill(TaskDescriptor *task);
+void taskSetName(TaskDescriptor *task, char *name);
 
 /* Returns NULL on invalid task_id */
-TaskDescriptor *taskGetTDByIndex(int index);
-TaskDescriptor *taskGetTDById(int task_id);
-int taskGetMyParentIndex(TaskDescriptor *task);
-int taskGetUnique(TaskDescriptor *task);
-int taskGetMyParentUnique(TaskDescriptor *task);
-void taskSetRet(TaskDescriptor *task, int ret);
 char *taskGetName(TaskDescriptor *task);
+int taskGetIndex(TaskDescriptor *task);
+int taskGetIndexById(int task_id);
+int taskGetMyId(TaskDescriptor *task);
+int taskGetMyParentId(TaskDescriptor *task);
+int taskGetMyParentIndex(TaskDescriptor *task);
+int taskGetMyParentUnique(TaskDescriptor *task);
+int taskGetPriority(TaskDescriptor *task);
+int taskGetUnique(TaskDescriptor *task);
+TaskDescriptor *taskGetTDById(int task_id);
+TaskDescriptor *taskGetTDByIndex(int index);
+void taskSetRet(TaskDescriptor *task, int ret);
 
-static inline int isValidTaskIndex(int index)
-{
-    return (index > 0) && (index < TASK_MAX_TASKS);
-}
-
-// Make sure 0 <= {index,priority,unique} < TASK_{,PRIORITY,UNIQUE}_BITS
-static inline int makeId(int index, int priority, int unique) {
-    return
-        (index << TASK_INDEX_OFFSET) |
-        (priority << TASK_PRIORITY_OFFSET) |
-        (unique << TASK_UNIQUE_OFFSET);
-}
-
-static inline int taskGetIndexById(int task_id) {
-    return (TASK_INDEX_MASK & task_id) >> TASK_INDEX_OFFSET;
-}
-
-static inline int taskGetIndex(TaskDescriptor *task) {
-    return (TASK_INDEX_MASK & task->id) >> TASK_INDEX_OFFSET;
-}
-
-static inline int taskGetPriority(TaskDescriptor *task) {
-    return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
-}
-
+int isValidTaskIndex(int index);
 
 #endif
