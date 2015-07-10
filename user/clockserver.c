@@ -135,7 +135,7 @@ static void clockServerTask() {
     DelayedQueue q;
     initDelayedTasks(&q);
     RegisterAs("clockServer");
-    Create(PRIORITY_CLOCK_NOTIFIER, &clockNotifier);
+    int clockNotifierId = Create(PRIORITY_CLOCK_NOTIFIER, &clockNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
@@ -164,6 +164,7 @@ static void clockServerTask() {
         }
     }
 cleanup:
+    Kill(clockNotifierId);
     Exit();
 }
 

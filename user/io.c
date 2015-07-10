@@ -6,35 +6,29 @@
 #include <ts7200.h>
 #include <kernel/task.h> // TASK_MAX_TASKS
 
-#define NOTIFICATION 0
-#define PUTCHAR      1
-#define PUTSTR       2
-#define GETCHAR      3
-#define ECHO         4
-
 #define MONITOR_BUFFER_SIZE 2048
 #define TRAIN_BUFFER_SIZE   512
 
 typedef
 struct IOReq {
-    int type;
+    enum {
+        NOTIFICATION,
+        PUTCHAR,
+        PUTSTR,
+        GETCHAR,
+        ECHO,
+    } type;
     unsigned int data;
 } IOReq;
 
-// TODO: Remove and replace with nameserver lookups
 static int com1RecvSrvTid = -1;
 static int com1SendSrvTid = -1;
 static int com2RecvSrvTid = -1;
 static int com2SendSrvTid = -1;
 
 int Getc(int channel) {
-    // Check channel type
     if (channel != COM1 && channel != COM2) return -1;
-
-    // Prepare request
-    IOReq req = {
-        .type = GETCHAR
-    };
+    IOReq req = { .type = GETCHAR };
     int server_tid = (channel == COM1) ? com1RecvSrvTid : com2RecvSrvTid;
     char c = 0;
     int ret = Send(server_tid, &req, sizeof(req), &c, sizeof(c));
@@ -42,13 +36,8 @@ int Getc(int channel) {
 }
 
 int Putc(int channel, char c) {
-    // Check channel type
     if (channel != COM1 && channel != COM2) return -1;
-
-    // Prepare request
-    IOReq req;
-    req.type = PUTCHAR;
-    req.data = (unsigned int)c;
+    IOReq req = { .type = PUTCHAR, .data = (unsigned int) c};
     int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
     int ret = Send(server_tid, &req, sizeof(req), 0, 0);
     return (ret < 0) ? -1 : 0;
@@ -59,51 +48,34 @@ int PutString(int channel, String *s) {
     return PutStr(channel, s->buf);
 }
 
-int PutStr(int channel, char *str)
-{
-    // Check channel type
+int PutStr(int channel, char *str) {
     if (channel != COM1 && channel != COM2) return -1;
-
-    // Prepare request
-    IOReq req = {
-        .type = PUTSTR,
-        .data = (unsigned int)str
-    };
+    IOReq req = { .type = PUTSTR, .data = (unsigned int)str };
     int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
     int ret = Send(server_tid, &req, sizeof(req), 0, 0);
     return (ret < 0) ? -1 : 0;
 }
 
-void monitorInNotifier() {
+static void monitorInNotifier() {
     int pid = MyParentTid();
-    IOReq req = {
-        .type = NOTIFICATION
-    };
-
+    IOReq req = { .type = NOTIFICATION  };
     for (;;) {
         req.data = (unsigned int)AwaitEvent(UART2_RECV_EVENT);
         Send(pid, &req, sizeof(req), 0, 0);
     }
 }
 
-void echoCourier() {
-    IOReq echoReq = {
-        .type = ECHO
-    };
-    IOReq sendReq = {
-        .type = PUTCHAR
-    };
+static void echoCourier() {
+    IOReq echoReq = { .type = ECHO };
+    IOReq sendReq = { .type = PUTCHAR };
 
     for (;;) {
-        // Request for a char from receiveServer()
         Send(com2RecvSrvTid, &echoReq, sizeof(echoReq), &(sendReq.data), sizeof(sendReq.data));
-
-        // Send the char to sendServer() using a Putc request
         Send(com2SendSrvTid, &sendReq, sizeof(sendReq), 0, 0);
     }
 }
 
-void monitorInServer() {
+static void monitorInServer() {
     char c = 0;
     int tid = 0, courierTid = 0;
     char taskb[TASK_MAX_TASKS];
@@ -112,29 +84,19 @@ void monitorInServer() {
     CBuffer charBuffer;
     CBufferInit(&taskBuffer, taskb, TASK_MAX_TASKS);
     CBufferInit(&charBuffer, charb, MONITOR_BUFFER_SIZE);
-
-    IOReq req;
-    req.type = -1;
-    req.data = '\0';
-
-    // TODO: nameserver
+    IOReq req = { .type = -1, .data = '\0' };
     com2RecvSrvTid = MyTid();
-
     RegisterAs("monitorInServer");
 
-    // Spawn courier
     Create(PRIORITY_NOTIFIER, &echoCourier);
-
-    // Spawn notifier
     Create(PRIORITY_NOTIFIER, &monitorInNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
 
-        switch (req.type)
-        {
+        switch (req.type) {
         // the notifier sent us a character
-        case NOTIFICATION:
+        case NOTIFICATION: {
             // unblock notifier
             Reply(tid, 0, 0);
 
@@ -160,8 +122,9 @@ void monitorInServer() {
                 Reply(popped_tid, &c, sizeof(c));
             }
             break;
+        }
         // some user task called getchar
-        case GETCHAR:
+        case GETCHAR: {
             if(CBufferIsEmpty(&charBuffer)) {
                 // no char to give back to caller; block it
                 CBufferPush(&taskBuffer, (char)tid);
@@ -172,58 +135,46 @@ void monitorInServer() {
                 Reply(tid, &ch, sizeof(ch));
             }
             break;
+        }
         // echo wants a character, block it until the next notification
-        case ECHO:
+        case ECHO: {
             // block the echoer
             courierTid = tid;
             break;
+        }
         default:
             break;
         }
     }
 }
 
-void monitorOutNotifier()
-{
+static void monitorOutNotifier() {
     int pid = MyParentTid();
-    IOReq req;
-    req.type = NOTIFICATION;
+    IOReq req = { .type = NOTIFICATION };
 
-    for (;;)
-    {
+    for (;;) {
         req.data = AwaitEvent(UART2_XMIT_EVENT);
-
         Send(pid, &req, sizeof(req), 0, 0);
     }
 }
 
-void monitorOutServer()
-{
+static void monitorOutServer() {
     int tid = 0;
     char * sendAddr = 0;
     char charb[MONITOR_BUFFER_SIZE];
     CBuffer charBuffer;
     CBufferInit(&charBuffer, charb, sizeof(charb));
-
-    IOReq req;
-    req.type = -1;
-    req.data = '\0';
-
-    // TODO: nameserver
+    IOReq req = { .type = -1, .data = '\0' };
     com2SendSrvTid = MyTid();
-
-    // Register with name server
     RegisterAs("monitorOutServer");
 
-    // Spawn notifier
     int notifierTid = Create(PRIORITY_MONITOR_OUT_NOTIFIER, &monitorOutNotifier);
 
     for (;;) {
         Receive(&tid, &req, sizeof(req));
 
         switch (req.type) {
-        case NOTIFICATION:
-        {
+        case NOTIFICATION: {
             if(CBufferIsEmpty(&charBuffer)) {
                 // nothing to send
                 // mark that we've seen a xmit interrupt
@@ -242,12 +193,10 @@ void monitorOutServer()
             }
             break;
         }
-        case PUTCHAR:
-        {
+        case PUTCHAR: {
             // We've seen a xmit but did not
             // have a char to send at the moment
-            if (sendAddr != 0)
-            {
+            if (sendAddr != 0) {
                 // send the char directly
                 // also clears the xmit interrupt
                 *sendAddr = (char)(req.data);
@@ -261,8 +210,7 @@ void monitorOutServer()
                 sendAddr = 0;
             }
             // Have not seen a xmit; just buffer that shit
-            else
-            {
+            else {
                 CBufferPush(&charBuffer, (char)(req.data));
             }
 
@@ -270,8 +218,7 @@ void monitorOutServer()
 
             break;
         }
-        case PUTSTR:
-        {
+        case PUTSTR: {
             // unblock caller
             Reply(tid, 0, 0);
 
@@ -283,9 +230,7 @@ void monitorOutServer()
 
             // unblock notifier we've previously
             // got a xmit but had nothing to send
-            if (!CBufferIsEmpty(&charBuffer) &&
-                sendAddr != 0)
-            {
+            if (!CBufferIsEmpty(&charBuffer) && sendAddr != 0) {
                 *sendAddr = CBufferPop(&charBuffer);
 
                 // unblock the notifier which will
@@ -306,9 +251,7 @@ void monitorOutServer()
 
 static void trainInNotifier() {
     int pid = MyParentTid();
-    IOReq req = {
-        .type = NOTIFICATION
-    };
+    IOReq req = { .type = NOTIFICATION };
 
     for (;;) {
         req.data = (unsigned int)AwaitEvent(UART1_RECV_EVENT);
@@ -316,7 +259,7 @@ static void trainInNotifier() {
     }
 }
 
-void trainInServer() {
+static void trainInServer() {
     char c = 0;
     int tid = 0;
     char taskb[TASK_MAX_TASKS];
@@ -325,18 +268,11 @@ void trainInServer() {
     CBuffer charBuffer;
     CBufferInit(&taskBuffer, taskb, TASK_MAX_TASKS);
     CBufferInit(&charBuffer, charb, TRAIN_BUFFER_SIZE);
-
-    IOReq req = {
-        .type = -1,
-        .data = '\0'
-    };
-
-    // TODO: nameserver
     com1RecvSrvTid = MyTid();
-
     RegisterAs("trainInServer");
 
-    // Spawn notifier
+    IOReq req = { .type = -1, .data = '\0' };
+
     Create(PRIORITY_NOTIFIER, &trainInNotifier);
 
     for (;;) {
@@ -344,7 +280,7 @@ void trainInServer() {
 
         switch (req.type) {
         // the notifier sent us a character
-        case NOTIFICATION:
+        case NOTIFICATION: {
             // unblock notifier
             Reply(tid, 0, 0);
 
@@ -363,7 +299,8 @@ void trainInServer() {
             }
             break;
         // some user task called getchar
-        case GETCHAR:
+        }
+        case GETCHAR: {
             if(CBufferIsEmpty(&charBuffer)) {
                 // no char to give back to caller; block it
                 CBufferPush(&taskBuffer, (char)tid);
@@ -374,6 +311,7 @@ void trainInServer() {
                 Reply(tid, &c, sizeof(c));
             }
             break;
+        }
         default:
             break;
         }
@@ -394,23 +332,15 @@ static void trainOutNotifier() {
     }
 }
 
-void trainOutServer() {
+static void trainOutServer() {
     int tid = 0;
     char * sendAddr = 0;
     char charb[TRAIN_BUFFER_SIZE];
     CBuffer charBuffer;
     CBufferInit(&charBuffer, charb, TRAIN_BUFFER_SIZE);
-
-    IOReq req = {
-        .type = -1,
-        .data = '\0'
-    };
-
-    // TODO: Remove
     com1SendSrvTid = MyTid();
-
-    // Register with name server
     RegisterAs("trainOutServer");
+    IOReq req = { .type = -1, .data = '\0' };
 
     // Spawn notifier
     int notifierTid = Create(PRIORITY_NOTIFIER, &trainOutNotifier);
@@ -419,7 +349,7 @@ void trainOutServer() {
         Receive(&tid, &req, sizeof(req));
 
         switch (req.type) {
-        case NOTIFICATION:
+        case NOTIFICATION: {
             if(CBufferIsEmpty(&charBuffer)) {
                 // nothing to send
                 // mark that we've seen a xmit interrupt
@@ -437,7 +367,8 @@ void trainOutServer() {
                 Reply(tid, 0, 0);
             }
             break;
-        case PUTCHAR:
+        }
+        case PUTCHAR: {
             Reply(tid, 0, 0);
 
             // We've seen a xmit but did not
@@ -462,7 +393,8 @@ void trainOutServer() {
                 CBufferPush(&charBuffer, (char)(req.data));
             }
             break;
-        case PUTSTR:
+        }
+        case PUTSTR: {
             // unblock caller
             Reply(tid, 0, 0);
 
@@ -487,8 +419,20 @@ void trainOutServer() {
                 // reset 'seen transmit int' state
                 sendAddr = 0;
             }
+        }
         default:
             break;
         }
     }
+}
+
+void initIOServers() {
+    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
+    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
+    Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
+    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
+}
+
+void exitIOServers() {
+
 }

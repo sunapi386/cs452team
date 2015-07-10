@@ -27,7 +27,7 @@ inline int taskGetPriority(TaskDescriptor *task) {
     return (task->id & TASK_PRIORITY_MASK) >> TASK_PRIORITY_OFFSET;
 }
 
-static inline int taskGetIndexById(int task_id) {
+inline int taskGetIndexById(int task_id) {
     return (TASK_INDEX_MASK & task_id) >> TASK_INDEX_OFFSET;
 }
 
@@ -230,6 +230,9 @@ int taskGetMyParentUnique(TaskDescriptor *task) {
     return (TASK_UNIQUE_MASK & task->parent_id) >> TASK_UNIQUE_OFFSET;
 }
 
-void taskForceKill(TaskDescriptor *task) {
-    // TODO: Implment killing tasks
+void taskKill(int task_id) {
+    TaskDescriptor *victim = taskGetTDById(task_id);
+    taskExit(victim);
+    victim->status = zombie;
+    // scheduler: check if victim is zombie: remove from task queue
 }

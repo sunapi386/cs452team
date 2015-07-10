@@ -58,10 +58,11 @@ typedef struct TaskDescriptor {
     int parent_id;
     unsigned int *sp;
     enum {
-        ready,         // ready to be activated
+        ready,          // ready to be activated
         send_block,     // task executed Send(), waiting for it to be received
-        receive_block, // task executed Receive(), waiting for task to Send()
-        reply_block,   // task executed Send(), its message received, waiting on reply
+        receive_block,  // task executed Receive(), waiting for task to Send()
+        reply_block,    // task executed Send(), its message received, waiting on reply
+        zombie,         // kill this task and reclaim its memory
     } status;
     int *send_id;
     void *send_buf, *recv_buf;
@@ -77,7 +78,7 @@ unsigned int taskIdleRatio();
 void initTaskSystem();
 void taskDisplayAll();
 void taskExit(TaskDescriptor *task);
-void taskForceKill(TaskDescriptor *task);
+void taskKill(int task_id);
 void taskSetName(TaskDescriptor *task, char *name);
 
 /* Returns NULL on invalid task_id */

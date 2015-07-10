@@ -16,12 +16,7 @@
 void bootstrapTask() {
     initNameserver();
     initClockserver();
-
-    // Create IO Servers
-    Create(PRIORITY_TRAIN_OUT_SERVER, trainOutServer);
-    Create(PRIORITY_TRAIN_IN_SERVER, trainInServer);
-    Create(PRIORITY_MONITOR_OUT_SERVER, monitorOutServer);
-    Create(PRIORITY_MONITOR_IN_SERVER, monitorInServer);
+    initIOServers();
 
     // Create user task
     Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
@@ -40,6 +35,7 @@ void bootstrapTask() {
 }
 
 void shutdownTasks() {
+    exitIOServers();
     exitClockserver();
     exitNameserver();
 }

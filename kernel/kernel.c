@@ -35,62 +35,69 @@ static void resetKernel() {
 
 int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
 
-    if (request == NULL)
-    {
+    if (request == NULL) {
         handleInterrupt();
         // add the task back to the front of the ready queue
         addToFront(td);
     }
-    else
-    {
-        switch (request->type)
-        {
-        case SYS_AWAIT_EVENT:
-            if (awaitInterrupt(td, request->arg1) == -1)
-            {
+    else {
+        switch (request->type) {
+        case SYS_AWAIT_EVENT: {
+            if (awaitInterrupt(td, request->arg1) == -1) {
                 taskSetRet(td, -1);
                 break;
             }
             // we don't want rescheduling now that it's event blocked
             return 0;
-        case SYS_SEND:
+        }
+        case SYS_SEND: {
             handleSend(sendQueues, td, request);
             return 0;
-        case SYS_RECEIVE:
+        }
+        case SYS_RECEIVE: {
             handleReceive(sendQueues, td, request);
             return 0;
-        case SYS_REPLY:
+        }
+        case SYS_REPLY: {
             handleReply(td, request);
             return 0;
-        case SYS_CREATE:
-        {
+        }
+        case SYS_CREATE: {
             int create_ret = taskCreate(request->arg1,
                 (void*)(request->arg2),
                 taskGetIndex(td));
-            if (create_ret >= 0)
-            {
+            if (create_ret >= 0) {
                 taskSetRet(td, taskGetIndexById(create_ret));
                 queueTask(taskGetTDById(create_ret));
             }
-            else
-            {
+            else {
                 taskSetRet(td, create_ret);
             }
             break;
         }
-        case SYS_MY_TID:
+        case SYS_MY_TID: {
             taskSetRet(td, taskGetIndex(td));
             break;
-        case SYS_MY_PARENT_TID:
+        }
+        case SYS_MY_PARENT_TID: {
             taskSetRet(td, taskGetMyParentIndex(td));
             break;
-        case SYS_PASS:
+        }
+        case SYS_PASS: {
             break;
-        case SYS_EXIT:
+        }
+        case SYS_EXIT: {
             taskExit(td);
             return 0;
-        case SYS_HALT:
+        }
+        case SYS_HALT: {
             return -1;
+        }
+        case SYS_KILL: {
+            int kill_this_tid = request->arg1;
+            taskKill(kill_this_tid);
+            break;
+        }
         default:
             debug("Invalid syscall %u!", request->type);
             break;
@@ -105,8 +112,7 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
 #define TIMER4_VAL      ((volatile unsigned int *) 0x80810060)
 #define TIMER4_CRTL     ((volatile unsigned int *) 0x80810064)
 
-int main()
-{
+int main() {
     TaskQueue sendQueues[TASK_MAX_TASKS];
 
     initKernel(sendQueues);
@@ -116,8 +122,7 @@ int main()
     unsigned int task_begin_time;
     *TIMER4_CRTL = TIMER4_ENABLE;
 
-    for(;;)
-    {
+    for(;;) {
         task = schedule();
         if (task == NULL) {
             debug("No tasks scheduled; exiting...");

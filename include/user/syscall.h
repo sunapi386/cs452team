@@ -18,6 +18,7 @@ struct String;
 #define SYS_MY_PARENT_TID   8
 #define SYS_PASS            9
 #define SYS_HALT            10
+#define SYS_KILL            11
 
 typedef
 struct Syscall {
@@ -176,6 +177,14 @@ int PutStr(int channel, char *str);
 
 int PutString(int channel, struct String *s);
 
+/**
+Immediately breaks out of the kernel main loop, very bad.
+*/
 void Halt();
+
+/**
+Tells the kernel this task should be killed.
+*/
+void Kill(int tid);
 
 #endif // __SYSCALL_H
