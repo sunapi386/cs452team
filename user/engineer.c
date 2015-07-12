@@ -31,14 +31,15 @@ typedef struct UIMessage {
     const char *prevLandmark;
 } UIMessage;
 
-static inline int abs(int num) {
-    return (num < 0 ? -1 * num : num);
-}
-
 static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
 static int pairs[NUM_SENSORS][NUM_SENSORS];
 static track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
+
+static inline int abs(int num) {
+    return (num < 0 ? -1 * num : num);
+}
+
 // static bool activated_engineers[NUM_TRAINS];
 
 // Courier: sensorServer -> engineer
@@ -304,7 +305,7 @@ static void engineerTask() {
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
 
                 // If landmark is null or train is not moving, do not refresh UI
-                if (nextLandmark == 0 || desired_speed == 0)
+                if (nextLandmark == 0)
                 {
                     uiWorkerTid = tid;
                     break;
