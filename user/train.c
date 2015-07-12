@@ -31,8 +31,9 @@ void trainSetReverseNicely(int train_number) {
     assert(1 <= train_number && train_number <= 80);
     unsigned short prev_speed = speeds[train_number];
     trainSetSpeed(train_number, 0);
-    Delay(280);
+    Delay(300);
     trainSetReverse(train_number);
+    Delay(15);
     trainSetSpeed(train_number, prev_speed);
 }
 
