@@ -18,7 +18,7 @@
 #define UI_MESSAGE_DIST     21
 #define UI_MESSAGE_LANDMARK 22
 #define UI_MESSAGE_SENSOR   23
-#define UI_MESSAGE_RESTART  24
+#define UI_MESSAGE_PASS     24
 
 typedef struct UIMessage {
     int type;
@@ -30,6 +30,21 @@ typedef struct UIMessage {
     const char *nextLandmark;
     const char *prevLandmark;
 } UIMessage;
+
+typedef enum {
+    Init = 0,           // initial state
+    Stop,               // stop command issued
+    Running,            // running
+    ReverseSetStop,     // reverse stage 1: stop issued
+    ReverseSetReverse,  // reverse stage 2: reverse issued
+    ReverseSetGo,       // reverse stage 3: speed up issued
+    ScheduledStop,      // stop on landmark issued (do we need this shit?)
+} TrainState;
+
+typedef enum {
+    Forward = 0,
+    Backward,
+} TrainDirection;
 
 static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
@@ -231,7 +246,7 @@ void UIWorker()
         case UI_MESSAGE_INIT:
             initializeScreen();
             break;
-        case UI_MESSAGE_RESTART:
+        case UI_MESSAGE_PASS:
             break;
         default:
             printf(COM2, "UIWorker received garbage\n\r");
@@ -245,14 +260,17 @@ void UIWorker()
 }
 
 static void engineerTask() {
+    int tid = 0, uiWorkerTid = 0;
+    TrainState state = Init;
+    TrainDirection direction = Forward;
+    unsigned int speed = 0;   // 0-14
+    int velocity = 0;         // um/tick
+    int triggeredSensor = 0;  // {0|1}
+    int prevLandmarkTime = 0; // tick
+
     trainSetSpeed(active_train, desired_speed);
 
     // Variables that are needed to be persisted between iterations
-    int tid = 0, sensorReadingCount = 0;
-    int uiWorkerTid = 0, shouldRefreshSensor = 0;
-    int current_velocity_in_um = 50; // TODO: maybe 50 is not good idea
-    int timeOfReachingPrevLandmark = 0;
-    int reversing = 0;
     track_node *prevLandmark = 0;
     SensorUpdate last_update = {0,0};
 
@@ -265,131 +283,128 @@ static void engineerTask() {
     MessageToEngineer message;
 
     // Create child tasks
-    Create(PRIORITY_ENGINEER_COURIER, UIWorker);
+    uiWorkerTid = Create(PRIORITY_ENGINEER_COURIER, UIWorker);
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
 
     // All sensor reports with timestamp before this time are invalid
-    int timeAtReceive = Time();
+    int creationTime = Time();
 
-    for(;;) {
+    for(;;)
+    {
         int len = Receive(&tid, &message, sizeof(MessageToEngineer));
         assert(len == sizeof(MessageToEngineer));
 
         switch(message.type) {
             case update_location:
             {
-                // If we are reversing, don't do anything until we get a new sensor update
-                if (reversing == 1)
+                if (state == Init)
                 {
-                    uiWorkerTid = tid;
+                    // If we are just starting, block until we reach the first sensor
                     break;
                 }
 
-                // If we are just starting, initialize display and block
-                if (prevLandmark == 0)
+                if (triggeredSensor)
                 {
-                    uiWorkerTid = tid;
-                    break;
-                }
-
-                // If sensor was just hit, reply directly to update last sensor
-                if (shouldRefreshSensor)
-                {
+                    // If sensor was just hit, reply directly to update last sensor
                     Reply(tid, &uiMessage, sizeof(uiMessage));
-                    shouldRefreshSensor = 0;
+                    triggeredSensor = 0;
                     break;
                 }
+
+                assert(prevLandmark != 0);
 
                 // If we have a prevLandmark, compute the values needed
                 // and update train display
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
-
-                // If landmark is null or train is not moving, do not refresh UI
-                if (nextLandmark == 0)
-                {
-                    uiWorkerTid = tid;
-                    break;
-                }
-
-                // get the edge from previous to next landmark
                 track_edge *nextEdge = getNextEdge(prevLandmark);
-                if (nextEdge == 0)
+                if (nextEdge != 0 || nextLandmark != 0)
                 {
+                    printf(COM2, "[engineer:321] Warning: nextEdge/nextLandmark is NULL");
                     uiWorkerTid = tid;
                     break;
                 }
 
                 // compute some stuff
                 int currentTime = Time();
-                int delta = currentTime - timeOfReachingPrevLandmark;
-                int distSoFar = delta * current_velocity_in_um;
+                int delta = currentTime - prevLandmarkTime;
+                int distSoFar = delta * velocity;
                 int distToNextLandmark = nextEdge->dist * 1000 - distSoFar;
 
-                // check for X
-                if (direction_is_forward && targetLandmark != 0 &&
+                // check for stopping at landmark
+                if (direction == Forward && targetLandmark != 0 &&
                     (distanceBetween(prevLandmark, targetLandmark) - distSoFar
                     <= forwardStoppingDist[desired_speed]) )   {
-                    // issue stop command now
+                    targetLandmark = 0;
                     desired_speed = 0;
                     trainSetSpeed(active_train, desired_speed);
-                }// check for X
-                else if (! direction_is_forward && targetLandmark != 0 &&
+                }
+                else if (direction == Backward && targetLandmark != 0 &&
                     (distanceBetween(prevLandmark, targetLandmark) - distSoFar
                     <= backwardStoppingDist[desired_speed]) )   {
-                    // issue stop command now
+                    targetLandmark = 0;
                     desired_speed = 0;
                     trainSetSpeed(active_train, desired_speed);
                 }
 
                 if (nextLandmark->type == NODE_SENSOR)
                 {
+                    if (state == ReverseSetReverse)
+                    {
+                        // swap the prevLandmark with nextLandmark
+                        track_node *temp = nextLandmark;
+                        nextLandmark = prevLandmark;
+                        prevLandmark = temp;
+
+                        // swap the distSoFar with distToNextLandmark
+                    }
+
                     // output the distance to next landmark
                     uiMessage.type = UI_MESSAGE_DIST;
                     uiMessage.distToNext = distToNextLandmark;
                     Reply(tid, &uiMessage, sizeof(uiMessage));
                 }
-                else
+                else if (distToNextLandmark <= 0)
                 {
-                    if (distToNextLandmark <= 0)
+                    // We've "reached" the next non-sensor landmark
+                    // Update previous landmark
+                    prevLandmark = nextLandmark;
+                    prevLandmarkTime = currentTime;
+
+                    // update the next landmark
+                    nextLandmark = getNextLandmark(prevLandmark);
+                    track_edge *nextEdge = getNextEdge(prevLandmark);
+                    if (nextLandmark == 0 || nextEdge == 0)
                     {
-                        // We've "reached" the next non-sensor landmark
-                        // Update previous landmark
-                        prevLandmark = nextLandmark;
-                        timeOfReachingPrevLandmark = currentTime;
-
-                        // update the next landmark
-                        nextLandmark = getNextLandmark(prevLandmark);
-                        track_edge *nextEdge = getNextEdge(prevLandmark);
-                        if (nextLandmark == 0 || nextEdge == 0)
-                        {
-                            uiWorkerTid = tid;
-                            break;
-                        }
-
-                        // update the distance to next landmark
-                        distToNextLandmark = nextEdge->dist * 1000;
-
-                        // Output: next landmark, prev landmark, dist to next
-                        uiMessage.type = UI_MESSAGE_LANDMARK;
-                        uiMessage.nextLandmark = nextLandmark->name;
-                        uiMessage.prevLandmark = prevLandmark->name;
-                        uiMessage.distToNext = distToNextLandmark;
-                        Reply(tid, &uiMessage, sizeof(uiMessage));
-
+                        uiWorkerTid = tid;
+                        printf(COM2, "[engineer:378] Warning: nextEdge/nextLandmark is NULL");
+                        break;
                     }
-                    else
-                    {
-                        // We haven't reached the next landmark;
-                        // Output: distance to next (already computed)
-                        uiMessage.type = UI_MESSAGE_DIST;
-                        uiMessage.distToNext = distToNextLandmark;
-                        Reply(tid, &uiMessage, sizeof(uiMessage));
-                    }
+
+                    // update the distance to next landmark
+                    distToNextLandmark = nextEdge->dist * 1000;
+
+                    // Output: next landmark, prev landmark, dist to next
+                    uiMessage.type = UI_MESSAGE_LANDMARK;
+                    uiMessage.nextLandmark = nextLandmark->name;
+                    uiMessage.prevLandmark = prevLandmark->name;
+                    uiMessage.distToNext = distToNextLandmark;
+                    Reply(tid, &uiMessage, sizeof(uiMessage));
+
+                }
+                else // (distanceToNextLandmark > 0)
+                {
+                    // We haven't reached the next landmark;
+                    // Output: distance to next (already computed)
+                    uiMessage.type = UI_MESSAGE_DIST;
+                    uiMessage.distToNext = distToNextLandmark;
+                    Reply(tid, &uiMessage, sizeof(uiMessage));
                 }
                 break;
             }
 
             case update_sensor: {
+                // unblock sensor
+                Reply(tid, 0, 0);
                 /*
                     If we are here, we know:
                         1. A sensor has been triggered;
@@ -403,46 +418,35 @@ static void engineerTask() {
                         6. Actual time
                         7. Error
                 */
-
                 // Get sensor update data
                 SensorUpdate sensor_update = {
                     message.data.update_sensor.sensor,
                     message.data.update_sensor.time
                 };
 
-                // Reject sensor updates with timestamp before timeAtReceive
-                if (sensor_update.time <= timeAtReceive)
-                {
-                    Reply(tid, 0, 0);
-                    continue;
-                }
+                // Reject sensor updates with timestamp before creationTime
+                if (sensor_update.time <= creationTime) continue;
 
                 // Update some stuff
                 prevLandmark = &g_track[indexFromSensorUpdate(&sensor_update)];
-                timeOfReachingPrevLandmark = sensor_update.time;
+                prevLandmarkTime = sensor_update.time;
 
-                if (reversing == 1 && uiWorkerTid > 0)
+                if (uiWorkerTid > 0)
                 {
-                    reversing = 0;
-                    uiMessage.type = UI_MESSAGE_RESTART;
+                    uiMessage.type = UI_MESSAGE_PASS;
                     Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
                     uiWorkerTid = 0;
                 }
 
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
                 track_edge *nextEdge = getNextEdge(prevLandmark);
-                if (nextLandmark == 0 || nextEdge == 0)
-                {
-                    assert(0); // TODO (shuo): remove
-                    Reply(tid, 0, 0);
-                    continue;
-                }
+                assert(nextLandmark && nextEdge);
 
                 // update the current velocity
                 int time_since_last_sensor = sensor_update.time - last_update.time;
                 int um_dist_segment = distanceBetween(&g_track[indexFromSensorUpdate(&last_update)],
                                                       &g_track[indexFromSensorUpdate(&sensor_update)]);
-                current_velocity_in_um = um_dist_segment / time_since_last_sensor;
+                velocity = um_dist_segment / time_since_last_sensor;
 
                 // update constant velocity calibration data
                 int last_index = indexFromSensorUpdate(&last_update);
@@ -470,69 +474,74 @@ static void engineerTask() {
                     uiMessage.expectedTime = expected_time;
                     uiMessage.actualTime = actual_time;
                     uiMessage.error = error;
-                    shouldRefreshSensor = 1;
+                    triggeredSensor = 1;
                 }
 
                 last_update.time = sensor_update.time;
                 last_update.sensor = sensor_update.sensor;
 
-                if (sensorReadingCount == 0 && uiWorkerTid > 0)
+                if (state == Init)
                 {
+                    state = speed ? Running : Stop;
+
                     // kick start UI refresh
                     uiMessage.type = UI_MESSAGE_INIT;
                     Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
-                    ++sensorReadingCount;
                     uiWorkerTid = 0;
                 }
-
-                // unblock sensor courier
-                Reply(tid, 0, 0);
-
                 break;
-            } // update
+            }
 
-            case x_mark: {
+            case x_mark:
+            {
                 assert(message.data.x_mark.x_node_number >= 0 &&
-                    message.data.x_mark.x_node_number < TRACK_MAX);
+                       message.data.x_mark.x_node_number < TRACK_MAX);
 
                 targetLandmark = &g_track[message.data.x_mark.x_node_number];
                 Reply(tid, 0, 0);
                 break;
-            } // x_mark
+            }
 
-            case change_speed: {
+            case train_command:
+            {
+                break;
+            }
+
+            case change_speed:
+            {
                 // printf(COM2, "engineer got change speed... \r\n");
                 Reply(tid, 0, 0);
                 desired_speed = message.data.change_speed.speed;
-                targetLandmark = 0;
+
                 trainSetSpeed(active_train, desired_speed);
 
-                if (uiWorkerTid > 0) {
-                    uiMessage.type = UI_MESSAGE_RESTART;
+                if (uiWorkerTid > 0)
+                {
+                    uiMessage.type = UI_MESSAGE_PASS;
                     Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
                     uiWorkerTid = 0;
                 }
-
                 break;
-            } // change_speed
+            }
 
-            case reverse_direction: {
+            case reverse_direction:
+            {
                 Reply(tid, 0, 0);
                 targetLandmark = 0;
                 direction_is_forward = (! direction_is_forward);
                 last_update.time = 0;
                 last_update.sensor = 0;
-                reversing = 1;
                 break;
             }
-            default: {
+            default:
+            {
                 printf(COM2, "Warning engineer Received garbage\r\n");
                 assert(0);
                 break;
-            } // default
-        } // switch
-    } // for
-} // engineerTask
+            }
+        }
+    }
+}
 
 static int engineerTaskId = -1;
 

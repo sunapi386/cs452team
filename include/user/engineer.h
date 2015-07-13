@@ -26,6 +26,7 @@ typedef struct MessageToEngineer {
         x_mark,
         change_speed,
         update_sensor,
+        train_command,
         update_location,
         reverse_direction,
     } type;
