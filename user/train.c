@@ -14,13 +14,13 @@ static unsigned short speeds[NUM_TRAINS];
 void trainSetSpeed(int train_number, int train_speed) {
     assert(1 <= train_number && train_number <= 80);
     assert(0 <= train_speed && train_speed <= 14);
-    printf(COM2, "%c%c", (char)(train_speed), (char)(train_number));
+    printf(COM1, "%c%c", (char)(train_speed), (char)(train_number));
     speeds[train_number] = train_speed;
 }
 
 void trainSetReverse(int train_number) {
     assert(1 <= train_number && train_number <= 80);
-    printf(COM2, "%c%c", REVERSE, (char)(train_number));
+    printf(COM1, "%c%c", REVERSE, (char)(train_number));
 }
 
 void trainSetReverseNicely(int train_number) {
