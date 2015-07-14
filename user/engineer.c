@@ -268,22 +268,30 @@ void commandWorker()
 
     for (;;)
     {
+        // Send to engineer to get new command
         message.type = commandWorker;
         int len = Send(pid, &message, sizeof(message), &command, sizeof(command));
         assert(len == sizeof(Command));
 
+executeCommand:
         switch(command.type)
         {
         case COMMAND_SET_SPEED:
             trainSetSpeed(command.trainNumber, command.trainSpeed);
-            break;
-        case COMMAND_SET_TURNOUT:
-            setTurnout(command.turnoutNumber, command.turnoutDir);
+
+            // Notify the engineer that the set speed command has been issued
+            message.type = commandWorkerSetSpeed;
+            message.data.setSpeed.speed = command.trainSpeed;
+            Send(pid, &message, sizeof(message), 0, 0);
             break;
         case COMMAND_REVERSE:
-            int originalSpeed = command.trainSpeed;
-
             trainSetSpeed(command.trainNumber, 0);
+
+            // Notify the engineer that the set speed command has been issued
+            message.type = commandWorkerSetSpeed;
+            message.data.setSpeed.speed = 0;
+
+            // Wait until train comes to a stop and set reverse
             Delay(300); // TODO: scale this
             trainSetReverse(command.trainNumber);
 
@@ -293,7 +301,7 @@ void commandWorker()
 
             // Set the train back to original speed
             Delay(15);
-            trainSetSpeed(command.trainNumber, originalSpeed)
+            goto executeCommand;
             break;
         default:
             printf(COM2, "[commandWorker] Invalid command\n\r");
@@ -359,6 +367,8 @@ void engineerTask() {
                 }
 
                 assert(prevLandmark != 0);
+
+                if (state == )
 
                 // If we have a prevLandmark, compute the values needed
                 // and update train display
@@ -530,7 +540,7 @@ void engineerTask() {
             case xMark:
             {
                 Reply(tid, 0, 0);
-                targetLandmark = &g_track[message.data.xMark.x_node_number];
+                targetLandmark = &g_track[message.data.xMark.nodeNumber];
                 break;
             }
 
@@ -608,20 +618,36 @@ void engineerTask() {
             {
                 Reply(tid, 0, 0);
 
-                isForward = !isForward;
-                state = ReverseSetReverse;
+                if (state != Stop)
+                {
+                    printf(COM2, "[engineerTask] internal state error: train state should be Stop; current state: %d\n\r", state);
+                    assert(0);
+                }
 
-                // TODO: swap prevLandmark with current landmark
+                isForward = !isForward;
+                state = (state == Init) ? Init : ReverseSetReverse;
+
+                // reverse prevLandmark
+                if (prevLandmark == 0)
+                {
+                    assert(0);
+                }
+                assert(prevLandmark != 0);
+                track_node *nextLandmark = getNextLandmark(prevLandmark);
+                assert(nextLandmark != 0);
+                prevLandmark = nextLandmark->reverse;
+                assert(prevLandmark != 0);
                 break;
             }
 
-            // Command worker: I've just issued a stop command!
+            // Command worker: I've just issued a set speed command!
             case commandWorkerSetSpeed:
             {
                 Reply(tid, 0, 0);
                 speed = (char)(message.data.setSpeed.speed);
-                if (speed == 0) state = Stop;
-                else state = Running;
+                if      (state == Init) break;
+                else if (speed == 0) state = Stop;
+                else    state = Running;
                 break;
             }
 
@@ -674,19 +700,19 @@ void engineerLoadTrackStructure(char which_track) {
     }
 }
 
-void engineerXMarksTheSpot(int node_number) {
-    assert(0 <= node_number && node_number <= 139);
+void engineerXMarksTheSpot(int nodeNumber) {
+    assert(0 <= nodeNumber && nodeNumber <= 139);
     assert(engineerTaskId >= 0);
     EngineerMessage message;
     message.type = xMark;
-    message.data.xMark.x_node_number = node_number;
+    message.data.xMark.nodeNumber = nodeNumber;
     Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }
 
-void engineerSpeedUpdate(int new_speed) {
+void engineerSpeedUpdate(int speed) {
     EngineerMessage message;
     message.type = setSpeed;
-    message.data.setSpeed.speed = new_speed;
+    message.data.setSpeed.speed = speed;
     assert(engineerTaskId >= 0);
     Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }
