@@ -147,6 +147,50 @@ bool IBufferIsEmpty(const IBuffer *b)
     return b->head == b->tail;
 }
 
+void commandCopy(Command *dst, const Command *src)
+{
+    dst->type = src->type;
+    dst->trainSpeed = src->trainSpeed;
+    dst->trainNumber = src->trainNumber;
+    dst->turnoutNumber = src->turnoutNumber;
+}
+
+void initCommandQueue(CommandQueue *q, size_t size, Command *buffer)
+{
+    q->head = 0;
+    q->tail = 0;
+    q->size = size;
+    q->buffer = buffer;
+}
+
+int enqueueCommand(CommandQueue *q, Command *in)
+{
+    int ret = 0;
+    q->tail = (q->tail + 1) % q->size;
+    if (q->tail == q->head)
+    {
+        // overflow
+        q->tail = (q->tail + 1) % q->size;
+        ret = -1;
+    }
+    commandCopy(&(q->buffer[q->tail]), in);
+    return ret;
+}
+
+int dequeueCommand(CommandQueue *q, Command *out)
+{
+    // underflow
+    if (q->head == q->tail) return -1;
+    q->head = (q->head + 1) % q->size;
+    commandCopy(out, &(q->buffer[q->head]));
+    return 0;
+}
+
+int isCommandQueueEmpty(CommandQueue *q)
+{
+    return q->head == q->tail;
+}
+
 void scopy(String *dst, const char *src) {
     size_t n = strlen(src);
     assert(n < STR_MAX_LEN);

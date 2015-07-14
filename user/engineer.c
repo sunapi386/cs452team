@@ -4,7 +4,7 @@
 #include <user/syscall.h>
 #include <utils.h> // printf
 #include <user/train.h> // trainSetSpeed
-#include <user/sensor.h> // sizeof(MessageToEngineer)
+#include <user/sensor.h>
 #include <user/track_data.h>
 #include <user/turnout.h> // turnoutIsCurved
 #include <user/vt100.h>
@@ -12,13 +12,24 @@
 #define ALPHA               85
 #define NUM_SENSORS         (5 * 16)
 #define NUM_TRAINS          80
-
 #define UI_REFRESH_INTERVAL 5
+
 #define UI_MESSAGE_INIT     20
 #define UI_MESSAGE_DIST     21
 #define UI_MESSAGE_LANDMARK 22
 #define UI_MESSAGE_SENSOR   23
 #define UI_MESSAGE_PASS     24
+
+#define COMMAND_SET_SPEED   30
+#define COMMAND_REVERSE     31
+
+typedef struct {
+    char type;
+    char turnoutDir;
+    char trainSpeed;
+    char trainNumber;
+    char turnoutNumber;
+} Command;
 
 typedef struct UIMessage {
     int type;
@@ -35,21 +46,14 @@ typedef enum {
     Init = 0,           // initial state
     Stop,               // stop command issued
     Running,            // running
-    ReverseSetStop,     // reverse stage 1: stop issued
     ReverseSetReverse,  // reverse stage 2: reverse issued
-    ReverseSetGo,       // reverse stage 3: speed up issued
-    ScheduledStop,      // stop on landmark issued (do we need this shit?)
 } TrainState;
-
-typedef enum {
-    Forward = 0,
-    Backward,
-} TrainDirection;
 
 static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
 static int pairs[NUM_SENSORS][NUM_SENSORS];
 static track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
+static int engineerTaskId = -1;
 
 static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
@@ -65,13 +69,13 @@ static void engineerCourier() {
     SensorRequest sensorReq;  // courier <-> sensorServer
     sensorReq.type = MESSAGE_ENGINEER_COURIER;
     SensorUpdate result;  // courier <-> sensorServer
-    MessageToEngineer engineerReq; // courier <-> engineer
-    engineerReq.type = update_sensor;
+    EngineerMessage engineerReq; // courier <-> engineer
+    engineerReq.type = updateSensor;
 
     for (;;) {
         Send(sensor, &sensorReq, sizeof(sensorReq), &result, sizeof(result));
-        engineerReq.data.update_sensor.sensor = result.sensor;
-        engineerReq.data.update_sensor.time = result.time;
+        engineerReq.data.updateSensor.sensor = result.sensor;
+        engineerReq.data.updateSensor.time = result.time;
         Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
     }
 }
@@ -119,29 +123,23 @@ int distanceBetween(track_node *from, track_node *to) {
     return 1000 * total_distance;
 }
 
-track_edge *getNextEdge(track_node *current_landmark) {
-    if(current_landmark->type == NODE_BRANCH) {
-        return &current_landmark->edge[turnoutIsCurved(current_landmark->num)];
+track_edge *getNextEdge(track_node *landmark)
+{
+    if(landmark->type == NODE_BRANCH)
+    {
+        return &landmark->edge[turnoutIsCurved(landmark->num)];
     }
-    else if(current_landmark->type == NODE_SENSOR ||
-            current_landmark->type == NODE_MERGE) {
-        return &current_landmark->edge[DIR_AHEAD];
+    else if (landmark->type == NODE_EXIT)
+    {
+        return 0;
     }
-    else {
-        printf(COM2, "gne?");
-    }
-    return 0;
-
+    return &landmark->edge[DIR_AHEAD];
 }
 
-// function that looks up the next landmark, using direction_is_forward
-// returns a landmark
 track_node *getNextLandmark(track_node *current_landmark) {
     track_edge *next_edge = getNextEdge(current_landmark);
     return (next_edge == 0 ? 0 : next_edge->dest);
 }
-
-static bool direction_is_forward = true;
 
 void initializeScreen()
 {
@@ -213,8 +211,8 @@ void UIWorker()
     int pid = MyParentTid();
 
     UIMessage uiMessage;
-    MessageToEngineer engMessage;
-    engMessage.type = update_location;
+    EngineerMessage engMessage;
+    engMessage.type = updateLocation;
 
     for (;;)
     {
@@ -259,43 +257,92 @@ void UIWorker()
     }
 }
 
-static void engineerTask() {
-    int tid = 0, uiWorkerTid = 0;
-    TrainState state = Init;
-    TrainDirection direction = Forward;
-    unsigned int speed = 0;   // 0-14
+void commandWorker()
+{
+    int pid = MyParentTid();
+
+    EngineerMessage message;
+    message.type = commandWorker;
+
+    Command command;
+
+    for (;;)
+    {
+        message.type = commandWorker;
+        int len = Send(pid, &message, sizeof(message), &command, sizeof(command));
+        assert(len == sizeof(Command));
+
+        switch(command.type)
+        {
+        case COMMAND_SET_SPEED:
+            trainSetSpeed(command.trainNumber, command.trainSpeed);
+            break;
+        case COMMAND_SET_TURNOUT:
+            setTurnout(command.turnoutNumber, command.turnoutDir);
+            break;
+        case COMMAND_REVERSE:
+            int originalSpeed = command.trainSpeed;
+
+            trainSetSpeed(command.trainNumber, 0);
+            Delay(300); // TODO: scale this
+            trainSetReverse(command.trainNumber);
+
+            // Notify the engineer that the reverse command has been issued
+            message.type = commandWorkerSetReverse;
+            Send(pid, &message, sizeof(message), 0, 0);
+
+            // Set the train back to original speed
+            Delay(15);
+            trainSetSpeed(command.trainNumber, originalSpeed)
+            break;
+        default:
+            printf(COM2, "[commandWorker] Invalid command\n\r");
+            assert(0);
+        }
+    }
+}
+
+void engineerTask() {
+    int tid = 0;
+    int uiWorkerTid = 0;
+    int commandWorkerTid = 0;
+
+    bool isForward = true;
+    char speed = 0;   // 0-14
     int velocity = 0;         // um/tick
     int triggeredSensor = 0;  // {0|1}
     int prevLandmarkTime = 0; // tick
 
-    trainSetSpeed(active_train, desired_speed);
-
-    // Variables that are needed to be persisted between iterations
+    TrainState state = Init;
     track_node *prevLandmark = 0;
     SensorUpdate last_update = {0,0};
-
-    // Stopping distance related
     track_node *targetLandmark = 0;
     int forwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200,  948200};
     int backwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200, 1000000};
 
+    Command cmdBuf[32];
+    CommandQueue commandQueue;
+    InitCommandQueue(&commandQueue, 32, &(cmdBuf[0]));
+
     UIMessage uiMessage;
-    MessageToEngineer message;
+    EngineerMessage message;
 
     // Create child tasks
-    uiWorkerTid = Create(PRIORITY_ENGINEER_COURIER, UIWorker);
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
+    Create(PRIORITY_ENGINEER_COURIER, commandWorker);
+    uiWorkerTid = Create(PRIORITY_ENGINEER_COURIER, UIWorker);
 
     // All sensor reports with timestamp before this time are invalid
     int creationTime = Time();
 
     for(;;)
     {
-        int len = Receive(&tid, &message, sizeof(MessageToEngineer));
-        assert(len == sizeof(MessageToEngineer));
+        int len = Receive(&tid, &message, sizeof(EngineerMessage));
+        assert(len == sizeof(EngineerMessage));
 
-        switch(message.type) {
-            case update_location:
+        switch(message.type)
+        {
+            case updateLocation:
             {
                 if (state == Init)
                 {
@@ -402,26 +449,14 @@ static void engineerTask() {
                 break;
             }
 
-            case update_sensor: {
+            case updateSensor: {
                 // unblock sensor
                 Reply(tid, 0, 0);
-                /*
-                    If we are here, we know:
-                        1. A sensor has been triggered;
-                        2. We've received a sensor update, consists of a sensor and a time stamp
-                    We need to update:
-                        1. Previous landmark
-                        2. Next landmark
-                        3. Distance to next landmark
-                        4. Previous sensor
-                        5. Expected time
-                        6. Actual time
-                        7. Error
-                */
+
                 // Get sensor update data
                 SensorUpdate sensor_update = {
-                    message.data.update_sensor.sensor,
-                    message.data.update_sensor.time
+                    message.data.updateSensor.sensor,
+                    message.data.updateSensor.time
                 };
 
                 // Reject sensor updates with timestamp before creationTime
@@ -492,47 +527,104 @@ static void engineerTask() {
                 break;
             }
 
-            case x_mark:
+            case xMark:
             {
-                assert(message.data.x_mark.x_node_number >= 0 &&
-                       message.data.x_mark.x_node_number < TRACK_MAX);
-
-                targetLandmark = &g_track[message.data.x_mark.x_node_number];
                 Reply(tid, 0, 0);
+                targetLandmark = &g_track[message.data.xMark.x_node_number];
                 break;
             }
 
-            case train_command:
+            case setSpeed:
             {
-                break;
-            }
-
-            case change_speed:
-            {
-                // printf(COM2, "engineer got change speed... \r\n");
                 Reply(tid, 0, 0);
-                desired_speed = message.data.change_speed.speed;
 
-                trainSetSpeed(active_train, desired_speed);
+                Command command = {
+                    .type = COMMAND_SET_SPEED,
+                    .speed = (char)(message.data.setSpeed.speed)
+                };
 
-                if (uiWorkerTid > 0)
+                if (commandWorkerTid > 0)
                 {
-                    uiMessage.type = UI_MESSAGE_PASS;
-                    Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
-                    uiWorkerTid = 0;
+                    Reply(commandWorkerTid, &command, sizeof(command));
+                    commandWorkerTid = 0;
+                }
+                else
+                {
+                    if (enqueueCommand(&commandQueue, &command) != 0)
+                    {
+                        printf(COM2, "[engineerTask] Command buffer overflow!\n\r");
+                        assert(0);
+                    }
                 }
                 break;
             }
 
-            case reverse_direction:
+            case setReverse:
             {
                 Reply(tid, 0, 0);
-                targetLandmark = 0;
-                direction_is_forward = (! direction_is_forward);
-                last_update.time = 0;
-                last_update.sensor = 0;
+
+                Command command = {
+                    .type = COMMAND_REVERSE,
+                    .speed = speed; // this might be stale when command is actually executed (very unlikely)
+                };
+
+                if (commandWorkerTid > 0)
+                {
+                    Reply(commandWorkerTid, &command, sizeof(command));
+                    commandWorkerTid = 0;
+                }
+                else
+                {
+                    if (enqueueCommand(&commandQueue, &command) != 0)
+                    {
+                        printf(COM2, "[engineerTask] Command buffer overflow!\n\r");
+                        assert(0);
+                    }
+                }
                 break;
             }
+
+            // Command worker looking for work
+            case commandWorker:
+            {                
+                if (isCommandQueueEmpty(&commandQueue))
+                {
+                    // case 1: no work; block it
+                    commandWorkerTid = tid;
+                }
+                else
+                {
+                    // case 2: dequeue a job and reply the worker
+                    Command command;
+                    int ret = dequeueCommand(&commandQueue, &command);
+                    assert(ret == 0);
+                    Reply(tid, &command, sizeof(command));
+                }
+                break;
+            }
+
+            // Command worker: I've just issued reverse command!
+            case commandWorkerSetReverse:
+            {
+                Reply(tid, 0, 0);
+
+                isForward = !isForward;
+                state = ReverseSetReverse;
+
+                // TODO: swap prevLandmark with current landmark
+                break;
+            }
+
+            // Command worker: I've just issued a stop command!
+            case commandWorkerSetSpeed:
+            {
+                Reply(tid, 0, 0);
+                speed = (char)(message.data.setSpeed.speed);
+                if (speed == 0) state = Stop;
+                else state = Running;
+                break;
+            }
+
             default:
             {
                 printf(COM2, "Warning engineer Received garbage\r\n");
@@ -543,23 +635,13 @@ static void engineerTask() {
     }
 }
 
-static int engineerTaskId = -1;
-
 void initEngineer() {
-    // if(engineerTaskId >= 0) {
-        // we already called initEngineer before
-        // return;
-    // }
-    // printf(COM2, "debug: initEngineer\r\n");
     for(int i = 0; i < NUM_SENSORS; i++) {
         for(int j = 0; j < NUM_SENSORS; j++) {
             pairs[i][j] = 0;
         }
     }
-    // for(int i = 0; i < NUM_TRAINS; i++) {
-        // activated_engineers[i] = false;
-    // }
-    direction_is_forward = true;
+
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
     assert(engineerTaskId >= 0);
 }
@@ -576,9 +658,9 @@ void engineerPleaseManThisTrain(int train_number, int speed) {
 }
 
 void engineerParserGotReverseCommand() {
-    MessageToEngineer message;
+    EngineerMessage message;
     message.type = reverse_direction;
-    Send(engineerTaskId, &message, sizeof(MessageToEngineer), 0, 0);
+    Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }
 
 void engineerLoadTrackStructure(char which_track) {
@@ -595,16 +677,16 @@ void engineerLoadTrackStructure(char which_track) {
 void engineerXMarksTheSpot(int node_number) {
     assert(0 <= node_number && node_number <= 139);
     assert(engineerTaskId >= 0);
-    MessageToEngineer message;
-    message.type = x_mark;
-    message.data.x_mark.x_node_number = node_number;
-    Send(engineerTaskId, &message, sizeof(MessageToEngineer), 0, 0);
+    EngineerMessage message;
+    message.type = xMark;
+    message.data.xMark.x_node_number = node_number;
+    Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }
 
 void engineerSpeedUpdate(int new_speed) {
-    MessageToEngineer message;
-    message.type = change_speed;
-    message.data.change_speed.speed = new_speed;
+    EngineerMessage message;
+    message.type = setSpeed;
+    message.data.setSpeed.speed = new_speed;
     assert(engineerTaskId >= 0);
-    Send(engineerTaskId, &message, sizeof(MessageToEngineer), 0, 0);
+    Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }

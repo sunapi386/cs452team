@@ -40,6 +40,20 @@ int IBufferPop(IBuffer *b);
 bool IBufferIsEmpty(const IBuffer *b);
 
 /*
+    CommandQueue
+*/
+
+typedef struct {
+    size_t head, tail, size;
+    struct Command *buffer;
+} CommandQueue;
+
+int enqueueCommand(CommandQueue *q, struct Command *in);
+int dequeueCommand(CommandQueue *q, struct Command *out);
+int isCommandQueueEmpty(CommandQueue *q);
+void initCommandQueue(CommandQueue *q, size_t size, struct Command *buffer);
+
+/*
     String
 */
 
