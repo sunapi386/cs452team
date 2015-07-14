@@ -95,7 +95,7 @@ void CBufferClean(CBuffer *b) {
     b->tail = 0;
 }
 
-int CBufferPushStr(CBuffer *b, char *str)
+int CBufferPushStr(CBuffer *b, const char *str)
 {
     int ret = 0, counter = 0;
     while(*str)
@@ -107,6 +107,17 @@ int CBufferPushStr(CBuffer *b, char *str)
     return ret == 0 ? counter : ret;
 }
 
+int CBufferPushString(CBuffer *b, const String *s)
+{
+    int ret = 0;
+    unsigned int i = 0;
+    for (i = 0; i < s->len; i++)
+    {
+        ret = CBufferPush(b, s->buf[i]);
+    }
+    return ret == 0 ? (int)i : ret;
+}
+
 void IBufferInit(IBuffer *b, int * array, size_t size)
 {
     b->data = array;
@@ -114,6 +125,7 @@ void IBufferInit(IBuffer *b, int * array, size_t size)
     b->head = 0;
     b->tail = 0;
 }
+
 int IBufferPush(IBuffer *b, int n)
 {
     int ret = 0;
