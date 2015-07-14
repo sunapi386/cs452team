@@ -7,12 +7,12 @@
 #define COMMAND_COURIER     33
 
 typedef struct {
+    char turnoutDir;
     int type;
+    int trainSpeed;
     int trainNumber;
-    int speed;
     int turnoutNumber;
-    char turnoutDirection;
-} CommandMessage;
+} Command;
 
 void commandServer();
 

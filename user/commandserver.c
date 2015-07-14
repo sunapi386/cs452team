@@ -1,22 +1,11 @@
 #include <debug.h>
 #include <utils.h>
 #include <user/syscall.h>
+#include <user/train.h>
 #include <user/commandserver.h>
 
 #define COMMAND_WORKER 34
 #define REVERSE_WORKER 35
-
-typedef struct {
-    char turnoutDir;
-    enum {
-        SetSpeed,
-        SetReverse,
-        SetTurnout,
-    } type;
-    int trainSpeed;
-    int trainNumber;
-    int turnoutNumber;
-} Command;
 
 void commandCopy(Command *dst, const Command *src)
 {
@@ -84,19 +73,22 @@ void commandWorker()
 {
     int pid = MyParentTid();
 
-    CommandMessage message;
-    message.type = COMMAND_COURIER;
+    Command command;
+    command.type = COMMAND_WORKER;
 
     for (;;)
     {
-        int len = Send(pid, &message, sizeof(message), &message, sizeof(message));
-        assert(len == sizeof(message));
+        int len = Send(pid, &command, sizeof(command), &command, sizeof(command));
+        assert(len == sizeof(Command));
 
-        switch(message.type)
+        switch(command.type)
         {
         case COMMAND_SET_SPEED:
-        case COMMAND_REVERSE:
+            trainSetSpeed(command.trainNumber, command.trainSpeed);
+            break;
         case COMMAND_SET_TURNOUT:
+
+        case COMMAND_REVERSE:
         default:
             printf(COM2, "[commandWorker] Invalid command\n\r");
             assert(0);
@@ -126,7 +118,7 @@ void reverseWorker()
 void commandServer()
 {
     int tid = 0;
-    CommandMessage cmd;
+    Command cmd;
     for (;;)
     {
         int len = Receive(&tid, &cmd, sizeof(cmd));
@@ -139,7 +131,7 @@ void commandServer()
         */
         case COMMAND_SET_SPEED:
         {
-            int speed = cmd.speed;
+            int speed = cmd.trainSpeed;
             int trainNumber = cmd.trainNumber;
             // put into the commandQueue
 
