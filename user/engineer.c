@@ -255,7 +255,6 @@ void commandWorker()
 
     for (;;)
     {
-        printf(COM2, "commandWorker: sending to engineerTask %d\n\r", pid);
         // Send to engineer to get new command
         message.type = commandWorkerRequest;
         int len = Send(pid, &message, sizeof(message), &command, sizeof(command));
@@ -273,31 +272,30 @@ executeCommand:
             Send(pid, &message, sizeof(message), 0, 0);
             break;
         case COMMAND_REVERSE:
-            printf(COM2, "Reverse: set speed 0 on train %d\n\r", command.trainNumber);
             trainSetSpeed(command.trainNumber, 0);
 
             // Notify the engineer that the set speed command has been issued
-            // message.type = commandWorkerSpeedSet;
-            // message.data.setSpeed.speed = 0;
-            // Send(pid, &message, sizeof(message), 0, 0);
+            message.type = commandWorkerSpeedSet;
+            message.data.setSpeed.speed = 0;
+            Send(pid, &message, sizeof(message), 0, 0);
 
-            // // Wait until train comes to a stop and set reverse
-            // Delay(300); // TODO: scale this
-            // printf(COM2, "Reverse: set reverse on train %d\n\r", command.trainNumber);
-            // trainSetReverse(command.trainNumber);
+            // Wait until train comes to a stop and set reverse
+            Delay(300); // TODO: scale this
+            trainSetReverse(command.trainNumber);
 
-            // // Notify the engineer that the reverse command has been issued
-            // message.type = commandWorkerReverseSet;
-            // Send(pid, &message, sizeof(message), 0, 0);
+            // Notify the engineer that the reverse command has been issued
+            message.type = commandWorkerReverseSet;
+            Send(pid, &message, sizeof(message), 0, 0);
 
-            // // Set the train back to original speed
-            // Delay(15);
-            // printf(COM2, "Reverse: set speed %d on train %d\n\r", command.trainSpeed, command.trainNumber);
-            // goto executeCommand;
+            // Set the train back to original speed
+            Delay(15);
+            command.type = COMMAND_SET_SPEED;
+            goto executeCommand;
             break;
         default:
             printf(COM2, "[commandWorker] Invalid command\n\r");
             uassert(0);
+            break;
         }
     }
 }
@@ -331,12 +329,9 @@ void engineerTask() {
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
     Create(PRIORITY_ENGINEER_COURIER, commandWorker);
     uiWorkerTid = Create(PRIORITY_ENGINEER_COURIER, UIWorker);
-    printf(COM2, "uiworker created with tid: %d", uiWorkerTid);
 
     // All sensor reports with timestamp before this time are invalid
     int creationTime = Time();
-
-    printf(COM2, "Engineer started!\n\r");
 
     for(;;)
     {
@@ -369,7 +364,7 @@ void engineerTask() {
                 track_edge *nextEdge = getNextEdge(prevLandmark);
                 if (nextEdge != 0 || nextLandmark != 0)
                 {
-                    printf(COM2, "[engineer:321] Warning: nextEdge/nextLandmark is NULL");
+                    printf(COM2, "[engineer:321] Warning: nextEdge/nextLandmark is NULL\n\r");
                     uiWorkerTid = tid;
                     break;
                 }
@@ -428,7 +423,7 @@ void engineerTask() {
                     if (nextLandmark == 0 || nextEdge == 0)
                     {
                         uiWorkerTid = tid;
-                        printf(COM2, "[engineer:378] Warning: nextEdge/nextLandmark is NULL");
+                        printf(COM2, "[engineer:378] Warning: nextEdge/nextLandmark is NULL\n\r");
                         break;
                     }
 
@@ -670,11 +665,6 @@ void initEngineer() {
 
 void engineerPleaseManThisTrain(int train_number, int speed) {
     uassert(1 <= train_number && train_number <= 80 && 0 <= speed && speed <= 14);
-    // if(activated_engineers[train_number - 1]) {
-        // printf(COM2, "Engineer for %d is already started", train_number);
-        // return;
-    // }
-    // activated_engineers[train_number - 1] = true;
     active_train = train_number;
     desired_speed = speed;
 }
