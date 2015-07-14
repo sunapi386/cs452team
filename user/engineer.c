@@ -280,7 +280,7 @@ executeCommand:
             trainSetSpeed(command.trainNumber, command.trainSpeed);
 
             // Notify the engineer that the set speed command has been issued
-            message.type = commandWorkerSetSpeed;
+            message.type = commandWorkerSpeedSet;
             message.data.setSpeed.speed = command.trainSpeed;
             Send(pid, &message, sizeof(message), 0, 0);
             break;
@@ -288,7 +288,7 @@ executeCommand:
             trainSetSpeed(command.trainNumber, 0);
 
             // Notify the engineer that the set speed command has been issued
-            message.type = commandWorkerSetSpeed;
+            message.type = commandWorkerSpeedSet;
             message.data.setSpeed.speed = 0;
 
             // Wait until train comes to a stop and set reverse
@@ -296,7 +296,7 @@ executeCommand:
             trainSetReverse(command.trainNumber);
 
             // Notify the engineer that the reverse command has been issued
-            message.type = commandWorkerSetReverse;
+            message.type = commandWorkerReverseSet;
             Send(pid, &message, sizeof(message), 0, 0);
 
             // Set the train back to original speed
@@ -596,7 +596,7 @@ void engineerTask() {
 
             // Command worker looking for work
             case commandWorker:
-            {                
+            {
                 if (isCommandQueueEmpty(&commandQueue))
                 {
                     // case 1: no work; block it
@@ -614,7 +614,7 @@ void engineerTask() {
             }
 
             // Command worker: I've just issued reverse command!
-            case commandWorkerSetReverse:
+            case commandWorkerReverseSet:
             {
                 Reply(tid, 0, 0);
 
@@ -641,7 +641,7 @@ void engineerTask() {
             }
 
             // Command worker: I've just issued a set speed command!
-            case commandWorkerSetSpeed:
+            case commandWorkerSpeedSet:
             {
                 Reply(tid, 0, 0);
                 speed = (char)(message.data.setSpeed.speed);
@@ -683,9 +683,9 @@ void engineerPleaseManThisTrain(int train_number, int speed) {
     desired_speed = speed;
 }
 
-void engineerParserGotReverseCommand() {
+void engineerReverse() {
     EngineerMessage message;
-    message.type = reverse_direction;
+    message.type = setReverse;
     Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }
 

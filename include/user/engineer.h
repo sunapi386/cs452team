@@ -9,8 +9,8 @@ typedef struct {
         setSpeed,
         setReverse,
         commandWorker,
-        commandWorkerSetSpeed,
-        commandWorkerSetReverse,
+        commandWorkerSpeedSet,
+        commandWorkerReverseSet,
     } type;
     union {
         struct {
@@ -29,10 +29,10 @@ typedef struct {
 
 void initEngineer();
 void engineerPleaseManThisTrain(); // returns id of engineer task
-void engineerParserGotReverseCommand();
+void engineerReverse();
 // void engineerSpeedUpdate(int train_number, int train_speed);
-void engineerSpeedUpdate(int train_speed); // for now just use 1 train
+void engineerSpeedUpdate(int speed); // for now just use 1 train
 void engineerLoadTrackStructure(char which_track);
-void engineerXMarksTheSpot(int node_number);
+void engineerXMarksTheSpot(int nodeNumber);
 
 #endif

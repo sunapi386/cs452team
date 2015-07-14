@@ -661,8 +661,7 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.reverse.train_number;
                 if(1 <= train_number && train_number <= 80) {
                     sputstr(&disp_msg,"Reversing\r\n");
-                    trainSetReverseNicely(train_number);
-                    engineerParserGotReverseCommand();
+                    engineerReverse();
                 }
                 else {
                     sputstr(&disp_msg, "RV: bad train_number\r\n");

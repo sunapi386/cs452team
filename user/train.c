@@ -23,19 +23,7 @@ void trainSetReverse(int train_number) {
     printf(COM1, "%c%c", REVERSE, (char)(train_number));
 }
 
-void trainSetReverseNicely(int train_number) {
-    assert(1 <= train_number && train_number <= 80);
-    unsigned short prev_speed = speeds[train_number];
-    trainSetSpeed(train_number, 0);
-    Delay(300);
-    trainSetReverse(train_number);
-    Delay(15);
-    trainSetSpeed(train_number, prev_speed);
-}
-
-// DEPRECATED, only used by turnout.c
 void trainSetSwitch(int switch_number, char direction) {
-    // debug("trainSetSwitch switch_number %d direction %d", switch_number, direction);
     assert((switch_number >= 153 && switch_number <= 156) ||
             (1 <= switch_number && switch_number <= 18));
     assert(direction == 'c' || direction == 's' ||
