@@ -38,7 +38,6 @@ typedef enum {
     ReverseSetReverse,  // reverse stage 2: reverse issued
 } TrainState;
 
-static int desired_speed = -1;
 static int active_train = -1; // static for now, until controller is implemented
 static int pairs[NUM_SENSORS][NUM_SENSORS];
 static track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
@@ -73,19 +72,17 @@ static inline int indexFromSensorUpdate(SensorUpdate *update) {
     return 16 * (update->sensor >> 8) + (update->sensor & 0xff) - 1;
 }
 
-int distanceBetween(track_node *from, track_node *to) {
-    assert(from != 0);
-    assert(to != 0);
+int distanceBetween(track_node *from, track_node *to)
+{
+    uassert(from != 0);
+    uassert(to != 0);
 
     int total_distance = 0;
     int i;
     track_node *next_node = from;
-    for(i = 0; i < TRACK_MAX; i++) {
-        // printf(COM2, "[%s].", next_node->name);
+    for(i = 0; i < TRACK_MAX; i++)
+    {
         if(next_node->type == NODE_BRANCH) {
-            // char direction = (turnoutIsCurved(next_node->num) ? 'c' : 's');
-            // printf(COM2, "%d(%c,v%d)\t",
-            //      next_node->num, direction, turnoutIsCurved(next_node->num));
             total_distance += next_node->edge[turnoutIsCurved(next_node->num)].dist;
             next_node = next_node->edge[turnoutIsCurved(next_node->num)].dest;
         }
@@ -376,21 +373,21 @@ void engineerTask() {
                 int distToNextLandmark = nextEdge->dist * 1000 - distSoFar;
 
                 // check for stopping at landmark
-                if (isForward && targetLandmark != 0 &&
-                    (distanceBetween(prevLandmark, targetLandmark) - distSoFar
-                    <= forwardStoppingDist[desired_speed]) )   {
-                    targetLandmark = 0;
-                    // TODO
-                    // desired_speed = 0;
-                    // trainSetSpeed(active_train, desired_speed);
-                }
-                else if (!isForward && targetLandmark != 0 &&
-                    (distanceBetween(prevLandmark, targetLandmark) - distSoFar
-                    <= backwardStoppingDist[desired_speed]) )   {
-                    targetLandmark = 0;
-                    // TODO
-                    // desired_speed = 0;
-                    // trainSetSpeed(active_train, desired_speed);
+                if (targetLandmark != 0)
+                {
+                    int stoppingDistance = isForward ?
+                        forwardStoppingDist[speed] : backwardStoppingDist[speed];
+
+                    int dist = distanceBetween(prevLandmark, targetLandmark) - distSoFar;
+                    if (abs(dist - stoppingDistance) <= 10)
+                    {
+                        // issue stop command
+                        Command cmd = {
+                            .type = COMMAND_SET_SPEED,
+                            .trainNumber = active_train,
+                            .trainSpeed = 0,
+                        };
+                    }
                 }
 
                 if (nextLandmark->type == NODE_SENSOR)
@@ -666,7 +663,6 @@ void initEngineer() {
 void engineerPleaseManThisTrain(int train_number, int speed) {
     uassert(1 <= train_number && train_number <= 80 && 0 <= speed && speed <= 14);
     active_train = train_number;
-    desired_speed = speed;
 }
 
 void engineerReverse() {
