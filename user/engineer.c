@@ -20,17 +20,6 @@
 #define UI_MESSAGE_SENSOR   23
 #define UI_MESSAGE_PASS     24
 
-#define COMMAND_SET_SPEED   30
-#define COMMAND_REVERSE     31
-
-typedef struct {
-    char type;
-    char turnoutDir;
-    char trainSpeed;
-    char trainNumber;
-    char turnoutNumber;
-} Command;
-
 typedef struct UIMessage {
     int type;
     int error;
@@ -262,14 +251,12 @@ void commandWorker()
     int pid = MyParentTid();
 
     EngineerMessage message;
-    message.type = commandWorker;
-
     Command command;
 
     for (;;)
     {
         // Send to engineer to get new command
-        message.type = commandWorker;
+        message.type = commandWorkerRequest;
         int len = Send(pid, &message, sizeof(message), &command, sizeof(command));
         assert(len == sizeof(Command));
 
@@ -330,7 +317,7 @@ void engineerTask() {
 
     Command cmdBuf[32];
     CommandQueue commandQueue;
-    InitCommandQueue(&commandQueue, 32, &(cmdBuf[0]));
+    initCommandQueue(&commandQueue, 32, &(cmdBuf[0]));
 
     UIMessage uiMessage;
     EngineerMessage message;
@@ -368,8 +355,6 @@ void engineerTask() {
 
                 assert(prevLandmark != 0);
 
-                if (state == )
-
                 // If we have a prevLandmark, compute the values needed
                 // and update train display
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
@@ -388,14 +373,14 @@ void engineerTask() {
                 int distToNextLandmark = nextEdge->dist * 1000 - distSoFar;
 
                 // check for stopping at landmark
-                if (direction == Forward && targetLandmark != 0 &&
+                if (isForward && targetLandmark != 0 &&
                     (distanceBetween(prevLandmark, targetLandmark) - distSoFar
                     <= forwardStoppingDist[desired_speed]) )   {
                     targetLandmark = 0;
                     desired_speed = 0;
                     trainSetSpeed(active_train, desired_speed);
                 }
-                else if (direction == Backward && targetLandmark != 0 &&
+                else if (!isForward && targetLandmark != 0 &&
                     (distanceBetween(prevLandmark, targetLandmark) - distSoFar
                     <= backwardStoppingDist[desired_speed]) )   {
                     targetLandmark = 0;
@@ -540,7 +525,7 @@ void engineerTask() {
             case xMark:
             {
                 Reply(tid, 0, 0);
-                targetLandmark = &g_track[message.data.xMark.nodeNumber];
+                targetLandmark = &g_track[message.data.xMark.index];
                 break;
             }
 
@@ -550,7 +535,7 @@ void engineerTask() {
 
                 Command command = {
                     .type = COMMAND_SET_SPEED,
-                    .speed = (char)(message.data.setSpeed.speed)
+                    .trainSpeed = (char)(message.data.setSpeed.speed)
                 };
 
                 if (commandWorkerTid > 0)
@@ -575,7 +560,7 @@ void engineerTask() {
 
                 Command command = {
                     .type = COMMAND_REVERSE,
-                    .speed = speed; // this might be stale when command is actually executed (very unlikely)
+                    .trainSpeed = speed
                 };
 
                 if (commandWorkerTid > 0)
@@ -595,7 +580,7 @@ void engineerTask() {
             }
 
             // Command worker looking for work
-            case commandWorker:
+            case commandWorkerRequest:
             {
                 if (isCommandQueueEmpty(&commandQueue))
                 {
@@ -700,12 +685,12 @@ void engineerLoadTrackStructure(char which_track) {
     }
 }
 
-void engineerXMarksTheSpot(int nodeNumber) {
-    assert(0 <= nodeNumber && nodeNumber <= 139);
+void engineerXMarksTheSpot(int index) {
+    assert(0 <= index && index <= 139);
     assert(engineerTaskId >= 0);
     EngineerMessage message;
     message.type = xMark;
-    message.data.xMark.nodeNumber = nodeNumber;
+    message.data.xMark.index = index;
     Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }
 

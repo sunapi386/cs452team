@@ -152,7 +152,6 @@ void commandCopy(Command *dst, const Command *src)
     dst->type = src->type;
     dst->trainSpeed = src->trainSpeed;
     dst->trainNumber = src->trainNumber;
-    dst->turnoutNumber = src->turnoutNumber;
 }
 
 void initCommandQueue(CommandQueue *q, size_t size, Command *buffer)

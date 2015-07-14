@@ -8,7 +8,7 @@ typedef struct {
         xMark,
         setSpeed,
         setReverse,
-        commandWorker,
+        commandWorkerRequest,
         commandWorkerSpeedSet,
         commandWorkerReverseSet,
     } type;

@@ -40,18 +40,27 @@ int IBufferPop(IBuffer *b);
 bool IBufferIsEmpty(const IBuffer *b);
 
 /*
-    CommandQueue
+    Command & CommandQueue
 */
+
+#define COMMAND_SET_SPEED   30
+#define COMMAND_REVERSE     31
+
+typedef struct {
+    char type;
+    char trainSpeed;
+    char trainNumber;
+} Command;
 
 typedef struct {
     size_t head, tail, size;
-    struct Command *buffer;
+    Command *buffer;
 } CommandQueue;
 
-int enqueueCommand(CommandQueue *q, struct Command *in);
-int dequeueCommand(CommandQueue *q, struct Command *out);
+int enqueueCommand(CommandQueue *q, Command *in);
+int dequeueCommand(CommandQueue *q, Command *out);
 int isCommandQueueEmpty(CommandQueue *q);
-void initCommandQueue(CommandQueue *q, size_t size, struct Command *buffer);
+void initCommandQueue(CommandQueue *q, size_t size, Command *buffer);
 
 /*
     String
