@@ -362,7 +362,7 @@ void engineerTask() {
                 // and update train display
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
                 track_edge *nextEdge = getNextEdge(prevLandmark);
-                if (nextEdge != 0 || nextLandmark != 0)
+                if (nextEdge == 0 || nextLandmark == 0)
                 {
                     printf(COM2, "[engineer:321] Warning: nextEdge/nextLandmark is NULL\n\r");
                     uiWorkerTid = tid;
