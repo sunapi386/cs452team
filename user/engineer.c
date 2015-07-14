@@ -1,6 +1,6 @@
 #include <user/engineer.h>
 #include <priority.h>
-#include <debug.h> // assert
+#include <debug.h> // uassert
 #include <user/syscall.h>
 #include <utils.h> // printf
 #include <user/train.h> // trainSetSpeed
@@ -255,10 +255,11 @@ void commandWorker()
 
     for (;;)
     {
+        printf(COM2, "commandWorker: sending to engineerTask %d\n\r", pid);
         // Send to engineer to get new command
         message.type = commandWorkerRequest;
         int len = Send(pid, &message, sizeof(message), &command, sizeof(command));
-        assert(len == sizeof(Command));
+        uassert(len == sizeof(Command));
 
 executeCommand:
         switch(command.type)
@@ -272,27 +273,31 @@ executeCommand:
             Send(pid, &message, sizeof(message), 0, 0);
             break;
         case COMMAND_REVERSE:
+            printf(COM2, "Reverse: set speed 0 on train %d\n\r", command.trainNumber);
             trainSetSpeed(command.trainNumber, 0);
 
             // Notify the engineer that the set speed command has been issued
-            message.type = commandWorkerSpeedSet;
-            message.data.setSpeed.speed = 0;
+            // message.type = commandWorkerSpeedSet;
+            // message.data.setSpeed.speed = 0;
+            // Send(pid, &message, sizeof(message), 0, 0);
 
-            // Wait until train comes to a stop and set reverse
-            Delay(300); // TODO: scale this
-            trainSetReverse(command.trainNumber);
+            // // Wait until train comes to a stop and set reverse
+            // Delay(300); // TODO: scale this
+            // printf(COM2, "Reverse: set reverse on train %d\n\r", command.trainNumber);
+            // trainSetReverse(command.trainNumber);
 
-            // Notify the engineer that the reverse command has been issued
-            message.type = commandWorkerReverseSet;
-            Send(pid, &message, sizeof(message), 0, 0);
+            // // Notify the engineer that the reverse command has been issued
+            // message.type = commandWorkerReverseSet;
+            // Send(pid, &message, sizeof(message), 0, 0);
 
-            // Set the train back to original speed
-            Delay(15);
-            goto executeCommand;
+            // // Set the train back to original speed
+            // Delay(15);
+            // printf(COM2, "Reverse: set speed %d on train %d\n\r", command.trainSpeed, command.trainNumber);
+            // goto executeCommand;
             break;
         default:
             printf(COM2, "[commandWorker] Invalid command\n\r");
-            assert(0);
+            uassert(0);
         }
     }
 }
@@ -326,14 +331,17 @@ void engineerTask() {
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
     Create(PRIORITY_ENGINEER_COURIER, commandWorker);
     uiWorkerTid = Create(PRIORITY_ENGINEER_COURIER, UIWorker);
+    printf(COM2, "uiworker created with tid: %d", uiWorkerTid);
 
     // All sensor reports with timestamp before this time are invalid
     int creationTime = Time();
 
+    printf(COM2, "Engineer started!\n\r");
+
     for(;;)
     {
         int len = Receive(&tid, &message, sizeof(EngineerMessage));
-        assert(len == sizeof(EngineerMessage));
+        uassert(len == sizeof(EngineerMessage));
 
         switch(message.type)
         {
@@ -348,12 +356,12 @@ void engineerTask() {
                 if (triggeredSensor)
                 {
                     // If sensor was just hit, reply directly to update last sensor
-                    Reply(tid, &uiMessage, sizeof(uiMessage));
+                    uassert(Reply(tid, &uiMessage, sizeof(uiMessage)) != -1);
                     triggeredSensor = 0;
                     break;
                 }
 
-                assert(prevLandmark != 0);
+                uassert(prevLandmark != 0);
 
                 // If we have a prevLandmark, compute the values needed
                 // and update train display
@@ -377,15 +385,17 @@ void engineerTask() {
                     (distanceBetween(prevLandmark, targetLandmark) - distSoFar
                     <= forwardStoppingDist[desired_speed]) )   {
                     targetLandmark = 0;
-                    desired_speed = 0;
-                    trainSetSpeed(active_train, desired_speed);
+                    // TODO
+                    // desired_speed = 0;
+                    // trainSetSpeed(active_train, desired_speed);
                 }
                 else if (!isForward && targetLandmark != 0 &&
                     (distanceBetween(prevLandmark, targetLandmark) - distSoFar
                     <= backwardStoppingDist[desired_speed]) )   {
                     targetLandmark = 0;
-                    desired_speed = 0;
-                    trainSetSpeed(active_train, desired_speed);
+                    // TODO
+                    // desired_speed = 0;
+                    // trainSetSpeed(active_train, desired_speed);
                 }
 
                 if (nextLandmark->type == NODE_SENSOR)
@@ -403,7 +413,7 @@ void engineerTask() {
                     // output the distance to next landmark
                     uiMessage.type = UI_MESSAGE_DIST;
                     uiMessage.distToNext = distToNextLandmark;
-                    Reply(tid, &uiMessage, sizeof(uiMessage));
+                    uassert(Reply(tid, &uiMessage, sizeof(uiMessage)) != -1);
                 }
                 else if (distToNextLandmark <= 0)
                 {
@@ -430,7 +440,7 @@ void engineerTask() {
                     uiMessage.nextLandmark = nextLandmark->name;
                     uiMessage.prevLandmark = prevLandmark->name;
                     uiMessage.distToNext = distToNextLandmark;
-                    Reply(tid, &uiMessage, sizeof(uiMessage));
+                    uassert(Reply(tid, &uiMessage, sizeof(uiMessage)) != -1);
 
                 }
                 else // (distanceToNextLandmark > 0)
@@ -439,14 +449,14 @@ void engineerTask() {
                     // Output: distance to next (already computed)
                     uiMessage.type = UI_MESSAGE_DIST;
                     uiMessage.distToNext = distToNextLandmark;
-                    Reply(tid, &uiMessage, sizeof(uiMessage));
+                    uassert(Reply(tid, &uiMessage, sizeof(uiMessage)) != -1);
                 }
                 break;
             }
 
             case updateSensor: {
                 // unblock sensor
-                Reply(tid, 0, 0);
+                uassert(Reply(tid, 0, 0) != -1);
 
                 // Get sensor update data
                 SensorUpdate sensor_update = {
@@ -461,16 +471,16 @@ void engineerTask() {
                 prevLandmark = &g_track[indexFromSensorUpdate(&sensor_update)];
                 prevLandmarkTime = sensor_update.time;
 
-                if (uiWorkerTid > 0)
-                {
-                    uiMessage.type = UI_MESSAGE_PASS;
-                    Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
-                    uiWorkerTid = 0;
-                }
+                // if (uiWorkerTid > 0)
+                // {
+                //     uiMessage.type = UI_MESSAGE_PASS;
+                //     uassert(Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage)) != -1);
+                //     uiWorkerTid = 0;
+                // }
 
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
                 track_edge *nextEdge = getNextEdge(prevLandmark);
-                assert(nextLandmark && nextEdge);
+                uassert(nextLandmark && nextEdge);
 
                 // update the current velocity
                 int time_since_last_sensor = sensor_update.time - last_update.time;
@@ -507,6 +517,7 @@ void engineerTask() {
                     triggeredSensor = 1;
                 }
 
+                creationTime = sensor_update.time;
                 last_update.time = sensor_update.time;
                 last_update.sensor = sensor_update.sensor;
 
@@ -516,7 +527,7 @@ void engineerTask() {
 
                     // kick start UI refresh
                     uiMessage.type = UI_MESSAGE_INIT;
-                    Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage));
+                    uassert(Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage)) != -1);
                     uiWorkerTid = 0;
                 }
                 break;
@@ -524,23 +535,24 @@ void engineerTask() {
 
             case xMark:
             {
-                Reply(tid, 0, 0);
+                uassert(Reply(tid, 0, 0) != -1);
                 targetLandmark = &g_track[message.data.xMark.index];
                 break;
             }
 
             case setSpeed:
             {
-                Reply(tid, 0, 0);
+                uassert(Reply(tid, 0, 0) != -1);
 
                 Command command = {
                     .type = COMMAND_SET_SPEED,
+                    .trainNumber = (char)(active_train),
                     .trainSpeed = (char)(message.data.setSpeed.speed)
                 };
 
                 if (commandWorkerTid > 0)
                 {
-                    Reply(commandWorkerTid, &command, sizeof(command));
+                    uassert(Reply(commandWorkerTid, &command, sizeof(command)) != -1);
                     commandWorkerTid = 0;
                 }
                 else
@@ -548,7 +560,7 @@ void engineerTask() {
                     if (enqueueCommand(&commandQueue, &command) != 0)
                     {
                         printf(COM2, "[engineerTask] Command buffer overflow!\n\r");
-                        assert(0);
+                        uassert(0);
                     }
                 }
                 break;
@@ -556,16 +568,17 @@ void engineerTask() {
 
             case setReverse:
             {
-                Reply(tid, 0, 0);
+                uassert(Reply(tid, 0, 0) != -1);
 
                 Command command = {
                     .type = COMMAND_REVERSE,
+                    .trainNumber = active_train,
                     .trainSpeed = speed
                 };
 
                 if (commandWorkerTid > 0)
                 {
-                    Reply(commandWorkerTid, &command, sizeof(command));
+                    uassert(Reply(commandWorkerTid, &command, sizeof(command)) != -1);
                     commandWorkerTid = 0;
                 }
                 else
@@ -573,7 +586,7 @@ void engineerTask() {
                     if (enqueueCommand(&commandQueue, &command) != 0)
                     {
                         printf(COM2, "[engineerTask] Command buffer overflow!\n\r");
-                        assert(0);
+                        uassert(0);
                     }
                 }
                 break;
@@ -585,6 +598,7 @@ void engineerTask() {
                 if (isCommandQueueEmpty(&commandQueue))
                 {
                     // case 1: no work; block it
+                    printf(COM2, "[command worker request] command queue empty\n\r");
                     commandWorkerTid = tid;
                 }
                 else
@@ -592,8 +606,9 @@ void engineerTask() {
                     // case 2: dequeue a job and reply the worker
                     Command command;
                     int ret = dequeueCommand(&commandQueue, &command);
-                    assert(ret == 0);
-                    Reply(tid, &command, sizeof(command));
+                    printf(COM2, "[command worker request] dequeued command: %d\n\r", command.type);
+                    uassert(ret == 0);
+                    uassert(Reply(tid, &command, sizeof(command)) != -1);
                 }
                 break;
             }
@@ -601,13 +616,9 @@ void engineerTask() {
             // Command worker: I've just issued reverse command!
             case commandWorkerReverseSet:
             {
-                Reply(tid, 0, 0);
+                uassert(Reply(tid, 0, 0) != -1);
 
-                if (state != Stop)
-                {
-                    printf(COM2, "[engineerTask] internal state error: train state should be Stop; current state: %d\n\r", state);
-                    assert(0);
-                }
+                uassert(state == Stop);
 
                 isForward = !isForward;
                 state = (state == Init) ? Init : ReverseSetReverse;
@@ -615,20 +626,20 @@ void engineerTask() {
                 // reverse prevLandmark
                 if (prevLandmark == 0)
                 {
-                    assert(0);
+                    uassert(0);
                 }
-                assert(prevLandmark != 0);
+                uassert(prevLandmark != 0);
                 track_node *nextLandmark = getNextLandmark(prevLandmark);
-                assert(nextLandmark != 0);
+                uassert(nextLandmark != 0);
                 prevLandmark = nextLandmark->reverse;
-                assert(prevLandmark != 0);
+                uassert(prevLandmark != 0);
                 break;
             }
 
             // Command worker: I've just issued a set speed command!
             case commandWorkerSpeedSet:
             {
-                Reply(tid, 0, 0);
+                uassert(Reply(tid, 0, 0) != -1);
                 speed = (char)(message.data.setSpeed.speed);
                 if      (state == Init) break;
                 else if (speed == 0) state = Stop;
@@ -639,7 +650,7 @@ void engineerTask() {
             default:
             {
                 printf(COM2, "Warning engineer Received garbage\r\n");
-                assert(0);
+                uassert(0);
                 break;
             }
         }
@@ -654,11 +665,11 @@ void initEngineer() {
     }
 
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
-    assert(engineerTaskId >= 0);
+    uassert(engineerTaskId >= 0);
 }
 
 void engineerPleaseManThisTrain(int train_number, int speed) {
-    assert(1 <= train_number && train_number <= 80 && 0 <= speed && speed <= 14);
+    uassert(1 <= train_number && train_number <= 80 && 0 <= speed && speed <= 14);
     // if(activated_engineers[train_number - 1]) {
         // printf(COM2, "Engineer for %d is already started", train_number);
         // return;
@@ -686,8 +697,8 @@ void engineerLoadTrackStructure(char which_track) {
 }
 
 void engineerXMarksTheSpot(int index) {
-    assert(0 <= index && index <= 139);
-    assert(engineerTaskId >= 0);
+    uassert(0 <= index && index <= 139);
+    uassert(engineerTaskId >= 0);
     EngineerMessage message;
     message.type = xMark;
     message.data.xMark.index = index;
@@ -698,6 +709,6 @@ void engineerSpeedUpdate(int speed) {
     EngineerMessage message;
     message.type = setSpeed;
     message.data.setSpeed.speed = speed;
-    assert(engineerTaskId >= 0);
+    uassert(engineerTaskId >= 0);
     Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }

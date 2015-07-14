@@ -718,7 +718,8 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.speed.train_number;
                 int train_speed = p->data.speed.train_speed;
                 if(1 <= train_number && train_number <= 80) {
-                    trainSetSpeed(train_number, 0);
+                    // FIXME
+                    // trainSetSpeed(train_number, 0);
                      if( ! (0 <= train_speed  && train_speed  <= 14) ) {
                         sputstr(&disp_msg,"   Warning last train speed.\r\n");
                      }
@@ -733,7 +734,8 @@ static bool parse(Parser *p, char c) {
                 int train_speed = p->data.speed.train_speed;
                 if((1 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
-                    trainSetSpeed(train_number, train_speed);
+                    // FIXME
+                    // trainSetSpeed(train_number, train_speed);
                 } else {
                     sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
                 }
