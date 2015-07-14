@@ -87,8 +87,15 @@ void commandWorker()
             trainSetSpeed(command.trainNumber, command.trainSpeed);
             break;
         case COMMAND_SET_TURNOUT:
-
+            setTurnout(command.turnoutNumber, command.turnoutDir);
+            break;
         case COMMAND_REVERSE:
+            trainSetSpeed(command.trainNumber, 0);
+            Delay(300);
+            trainSetReverse(command.trainNumber);
+            Delay(15);
+            trainSetSpeed(command.trainNumber, prevSPeed)
+            break;
         default:
             printf(COM2, "[commandWorker] Invalid command\n\r");
             assert(0);
