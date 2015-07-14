@@ -72,43 +72,6 @@ static inline int indexFromSensorUpdate(SensorUpdate *update) {
     return 16 * (update->sensor >> 8) + (update->sensor & 0xff) - 1;
 }
 
-int distanceBetween(track_node *from, track_node *to)
-{
-    uassert(from != 0);
-    uassert(to != 0);
-
-    int total_distance = 0;
-    int i;
-    track_node *next_node = from;
-    for(i = 0; i < TRACK_MAX; i++)
-    {
-        if(next_node->type == NODE_BRANCH) {
-            total_distance += next_node->edge[turnoutIsCurved(next_node->num)].dist;
-            next_node = next_node->edge[turnoutIsCurved(next_node->num)].dest;
-        }
-        else if(next_node->type == NODE_SENSOR ||
-                next_node->type == NODE_MERGE) {
-            // printf(COM2, ".%s\t", next_node->edge[DIR_AHEAD].dest->name);
-
-            total_distance += next_node->edge[DIR_AHEAD].dist;
-            next_node = next_node->edge[DIR_AHEAD].dest;
-        }
-        else {
-            // printf(COM2, ".?\t");
-            break;
-        }
-        // TODO: next_node = getNextLandmark(next_node);
-        if(next_node == to) {
-            // printf(COM2, "\r\ndistanceBetween: total_distance %d.\n\r", total_distance);
-            break;
-        }
-    }
-    if(i == TRACK_MAX) {
-        printf(COM2, "distanceBetween: something went wrong: %d.\n\r", i);
-    }
-    return 1000 * total_distance;
-}
-
 track_edge *getNextEdge(track_node *landmark)
 {
     if(landmark->type == NODE_BRANCH)
@@ -122,9 +85,33 @@ track_edge *getNextEdge(track_node *landmark)
     return &landmark->edge[DIR_AHEAD];
 }
 
-track_node *getNextLandmark(track_node *current_landmark) {
+track_node *getNextNode(track_node *current_landmark) {
     track_edge *next_edge = getNextEdge(current_landmark);
     return (next_edge == 0 ? 0 : next_edge->dest);
+}
+
+// returns positive distance between two nodes in micrometers
+// or -1 if the landmark is not found
+int distanceBetween(track_node *from, track_node *to)
+{
+    uassert(from != 0);
+    uassert(to != 0);
+
+    int totalDistance = 0;
+    track_node *nextNode = from;
+    for(int i = 0; i < TRACK_MAX / 2; i++)
+    {
+        // get next edge & node
+        track_edge *nextEdge = getNextEdge(nextNode);
+        nextNode = getNextNode(nextNode);
+        if (nextEdge == 0 || nextNode == 0) break;
+
+        totalDistance += nextEdge->dist;
+
+        if (nextNode == to) return 1000 * totalDistance;
+    }
+    // unable to find the
+    return -1;
 }
 
 void initializeScreen()
@@ -357,7 +344,7 @@ void engineerTask() {
 
                 // If we have a prevLandmark, compute the values needed
                 // and update train display
-                track_node *nextLandmark = getNextLandmark(prevLandmark);
+                track_node *nextLandmark = getNextNode(prevLandmark);
                 track_edge *nextEdge = getNextEdge(prevLandmark);
                 if (nextEdge == 0 || nextLandmark == 0)
                 {
@@ -376,10 +363,10 @@ void engineerTask() {
                 if (targetLandmark != 0)
                 {
                     int stoppingDistance = isForward ?
-                        forwardStoppingDist[speed] : backwardStoppingDist[speed];
+                        forwardStoppingDist[(int)speed] : backwardStoppingDist[(int)speed];
 
                     int dist = distanceBetween(prevLandmark, targetLandmark) - distSoFar;
-                    if (abs(dist - stoppingDistance) <= 10)
+                    if (dist <= stoppingDistance)
                     {
                         // issue stop command
                         Command cmd = {
@@ -387,6 +374,19 @@ void engineerTask() {
                             .trainNumber = active_train,
                             .trainSpeed = 0,
                         };
+
+                        // if worker is available, reply a command
+                        if (commandWorkerTid > 0)
+                        {
+                            uassert(Reply(commandWorkerTid, &cmd, sizeof(cmd)) != -1);
+                            commandWorkerTid = 0;
+                        }
+                        // else enqueue command
+                        else
+                        {
+                            enqueueCommand(&commandQueue, &cmd);
+                        }
+                        targetLandmark = 0;
                     }
                 }
 
@@ -415,7 +415,7 @@ void engineerTask() {
                     prevLandmarkTime = currentTime;
 
                     // update the next landmark
-                    nextLandmark = getNextLandmark(prevLandmark);
+                    nextLandmark = getNextNode(prevLandmark);
                     track_edge *nextEdge = getNextEdge(prevLandmark);
                     if (nextLandmark == 0 || nextEdge == 0)
                     {
@@ -470,15 +470,15 @@ void engineerTask() {
                 //     uiWorkerTid = 0;
                 // }
 
-                track_node *nextLandmark = getNextLandmark(prevLandmark);
+                track_node *nextLandmark = getNextNode(prevLandmark);
                 track_edge *nextEdge = getNextEdge(prevLandmark);
                 uassert(nextLandmark && nextEdge);
 
                 // update the current velocity
-                int time_since_last_sensor = sensor_update.time - last_update.time;
-                int um_dist_segment = distanceBetween(&g_track[indexFromSensorUpdate(&last_update)],
-                                                      &g_track[indexFromSensorUpdate(&sensor_update)]);
-                velocity = um_dist_segment / time_since_last_sensor;
+                int timeSensors = sensor_update.time - last_update.time;
+                int distSensors = distanceBetween(&g_track[indexFromSensorUpdate(&last_update)],
+                                                  &g_track[indexFromSensorUpdate(&sensor_update)]);
+                velocity = distSensors / timeSensors;
 
                 // update constant velocity calibration data
                 int last_index = indexFromSensorUpdate(&last_update);
@@ -621,7 +621,7 @@ void engineerTask() {
                     uassert(0);
                 }
                 uassert(prevLandmark != 0);
-                track_node *nextLandmark = getNextLandmark(prevLandmark);
+                track_node *nextLandmark = getNextNode(prevLandmark);
                 uassert(nextLandmark != 0);
                 prevLandmark = nextLandmark->reverse;
                 uassert(prevLandmark != 0);
