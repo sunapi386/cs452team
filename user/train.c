@@ -12,19 +12,15 @@
 static unsigned short speeds[NUM_TRAINS];
 
 void trainSetSpeed(int train_number, int train_speed) {
-    // debug("trainSetSpeed %d %d", train_number, train_speed);
     assert(1 <= train_number && train_number <= 80);
     assert(0 <= train_speed && train_speed <= 14);
-    Putc(COM1, train_speed);
-    Putc(COM1, train_number);
+    printf(COM2, "%c%c", (char)(train_speed), (char)(train_number));
     speeds[train_number] = train_speed;
 }
 
 void trainSetReverse(int train_number) {
-    // debug("trainSetReverse %d", train_number);
     assert(1 <= train_number && train_number <= 80);
-    Putc(COM1, REVERSE);
-    Putc(COM1, train_number);
+    printf(COM2, "%c%c", REVERSE, (char)(train_number));
 }
 
 void trainSetReverseNicely(int train_number) {
@@ -45,9 +41,7 @@ void trainSetSwitch(int switch_number, char direction) {
     assert(direction == 'c' || direction == 's' ||
            direction == 'C' || direction == 'S' );
     char operation = (direction == 'c' || direction == 'C') ? CURVED : STRAIGHT;
-    Putc(COM1, operation);
-    Putc(COM1, switch_number);
-    Putc(COM1, SOLENOID_OFF);
+    printf(COM1, "%c%c%c", operation, switch_number, SOLENOID_OFF);
 }
 
 void trainSetLight(int train_number, int on) {
