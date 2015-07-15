@@ -301,7 +301,6 @@ void engineerTask() {
     int targetOffset = 0;
     track_node *targetNode = 0;
     int forwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200,  948200};
-    int backwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200, 1000000};
 
     Command cmdBuf[32];
     CommandQueue commandQueue;
@@ -363,10 +362,8 @@ void engineerTask() {
                 // check for stopping at landmark
                 if (targetNode != 0)
                 {
-                    int stoppingDistance = isForward ?
-                        forwardStoppingDist[(int)speed] : backwardStoppingDist[(int)speed];
-
-                    int dist = distanceBetween(prevLandmark, targetNode) - targetOffset - distSoFar;
+                    int pickUpOffset = isForward ? 0 : 15 * 1000;
+                    int dist = distanceBetween(prevLandmark, targetNode) - pickUpOffset - targetOffset - distSoFar;
                     if (dist <= stoppingDistance)
                     {
                         // issue stop command
