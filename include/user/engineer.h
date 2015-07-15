@@ -33,6 +33,6 @@ void engineerPleaseManThisTrain(); // returns id of engineer task
 void engineerReverse();
 void engineerSpeedUpdate(int speed); // for now just use 1 train
 void engineerLoadTrackStructure(char which_track);
-void engineerXMarksTheSpot(int nodeNumber);
+void engineerXMarksTheSpot(int nodeNumber, int offset);
 
 #endif
