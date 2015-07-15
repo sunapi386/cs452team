@@ -12,6 +12,7 @@
 #define ALPHA               85
 #define NUM_SENSORS         (5 * 16)
 #define NUM_TRAINS          80
+#define NUM_SPEEDS          15
 #define UI_REFRESH_INTERVAL 5
 
 #define UI_MESSAGE_INIT     20
@@ -39,7 +40,7 @@ typedef enum {
 } TrainState;
 
 static int active_train = -1; // static for now, until controller is implemented
-static int pairs[NUM_SENSORS][NUM_SENSORS];
+static int timeDeltas[NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
 static track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
 static int engineerTaskId = -1;
 
@@ -357,7 +358,7 @@ void engineerTask() {
                 // compute some stuff
                 int currentTime = Time();
                 int delta = currentTime - prevNodeTime;
-                int distSoFar = delta * velocity;
+                int distSoFar = delta * velocity; // TODO: (shuo): get the velocity from table directly
                 int distToNextNode = nextEdge->dist * 1000 - distSoFar;
 
                 // check for stopping at landmark
@@ -473,21 +474,24 @@ void engineerTask() {
                 int timeSensors = sensor_update.time - last_update.time;
                 int distSensors = distanceBetween(&g_track[indexFromSensorUpdate(&last_update)],
                                                   &g_track[indexFromSensorUpdate(&sensor_update)]);
-                velocity = distSensors / timeSensors;
+                if (state != Stop)
+                {
+                    velocity = distSensors / timeSensors;
+                }
 
                 // update constant velocity calibration data
                 int last_index = indexFromSensorUpdate(&last_update);
                 int index = indexFromSensorUpdate(&sensor_update);
 
-                int expected_time = last_update.time + pairs[last_index][index];
+                int expected_time = last_update.time + timeDeltas[speed][last_index][index];
                 int actual_time = sensor_update.time;
                 int error = abs(expected_time - actual_time);
 
                 if(last_index >= 0) { // apply learning
-                    int past_difference = pairs[last_index][index];
+                    int past_difference = timeDeltas[speed][last_index][index];
                     int new_difference = sensor_update.time - last_update.time;
-                    pairs[last_index][index] =  (new_difference * ALPHA +
-                                                past_difference * (100 - ALPHA)) / 100;
+                    timeDeltas[speed][last_index][index] =  (new_difference * ALPHA
+                        + past_difference * (100 - ALPHA)) / 100;
 
                     int distanceTonextNode = nextEdge->dist * 1000;
 
@@ -630,7 +634,11 @@ void engineerTask() {
                 uassert(Reply(tid, 0, 0) != -1);
                 speed = (char)(message.data.setSpeed.speed);
                 if      (state == Init) break;
-                else if (speed == 0) state = Stop;
+                else if (speed == 0)
+                {
+                    state = Stop;
+                    velocity = 0;
+                }
                 else    state = Running;
                 break;
             }
@@ -646,12 +654,13 @@ void engineerTask() {
 }
 
 void initEngineer() {
-    for(int i = 0; i < NUM_SENSORS; i++) {
+    for(int i = 0; i < NUM_SPEEDS; i++) {
         for(int j = 0; j < NUM_SENSORS; j++) {
-            pairs[i][j] = 0;
+            for (int k = 0; k < NUM_SENSORS; k++) {
+                timeDeltas[i][j][k] = 0;
+            }
         }
     }
-
     engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
     uassert(engineerTaskId >= 0);
 }
