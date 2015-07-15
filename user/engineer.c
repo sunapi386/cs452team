@@ -293,12 +293,13 @@ void engineerTask() {
     char speed = 0;   // 0-14
     int velocity = 0;         // um/tick
     int triggeredSensor = 0;  // {0|1}
-    int prevLandmarkTime = 0; // tick
+    int prevNodeTime = 0; // tick
 
     TrainState state = Init;
     track_node *prevLandmark = 0;
     SensorUpdate last_update = {0,0};
-    track_node *targetLandmark = 0;
+    int targetOffset = 0;
+    track_node *targetNode = 0;
     int forwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200,  948200};
     int backwardStoppingDist[15] = {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200, 1000000};
 
@@ -355,17 +356,17 @@ void engineerTask() {
 
                 // compute some stuff
                 int currentTime = Time();
-                int delta = currentTime - prevLandmarkTime;
+                int delta = currentTime - prevNodeTime;
                 int distSoFar = delta * velocity;
                 int distToNextLandmark = nextEdge->dist * 1000 - distSoFar;
 
                 // check for stopping at landmark
-                if (targetLandmark != 0)
+                if (targetNode != 0)
                 {
                     int stoppingDistance = isForward ?
                         forwardStoppingDist[(int)speed] : backwardStoppingDist[(int)speed];
 
-                    int dist = distanceBetween(prevLandmark, targetLandmark) - distSoFar;
+                    int dist = distanceBetween(prevLandmark, targetNode) - targetOffset - distSoFar;
                     if (dist <= stoppingDistance)
                     {
                         // issue stop command
@@ -386,7 +387,10 @@ void engineerTask() {
                         {
                             enqueueCommand(&commandQueue, &cmd);
                         }
-                        targetLandmark = 0;
+
+                        // reset target
+                        targetNode = 0;
+                        targetOffset = 0;
                     }
                 }
 
@@ -412,7 +416,7 @@ void engineerTask() {
                     // We've "reached" the next non-sensor landmark
                     // Update previous landmark
                     prevLandmark = nextLandmark;
-                    prevLandmarkTime = currentTime;
+                    prevNodeTime = currentTime;
 
                     // update the next landmark
                     nextLandmark = getNextNode(prevLandmark);
@@ -461,14 +465,7 @@ void engineerTask() {
 
                 // Update some stuff
                 prevLandmark = &g_track[indexFromSensorUpdate(&sensor_update)];
-                prevLandmarkTime = sensor_update.time;
-
-                // if (uiWorkerTid > 0)
-                // {
-                //     uiMessage.type = UI_MESSAGE_PASS;
-                //     uassert(Reply(uiWorkerTid, &uiMessage, sizeof(uiMessage)) != -1);
-                //     uiWorkerTid = 0;
-                // }
+                prevNodeTime = sensor_update.time;
 
                 track_node *nextLandmark = getNextNode(prevLandmark);
                 track_edge *nextEdge = getNextEdge(prevLandmark);
@@ -528,7 +525,8 @@ void engineerTask() {
             case xMark:
             {
                 uassert(Reply(tid, 0, 0) != -1);
-                targetLandmark = &g_track[message.data.xMark.index];
+                targetNode = &g_track[message.data.xMark.index];
+                targetOffset = message.data.xMark.offset;
                 break;
             }
 
@@ -682,12 +680,13 @@ void engineerLoadTrackStructure(char which_track) {
     }
 }
 
-void engineerXMarksTheSpot(int index) {
+void engineerXMarksTheSpot(int index, int offset) {
     uassert(0 <= index && index <= 139);
     uassert(engineerTaskId >= 0);
     EngineerMessage message;
     message.type = xMark;
     message.data.xMark.index = index;
+    message.data.xMark.offset = offset * 1000; // convert mm to um
     Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }
 

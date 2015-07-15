@@ -19,6 +19,7 @@ typedef struct {
         } updateSensor;
         struct {
             int index;
+            int offset;
         } xMark;
         struct {
             int speed;
@@ -30,7 +31,6 @@ typedef struct {
 void initEngineer();
 void engineerPleaseManThisTrain(); // returns id of engineer task
 void engineerReverse();
-// void engineerSpeedUpdate(int train_number, int train_speed);
 void engineerSpeedUpdate(int speed); // for now just use 1 train
 void engineerLoadTrackStructure(char which_track);
 void engineerXMarksTheSpot(int nodeNumber);

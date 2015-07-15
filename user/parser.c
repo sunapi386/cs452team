@@ -768,7 +768,7 @@ static bool parse(Parser *p, char c) {
             case X_node_number: {
                 int node_number = p->data.x_marks_the_spot.node_number;
                 if(0 <= node_number && node_number <= 139) {
-                    engineerXMarksTheSpot(node_number);
+                    engineerXMarksTheSpot(node_number, 0); // FIXME
                 }
                 else {
                     sputstr(&disp_msg, "Error bad XMarksTheSpot, expects node number ");
