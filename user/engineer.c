@@ -311,6 +311,7 @@ void engineerTask() {
     int didReverse = 0;
     track_node *prevNode = 0;
     int prevNodeTime = 0; // ticks
+    int lastLocationUpdateTime = 0;
 
     /*
         linear acceleration
@@ -386,18 +387,20 @@ void engineerTask() {
 
                 /* distance calculations */
                 int currentTime = Time();
-                int distToNextNode;
+                int velocity = sensorDist / timeDeltas[(int)speed][prevSensor->idx][nextSensor->idx];
+
+                // velocity: the estimated velocity in the current track segment
+                // lasttime: the last time distSoFar is incremented
+                distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
+                lastLocationUpdateTime = currentTime;
+                int distToNextNode = nextEdge->dist * 1000 - distSoFar;
+
                 if (didReverse)
                 {
-                    distToNextNode = distSoFar;
+                    int temp = distSoFar;
+                    distSoFar = distToNextNode;
+                    distToNextNode = temp;
                     didReverse = 0;
-                }
-                else
-                {
-                    int delta = currentTime - prevNodeTime;
-                    int velocity = sensorDist / timeDeltas[(int)speed][prevSensor->idx][nextSensor->idx];
-                    distSoFar = delta * velocity;
-                    distToNextNode = nextEdge->dist * 1000 - distSoFar;
                 }
 
                 // check for stopping at landmark
@@ -449,12 +452,10 @@ void engineerTask() {
                     // update the next landmark
                     nextNode = getNextNode(prevNode);
                     track_edge *nextEdge = getNextEdge(prevNode);
-                    if (nextNode == 0 || nextEdge == 0)
-                    {
-                        uiWorkerTid = tid;
-                        printf(COM2, "[engineer:378] Warning: nextEdge/nextNode is NULL\n\r");
-                        break;
-                    }
+                    uassert(nextNode != 0 && nextEdge == 0);
+
+                    // resetting distSoFar: non-sensor node reached
+                    distSoFar = 0;
 
                     // update the distance to next landmark
                     distToNextNode = nextEdge->dist * 1000;
@@ -502,6 +503,9 @@ void engineerTask() {
                 track_node *nextNode = getNextNode(prevNode);
                 track_edge *nextEdge = getNextEdge(prevNode);
                 uassert(nextNode && nextEdge);
+
+                // resetting distSoFar: non-sensor node reached
+                distSoFar = 0;
 
                 // update constant velocity calibration data
                 int last_index = indexFromSensorUpdate(&last_update);
