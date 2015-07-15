@@ -73,22 +73,33 @@ static inline int indexFromSensorUpdate(SensorUpdate *update) {
     return 16 * (update->sensor >> 8) + (update->sensor & 0xff) - 1;
 }
 
-track_edge *getNextEdge(track_node *landmark)
+track_edge *getNextEdge(track_node *node)
 {
-    if(landmark->type == NODE_BRANCH)
+    if(node->type == NODE_BRANCH)
     {
-        return &landmark->edge[turnoutIsCurved(landmark->num)];
+        return &node->edge[turnoutIsCurved(node->num)];
     }
-    else if (landmark->type == NODE_EXIT)
+    else if (node->type == NODE_EXIT)
     {
         return 0;
     }
-    return &landmark->edge[DIR_AHEAD];
+    return &node->edge[DIR_AHEAD];
 }
 
-track_node *getNextNode(track_node *current_landmark) {
-    track_edge *next_edge = getNextEdge(current_landmark);
+track_node *getNextNode(track_node *currentNode) {
+    track_edge *next_edge = getNextEdge(currentNode);
     return (next_edge == 0 ? 0 : next_edge->dest);
+}
+
+track_node *getNextSensor(track_node *node)
+{
+    uassert(node != 0);
+    for (;;)
+    {
+        node = getNextNode(node);
+        if (node == 0 || node->type == NODE_SENSOR) return node;
+    }
+    return 0;
 }
 
 // returns positive distance between two nodes in micrometers
@@ -290,14 +301,32 @@ void engineerTask() {
     int uiWorkerTid = 0;
     int commandWorkerTid = 0;
 
+    TrainState state = Init;
+
     bool isForward = true;
     char speed = 0;   // 0-14
-    int velocity = 0;         // um/tick
     int triggeredSensor = 0;  // {0|1}
-    int prevNodeTime = 0; // tick
 
-    TrainState state = Init;
+    int distSoFar = 0;
+    int didReverse = 0;
     track_node *prevNode = 0;
+    int prevNodeTime = 0; // ticks
+
+    /*
+        linear acceleration
+            a = (vf * vf - vi * vi) / 2 * s
+
+        vf: final speed       (0)
+        vi: initial speed     (calculated)
+        s:  stopping distance (from table)
+    */
+    int vf = 0;
+    int vi = 0;
+
+    int sensorDist = 0;
+    track_node *prevSensor = 0;
+    track_node *nextSensor = 0;
+
     SensorUpdate last_update = {0,0};
     int targetOffset = 0;
     track_node *targetNode = 0;
@@ -342,7 +371,7 @@ void engineerTask() {
                     break;
                 }
 
-                uassert(prevNode != 0);
+                uassert(prevNode != 0 && prevSensor != 0 && nextSensor != 0);
 
                 // If we have a prevNode, compute the values needed
                 // and update train display
@@ -355,11 +384,21 @@ void engineerTask() {
                     break;
                 }
 
-                // compute some stuff
+                /* distance calculations */
                 int currentTime = Time();
-                int delta = currentTime - prevNodeTime;
-                int distSoFar = delta * velocity; // TODO: (shuo): get the velocity from table directly
-                int distToNextNode = nextEdge->dist * 1000 - distSoFar;
+                int distToNextNode;
+                if (didReverse)
+                {
+                    distToNextNode = distSoFar;
+                    didReverse = 0;
+                }
+                else
+                {
+                    int delta = currentTime - prevNodeTime;
+                    int velocity = sensorDist / timeDeltas[(int)speed][prevSensor->idx][nextSensor->idx];
+                    distSoFar = delta * velocity;
+                    distToNextNode = nextEdge->dist * 1000 - distSoFar;
+                }
 
                 // check for stopping at landmark
                 if (targetNode != 0)
@@ -395,16 +434,6 @@ void engineerTask() {
 
                 if (nextNode->type == NODE_SENSOR)
                 {
-                    if (state == ReverseSetReverse)
-                    {
-                        // swap the prevNode with nextNode
-                        track_node *temp = nextNode;
-                        nextNode = prevNode;
-                        prevNode = temp;
-
-                        // swap the distSoFar with distToNextNode
-                    }
-
                     // output the distance to next landmark
                     uiMessage.type = UI_MESSAGE_DIST;
                     uiMessage.distToNext = distToNextNode;
@@ -438,7 +467,7 @@ void engineerTask() {
                     uassert(Reply(tid, &uiMessage, sizeof(uiMessage)) != -1);
 
                 }
-                else // (distanceTonextNode > 0)
+                else // (distanceToNextNode > 0)
                 {
                     // We haven't reached the next landmark;
                     // Output: distance to next (already computed)
@@ -465,45 +494,41 @@ void engineerTask() {
                 // Update some stuff
                 prevNode = &g_track[indexFromSensorUpdate(&sensor_update)];
                 prevNodeTime = sensor_update.time;
+                prevSensor = prevNode;
+
+                nextSensor = getNextSensor(prevSensor);
+                sensorDist = distanceBetween(prevSensor, nextSensor);
 
                 track_node *nextNode = getNextNode(prevNode);
                 track_edge *nextEdge = getNextEdge(prevNode);
                 uassert(nextNode && nextEdge);
 
-                // update the current velocity
-                int timeSensors = sensor_update.time - last_update.time;
-                int distSensors = distanceBetween(&g_track[indexFromSensorUpdate(&last_update)],
-                                                  &g_track[indexFromSensorUpdate(&sensor_update)]);
-                if (state != Stop)
-                {
-                    velocity = distSensors / timeSensors;
-                }
-
                 // update constant velocity calibration data
                 int last_index = indexFromSensorUpdate(&last_update);
                 int index = indexFromSensorUpdate(&sensor_update);
 
-                int expected_time = last_update.time + timeDeltas[speed][last_index][index];
-                int actual_time = sensor_update.time;
-                int error = abs(expected_time - actual_time);
+                int expectedTime = timeDeltas[(int)speed][last_index][index];
+                int actualTime = sensor_update.time - last_update.time;
+                int error = abs(expectedTime - actualTime);
 
-                if(last_index >= 0) { // apply learning
-                    int past_difference = timeDeltas[speed][last_index][index];
+                if(last_index >= 0)
+                {
+                    // apply learning
+                    int past_difference = timeDeltas[(int)speed][last_index][index];
                     int new_difference = sensor_update.time - last_update.time;
-                    timeDeltas[speed][last_index][index] =  (new_difference * ALPHA
+                    timeDeltas[(int)speed][last_index][index] =  (new_difference * ALPHA
                         + past_difference * (100 - ALPHA)) / 100;
 
-                    int distanceTonextNode = nextEdge->dist * 1000;
+                    // prepare output
+                    int distanceToNextNode = nextEdge->dist * 1000;
 
-                    // output prevNode, nextNode, distance to next,
-                    // previous sensor, expected time, actual time, error
                     uiMessage.type = UI_MESSAGE_SENSOR;
                     uiMessage.nextNode = nextNode->name;
                     uiMessage.prevNode = prevNode->name;
-                    uiMessage.distToNext = distanceTonextNode;
+                    uiMessage.distToNext = distanceToNextNode;
                     uiMessage.prevSensor = prevNode->name;
-                    uiMessage.expectedTime = expected_time;
-                    uiMessage.actualTime = actual_time;
+                    uiMessage.expectedTime = expectedTime;
+                    uiMessage.actualTime = actualTime;
                     uiMessage.error = error;
                     triggeredSensor = 1;
                 }
@@ -590,7 +615,6 @@ void engineerTask() {
                 if (isCommandQueueEmpty(&commandQueue))
                 {
                     // case 1: no work; block it
-                    printf(COM2, "[command worker request] command queue empty\n\r");
                     commandWorkerTid = tid;
                 }
                 else
@@ -598,7 +622,6 @@ void engineerTask() {
                     // case 2: dequeue a job and reply the worker
                     Command command;
                     int ret = dequeueCommand(&commandQueue, &command);
-                    printf(COM2, "[command worker request] dequeued command: %d\n\r", command.type);
                     uassert(ret == 0);
                     uassert(Reply(tid, &command, sizeof(command)) != -1);
                 }
@@ -621,10 +644,25 @@ void engineerTask() {
                     uassert(0);
                 }
                 uassert(prevNode != 0);
-                track_node *nextNode = getNextNode(prevNode);
-                uassert(nextNode != 0);
-                prevNode = nextNode->reverse;
+                track_node *oldPrevNode = prevNode;
+                track_node *temp = getNextNode(prevNode);
+                uassert(temp != 0);
+                prevNode = temp->reverse;
                 uassert(prevNode != 0);
+
+                // swap prev & next sensor
+                temp = prevSensor;
+                prevSensor = nextSensor->reverse;
+                nextSensor = temp->reverse;
+
+                printf(COM2, "Reverse: updating prevNode; old: %s new: %s\n\r prevSensor: %s nextSensor: %s\n\r",
+                    oldPrevNode->name,
+                    prevNode->name,
+                    prevSensor->name,
+                    nextSensor->name);
+
+                didReverse = 1;
+
                 break;
             }
 
@@ -637,7 +675,6 @@ void engineerTask() {
                 else if (speed == 0)
                 {
                     state = Stop;
-                    velocity = 0;
                 }
                 else    state = Running;
                 break;
@@ -657,7 +694,10 @@ void initEngineer() {
     for(int i = 0; i < NUM_SPEEDS; i++) {
         for(int j = 0; j < NUM_SENSORS; j++) {
             for (int k = 0; k < NUM_SENSORS; k++) {
-                timeDeltas[i][j][k] = 0;
+                int val = 50;
+                if (i == 0) val = 0;
+
+                timeDeltas[i][j][k] = val;
             }
         }
     }
