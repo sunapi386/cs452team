@@ -1,6 +1,13 @@
 #ifndef __UTILS_H
 #define __UTILS_H
 
+#define STR_MAX_LEN 1024
+
+typedef struct String {
+    unsigned int len;
+    char buf[STR_MAX_LEN + 1];
+} String;
+
 typedef unsigned int size_t;
 typedef enum { false, true } bool;
 
@@ -23,7 +30,8 @@ int CBufferPush(CBuffer *b, char ch);
 char CBufferPop(CBuffer *b);
 bool CBufferIsEmpty(const CBuffer *b);
 void CBufferClean(CBuffer *b);
-int CBufferPushStr(CBuffer *b, char *str);
+int CBufferPushStr(CBuffer *b, const char *str);
+int CBufferPushString(CBuffer *b, const String *s);
 
 /*
     IBuffer
@@ -40,15 +48,31 @@ int IBufferPop(IBuffer *b);
 bool IBufferIsEmpty(const IBuffer *b);
 
 /*
-    String
+    Command & CommandQueue
 */
 
-#define STR_MAX_LEN 1024
+#define COMMAND_SET_SPEED   30
+#define COMMAND_REVERSE     31
 
-typedef struct String {
-    unsigned int len;
-    char buf[STR_MAX_LEN + 1];
-} String;
+typedef struct {
+    char type;
+    char trainSpeed;
+    char trainNumber;
+} Command;
+
+typedef struct {
+    size_t head, tail, size;
+    Command *buffer;
+} CommandQueue;
+
+int enqueueCommand(CommandQueue *q, Command *in);
+int dequeueCommand(CommandQueue *q, Command *out);
+int isCommandQueueEmpty(CommandQueue *q);
+void initCommandQueue(CommandQueue *q, size_t size, Command *buffer);
+
+/*
+    String
+*/
 
 static inline void sinit(String *s) {
     s->len = 0;

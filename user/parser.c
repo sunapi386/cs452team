@@ -661,8 +661,7 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.reverse.train_number;
                 if(1 <= train_number && train_number <= 80) {
                     sputstr(&disp_msg,"Reversing\r\n");
-                    trainSetReverseNicely(train_number);
-                    engineerParserGotReverseCommand();
+                    engineerReverse();
                 }
                 else {
                     sputstr(&disp_msg, "RV: bad train_number\r\n");
@@ -719,7 +718,8 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.speed.train_number;
                 int train_speed = p->data.speed.train_speed;
                 if(1 <= train_number && train_number <= 80) {
-                    trainSetSpeed(train_number, 0);
+                    // FIXME
+                    // trainSetSpeed(train_number, 0);
                      if( ! (0 <= train_speed  && train_speed  <= 14) ) {
                         sputstr(&disp_msg,"   Warning last train speed.\r\n");
                      }
@@ -734,7 +734,8 @@ static bool parse(Parser *p, char c) {
                 int train_speed = p->data.speed.train_speed;
                 if((1 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
-                    trainSetSpeed(train_number, train_speed);
+                    // FIXME
+                    // trainSetSpeed(train_number, train_speed);
                 } else {
                     sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
                 }
@@ -767,7 +768,7 @@ static bool parse(Parser *p, char c) {
             case X_node_number: {
                 int node_number = p->data.x_marks_the_spot.node_number;
                 if(0 <= node_number && node_number <= 139) {
-                    engineerXMarksTheSpot(node_number);
+                    engineerXMarksTheSpot(node_number, 0); // FIXME
                 }
                 else {
                     sputstr(&disp_msg, "Error bad XMarksTheSpot, expects node number ");
