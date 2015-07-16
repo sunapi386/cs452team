@@ -213,7 +213,7 @@ static void clearScreen()
     PutString(COM2, &s);
 }
 
-void sensorCourier()
+void sensorWorker()
 {
     Putc(COM1, SENSOR_RESET);
 
@@ -232,7 +232,7 @@ void sensorCourier()
     }
 
     // start courier main loop
-    req.type = MESSAGE_SENSOR_COURIER;
+    req.type = MESSAGE_SENSOR_WORKER;
 
     for (;;)
     {
@@ -274,7 +274,6 @@ void sensorCourier()
 
 void sensorServer()
 {
-    RegisterAs("sensorServer");
     int tid = 0;
     int engieCourierTid = 0;
     SensorRequest req;
@@ -285,8 +284,10 @@ void sensorServer()
     IBufferInit(&sensorBuf, sb, SENSOR_BUF_SIZE);
     IBufferInit(&timeBuf, tb, SENSOR_BUF_SIZE);
 
+    RegisterAs("sensorServer");
+
     // create the sensor courier
-    Create(PRIORITY_SENSOR_COURIER, sensorCourier);
+    Create(PRIORITY_SENSOR_COURIER, sensorWorker);
 
     for (;;)
     {
@@ -294,7 +295,7 @@ void sensorServer()
 
         switch (req.type)
         {
-            case MESSAGE_SENSOR_COURIER:
+            case MESSAGE_SENSOR_WORKER:
             {
                 // push the sensor into buffer
                 pushSensorData(&(req.data.sm), &sensorBuf, &timeBuf);
@@ -318,8 +319,11 @@ void sensorServer()
 
                 break;
             }
-            case MESSAGE_ENGINEER_COURIER:
+            case MESSAGE_SENSOR_COURIER:
             {
+                // Which engineer's sensor courier is this?
+                // how many trains are there?
+
                 if (IBufferIsEmpty(&sensorBuf))
                 {
                     engieCourierTid = tid;
