@@ -36,7 +36,8 @@ typedef enum {
     Init = 0,           // initial state
     Stop,               // stop command issued
     Running,            // running
-    ReverseSetReverse,  // reverse stage 2: reverse issued
+    Reversing,  // reverse stage 2: reverse issued
+    Decelerating
 } TrainState;
 
 static int active_train = -1; // static for now, until controller is implemented
@@ -305,13 +306,14 @@ void engineerTask() {
 
     bool isForward = true;
     char speed = 0;   // 0-14
+    char prevSpeed = 0;
     int triggeredSensor = 0;  // {0|1}
 
+    int velocity = 0;
     int distSoFar = 0;
-    int didReverse = 0;
-    track_node *prevNode = 0;
-    int prevNodeTime = 0; // ticks
+    int prevNodeTime = 0;
     int lastLocationUpdateTime = 0;
+    track_node *prevNode = 0;
 
     /*
         linear acceleration
@@ -321,8 +323,8 @@ void engineerTask() {
         vi: initial speed     (calculated)
         s:  stopping distance (from table)
     */
-    int vf = 0;
     int vi = 0;
+    int deceleration = 0;
 
     int sensorDist = 0;
     track_node *prevSensor = 0;
@@ -387,7 +389,30 @@ void engineerTask() {
 
                 /* distance calculations */
                 int currentTime = Time();
-                int velocity = sensorDist / timeDeltas[(int)speed][prevSensor->idx][nextSensor->idx];
+
+                if (state == Decelerating)
+                {
+                    if (deceleration == 0)
+                    {
+                        // calculate deceleration for the current speed
+                        deceleration = velocity * velocity / (2 * stoppingDistance[(int)prevSpeed]);
+                        printf(COM2, "calculating deceleration for speed %d: %d; current velocity = %d\n\r",
+                            prevSpeed, deceleration, velocity);
+                    }
+
+                    velocity -= deceleration * (currentTime - lastLocationUpdateTime);
+                    if (velocity <= 0)
+                    {
+                        velocity = 0;
+                        deceleration = 0;
+                        state = Stop;
+                        printf(COM2, "train comes to a complete stop; setting state to Stop\n\r");
+                    }
+                }
+                else
+                {
+                    velocity = sensorDist / timeDeltas[(int)speed][prevSensor->idx][nextSensor->idx];
+                }
 
                 // velocity: the estimated velocity in the current track segment
                 // lasttime: the last time distSoFar is incremented
@@ -395,20 +420,14 @@ void engineerTask() {
                 lastLocationUpdateTime = currentTime;
                 int distToNextNode = nextEdge->dist * 1000 - distSoFar;
 
-                if (didReverse)
-                {
-                    int temp = distSoFar;
-                    distSoFar = distToNextNode;
-                    distToNextNode = temp;
-                    didReverse = 0;
-                }
-
                 // check for stopping at landmark
                 if (targetNode != 0)
                 {
                     int pickUpOffset = isForward ? 0 : 15 * 1000;
                     int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
-                    if (dist <= stoppingDistance[(int)speed])
+
+                    int stoppingDist = stoppingDistance[(int)speed];
+                    if (dist >= 0 && stoppingDist > 0 && dist <= stoppingDist)
                     {
                         // issue stop command
                         Command cmd = {
@@ -435,24 +454,17 @@ void engineerTask() {
                     }
                 }
 
-                if (nextNode->type == NODE_SENSOR)
-                {
-                    // output the distance to next landmark
-                    uiMessage.type = UI_MESSAGE_DIST;
-                    uiMessage.distToNext = distToNextNode;
-                    uassert(Reply(tid, &uiMessage, sizeof(uiMessage)) != -1);
-                }
-                else if (distToNextNode <= 0)
+                if (distToNextNode <= 0)
                 {
                     // We've "reached" the next non-sensor landmark
                     // Update previous landmark
                     prevNode = nextNode;
                     prevNodeTime = currentTime;
 
-                    // update the next landmark
+                    // get the next landmark
                     nextNode = getNextNode(prevNode);
                     track_edge *nextEdge = getNextEdge(prevNode);
-                    uassert(nextNode != 0 && nextEdge == 0);
+                    uassert(nextNode != 0 && nextEdge != 0);
 
                     // resetting distSoFar: non-sensor node reached
                     distSoFar = 0;
@@ -466,9 +478,27 @@ void engineerTask() {
                     uiMessage.prevNode = prevNode->name;
                     uiMessage.distToNext = distToNextNode;
                     uassert(Reply(tid, &uiMessage, sizeof(uiMessage)) != -1);
-
                 }
-                else // (distanceToNextNode > 0)
+                else if (state == Reversing)
+                {
+                    // swapping distToNextNode with distSoFar
+                    int temp = distSoFar;
+                    distSoFar = distToNextNode;
+                    distToNextNode = temp;
+
+                    // get the next landmark
+                    nextNode = getNextNode(prevNode);
+
+                    // output
+                    uiMessage.type = UI_MESSAGE_LANDMARK;
+                    uiMessage.nextNode = nextNode->name;
+                    uiMessage.prevNode = prevNode->name;
+                    uiMessage.distToNext = distToNextNode;
+                    uassert(Reply(tid, &uiMessage, sizeof(uiMessage)) != -1);
+
+                    state = (speed == 0) ? Stop : Running;
+                }
+                else // distToNextNode > 0
                 {
                     // We haven't reached the next landmark;
                     // Output: distance to next (already computed)
@@ -499,6 +529,7 @@ void engineerTask() {
 
                 nextSensor = getNextSensor(prevSensor);
                 sensorDist = distanceBetween(prevSensor, nextSensor);
+                uassert(sensorDist >= 0);
 
                 track_node *nextNode = getNextNode(prevNode);
                 track_edge *nextEdge = getNextEdge(prevNode);
@@ -637,16 +668,10 @@ void engineerTask() {
             {
                 uassert(Reply(tid, 0, 0) != -1);
 
-                uassert(state == Stop);
-
                 isForward = !isForward;
-                state = (state == Init) ? Init : ReverseSetReverse;
+                state = (state == Init) ? Init : Reversing;
 
                 // reverse prevNode
-                if (prevNode == 0)
-                {
-                    uassert(0);
-                }
                 uassert(prevNode != 0);
                 track_node *oldPrevNode = prevNode;
                 track_node *temp = getNextNode(prevNode);
@@ -665,8 +690,6 @@ void engineerTask() {
                     prevSensor->name,
                     nextSensor->name);
 
-                didReverse = 1;
-
                 break;
             }
 
@@ -674,13 +697,17 @@ void engineerTask() {
             case commandWorkerSpeedSet:
             {
                 uassert(Reply(tid, 0, 0) != -1);
+                prevSpeed = speed;
                 speed = (char)(message.data.setSpeed.speed);
-                if      (state == Init) break;
+                if      (state == Init || state == Reversing) break;
                 else if (speed == 0)
                 {
-                    state = Stop;
+                    state = Decelerating;
                 }
-                else    state = Running;
+                else
+                {
+                    state = Running;
+                }
                 break;
             }
 
