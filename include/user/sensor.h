@@ -1,8 +1,8 @@
 #ifndef __SENSOR_H
 #define __SENSOR_H
 
-#define MESSAGE_SENSOR_COURIER      11
-#define MESSAGE_ENGINEER_COURIER    12
+#define MESSAGE_SENSOR_WORKER  11
+#define MESSAGE_SENSOR_COURIER 12
 
 // sensorCourier -> sensorServer
 typedef struct SensorMessage {

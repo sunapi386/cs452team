@@ -51,12 +51,12 @@ static inline int abs(int num) {
 // static bool activated_engineers[NUM_TRAINS];
 
 // Courier: sensorServer -> engineer
-static void engineerCourier() {
+static void sensorCourier() {
     int engineer = MyParentTid();
     int sensor = WhoIs("sensorServer");
 
     SensorRequest sensorReq;  // courier <-> sensorServer
-    sensorReq.type = MESSAGE_ENGINEER_COURIER;
+    sensorReq.type = MESSAGE_SENSOR_COURIER;
     SensorUpdate result;  // courier <-> sensorServer
     EngineerMessage engineerReq; // courier <-> engineer
     engineerReq.type = updateSensor;
@@ -330,9 +330,9 @@ void engineerTask() {
     EngineerMessage message;
 
     // Create child tasks
-    Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
-    Create(PRIORITY_ENGINEER_COURIER, commandWorker);
-    locationWorkerTid = Create(PRIORITY_ENGINEER_COURIER, locationWorker);
+    Create(PRIORITY_SENSOR_COURIER, sensorCourier);
+    Create(PRIORITY_SENSOR_COURIER, commandWorker);
+    locationWorkerTid = Create(PRIORITY_SENSOR_COURIER, locationWorker);
 
     // All sensor reports with timestamp before this time are invalid
     int creationTime = Time();
