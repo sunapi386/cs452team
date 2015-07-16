@@ -1,7 +1,7 @@
 #ifndef __DEBUG_H
 #define __DEBUG_H
 #include <bwio.h>
-
+#include <utils.h>
 
 #ifdef PRODUCTION
 
@@ -29,13 +29,18 @@ static void __assert_fail__ (__const char *__expr,
                              __const char *__file,
                              __const unsigned int __line,
                              __const char *__func) {
-    bwsetfifo(COM2, OFF);
-    bwsetspeed(COM2, 115200);
     bwprintf(COM2, "Assertion %s failed at [%s:%d] %s\r\n",
         __expr, __file, __line, __func);
-    while(1) {
-        asm volatile("nop");
-    }
+    for (;;);
+}
+
+static inline void __user__assert_fail__ (__const char *__expr,
+                                          __const char *__file,
+                                          __const unsigned int __line,
+                                          __const char *__func) {
+    printf(COM2, "Assertion %s failed at [%s:%d] %s\r\n",
+        __expr, __file, __line, __func);
+    for (;;);
 }
 
 #define assert(expr) (                          \
@@ -43,6 +48,13 @@ static void __assert_fail__ (__const char *__expr,
     (void)(0) :                                 \
     __assert_fail__(#expr, __FILE__, __LINE__, __FUNCTION__)  \
 )
+
+#define uassert(expr) (                         \
+    (expr) ?                                    \
+    (void)(0) :                                 \
+    __user__assert_fail__(#expr, __FILE__, __LINE__, __FUNCTION__)  \
+)
+
 
 #endif // PRODUCTION
 

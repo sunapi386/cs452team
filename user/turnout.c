@@ -149,7 +149,6 @@ static void turnoutTask() {
         assert(direction == 'c' || direction == 's');
 
         setTurnout(turnout_number, direction);
-
     }
 
 }

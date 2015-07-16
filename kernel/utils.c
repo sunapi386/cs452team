@@ -95,7 +95,7 @@ void CBufferClean(CBuffer *b) {
     b->tail = 0;
 }
 
-int CBufferPushStr(CBuffer *b, char *str)
+int CBufferPushStr(CBuffer *b, const char *str)
 {
     int ret = 0, counter = 0;
     while(*str)
@@ -107,6 +107,17 @@ int CBufferPushStr(CBuffer *b, char *str)
     return ret == 0 ? counter : ret;
 }
 
+int CBufferPushString(CBuffer *b, const String *s)
+{
+    int ret = 0;
+    unsigned int i = 0;
+    for (i = 0; i < s->len; i++)
+    {
+        ret = CBufferPush(b, s->buf[i]);
+    }
+    return ret == 0 ? (int)i : ret;
+}
+
 void IBufferInit(IBuffer *b, int * array, size_t size)
 {
     b->data = array;
@@ -114,6 +125,7 @@ void IBufferInit(IBuffer *b, int * array, size_t size)
     b->head = 0;
     b->tail = 0;
 }
+
 int IBufferPush(IBuffer *b, int n)
 {
     int ret = 0;
@@ -145,6 +157,49 @@ int IBufferPop(IBuffer *b)
 bool IBufferIsEmpty(const IBuffer *b)
 {
     return b->head == b->tail;
+}
+
+void commandCopy(Command *dst, const Command *src)
+{
+    dst->type = src->type;
+    dst->trainSpeed = src->trainSpeed;
+    dst->trainNumber = src->trainNumber;
+}
+
+void initCommandQueue(CommandQueue *q, size_t size, Command *buffer)
+{
+    q->head = 0;
+    q->tail = 0;
+    q->size = size;
+    q->buffer = buffer;
+}
+
+int enqueueCommand(CommandQueue *q, Command *in)
+{
+    int ret = 0;
+    q->tail = (q->tail + 1) % q->size;
+    if (q->tail == q->head)
+    {
+        // overflow
+        q->tail = (q->tail + 1) % q->size;
+        ret = -1;
+    }
+    commandCopy(&(q->buffer[q->tail]), in);
+    return ret;
+}
+
+int dequeueCommand(CommandQueue *q, Command *out)
+{
+    // underflow
+    if (q->head == q->tail) return -1;
+    q->head = (q->head + 1) % q->size;
+    commandCopy(out, &(q->buffer[q->head]));
+    return 0;
+}
+
+int isCommandQueueEmpty(CommandQueue *q)
+{
+    return q->head == q->tail;
 }
 
 void scopy(String *dst, const char *src) {

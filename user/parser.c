@@ -30,7 +30,7 @@ static char *help_message =
 "0                                  | set last train speed to 0\r\n"
 "c tr_num speed char num loops      | Calibration: at speed delay loop\r\n"
 "k track_A_or_B_char                | load tracK A or B\r\n"
-"x track_node_index                 | x mark the track node\r\n"
+"x track_node_index distance        | x mark the track node\r\n"
 "------------------ Misc. commands\r\n"
 "q                                  | Quit\r\n"
 "o                                  | redraw turnOuts\r\n"
@@ -103,8 +103,10 @@ typedef struct Parser {
         K_space,
         K_which_track,
         X,          // x 50, for example
-        X_space,
+        X_space1,
         X_node_number,
+        X_space2,
+        X_distance,
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -147,6 +149,7 @@ typedef struct Parser {
         } track;
         struct XMarksTheSpot {
             int node_number;
+            int distance;
         } x_marks_the_spot;
     } data;
 
@@ -204,10 +207,10 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case X: {
-                REQUIRE(' ', X_space);
+                REQUIRE(' ', X_space1);
                 break;
             }          // x A 10 (tries to stop on sensor A10 for example)
-            case X_space: {
+            case X_space1: {
                 p->data.x_marks_the_spot.node_number = 0;
                 p->state =  append_number(c, &(p->data.x_marks_the_spot.node_number)) ?
                             X_node_number :
@@ -216,6 +219,19 @@ static bool parse(Parser *p, char c) {
             }
             case X_node_number: {
                 if(! append_number(c, &(p->data.x_marks_the_spot.node_number))) {
+                    REQUIRE(' ', X_space2);
+                }
+                break;
+            }
+            case X_space2: {
+                p->data.x_marks_the_spot.distance = 0;
+                p->state =  append_number(c, &(p->data.x_marks_the_spot.distance)) ?
+                            X_distance :
+                            Error;
+                break;
+            }
+            case X_distance: {
+                if(! append_number(c, &(p->data.x_marks_the_spot.distance))) {
                     p->state = Error;
                 }
                 break;
@@ -661,8 +677,7 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.reverse.train_number;
                 if(1 <= train_number && train_number <= 80) {
                     sputstr(&disp_msg,"Reversing\r\n");
-                    trainSetReverseNicely(train_number);
-                    engineerParserGotReverseCommand();
+                    engineerReverse();
                 }
                 else {
                     sputstr(&disp_msg, "RV: bad train_number\r\n");
@@ -719,7 +734,8 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.speed.train_number;
                 int train_speed = p->data.speed.train_speed;
                 if(1 <= train_number && train_number <= 80) {
-                    trainSetSpeed(train_number, 0);
+                    // FIXME
+                    // trainSetSpeed(train_number, 0);
                      if( ! (0 <= train_speed  && train_speed  <= 14) ) {
                         sputstr(&disp_msg,"   Warning last train speed.\r\n");
                      }
@@ -734,7 +750,8 @@ static bool parse(Parser *p, char c) {
                 int train_speed = p->data.speed.train_speed;
                 if((1 <= train_number && train_number <= 80) &&
                    (0 <= train_speed  && train_speed  <= 14)) {
-                    trainSetSpeed(train_number, train_speed);
+                    // FIXME
+                    // trainSetSpeed(train_number, train_speed);
                 } else {
                     sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
                 }
@@ -764,15 +781,19 @@ static bool parse(Parser *p, char c) {
                 sputstr(&disp_msg, help_message);
                 break;
             }
-            case X_node_number: {
+            case X_distance: {
                 int node_number = p->data.x_marks_the_spot.node_number;
-                if(0 <= node_number && node_number <= 139) {
-                    engineerXMarksTheSpot(node_number);
+                int distance = p->data.x_marks_the_spot.distance;
+                if (0 <= node_number && node_number <= 139 &&
+                    0 <= distance && distance <= 875) {
+                    engineerXMarksTheSpot(node_number, distance); // FIXME
                 }
                 else {
-                    sputstr(&disp_msg, "Error bad XMarksTheSpot, expects node number ");
+                    sputstr(&disp_msg, "Error: XMarksTheSpot expects node number ");
                     sputint(&disp_msg, node_number, 10);
-                    sputstr(&disp_msg, " be between 0 to 139\r\n");
+                    sputstr(&disp_msg, " between 0-139 and distance ");
+                    sputint(&disp_msg, distance, 10);
+                    sputstr(&disp_msg, " between 0 to 875\r\n");
                 }
                 break;
             }

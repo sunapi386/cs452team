@@ -4,13 +4,15 @@
 #include <utils.h>
 #include <priority.h>
 #include <ts7200.h>
-#include <kernel/task.h> // TASK_MAX_TASKS
+#include <kernel/task.h>
+#include <debug.h>
 
 #define NOTIFICATION 0
 #define PUTCHAR      1
 #define PUTSTR       2
 #define GETCHAR      3
 #define ECHO         4
+#define PUTRAWSTR    5
 
 #define MONITOR_BUFFER_SIZE 2048
 #define TRAIN_BUFFER_SIZE   512
@@ -54,11 +56,6 @@ int Putc(int channel, char c) {
     return (ret < 0) ? -1 : 0;
 }
 
-int PutString(int channel, String *s) {
-    s->buf[s->len] = '\0';
-    return PutStr(channel, s->buf);
-}
-
 int PutStr(int channel, char *str)
 {
     // Check channel type
@@ -72,6 +69,22 @@ int PutStr(int channel, char *str)
     int server_tid = (channel == COM1) ? com1SendSrvTid : com2SendSrvTid;
     int ret = Send(server_tid, &req, sizeof(req), 0, 0);
     return (ret < 0) ? -1 : 0;
+}
+
+int PutRawString(String *s) {
+    // Prepare request
+    IOReq req = {
+        .type = PUTRAWSTR,
+        .data = (unsigned int)s
+    };
+    int ret = Send(com1SendSrvTid, &req, sizeof(req), 0, 0);
+    return (ret < 0) ? -1 : 0;
+}
+
+int PutString(int channel, String *s) {
+    s->buf[s->len] = '\0';
+    if (channel == COM2) return PutStr(channel, s->buf);
+    return PutRawString(s);
 }
 
 void monitorInNotifier() {
@@ -178,6 +191,7 @@ void monitorInServer() {
             courierTid = tid;
             break;
         default:
+            uassert(0);
             break;
         }
     }
@@ -299,6 +313,7 @@ void monitorOutServer()
             break;
         }
         default:
+            uassert(0);
             break;
         }
     }
@@ -375,6 +390,7 @@ void trainInServer() {
             }
             break;
         default:
+            uassert(0);
             break;
         }
     }
@@ -487,7 +503,38 @@ void trainOutServer() {
                 // reset 'seen transmit int' state
                 sendAddr = 0;
             }
+            break;
+        case PUTRAWSTR:
+        {
+            // unblock caller
+            Reply(tid, 0, 0);
+
+            // get the ptr to str
+            String *str = (String *)(req.data);
+
+            // push entire string into buffer
+            CBufferPushString(&charBuffer, str);
+
+            // unblock notifier we've previously
+            // got a xmit but had nothing to send
+            if (!CBufferIsEmpty(&charBuffer) &&
+                sendAddr != 0)
+            {
+                *sendAddr = CBufferPop(&charBuffer);
+
+                // unblock the notifier which will
+                // call AwaitEvent() which re-enables
+                // xmit interrupt
+                Reply(notifierTid, 0, 0);
+
+                // reset 'seen transmit int' state
+                sendAddr = 0;
+            }
+            break;
+        }
+
         default:
+            uassert(0);
             break;
         }
     }
