@@ -3,6 +3,17 @@
 #include <debug.h>
 #include <user/syscall.h>
 
+// http://www.ethernut.de/api/memset_8c_source.html
+void * memset(void *dst, int c, size_t n) {
+    if (n) {
+        char *d = dst;
+        do {
+            *d++ = c;
+        } while (--n);
+    }
+    return dst;
+}
+
 // NOTE: Insecure (does not detect overlapping memory)
 void memcpy(void *dest, const void *src, size_t n) {
     register unsigned int i = 0;
