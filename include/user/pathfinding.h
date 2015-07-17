@@ -1,18 +1,31 @@
 #ifndef __PATHFINDING_H
 #define __PATHFINDING_H
+#include <user/track_data.h>
 
-struct track_node;
-
+/**
+Position for XMarksTheSpot stopping.
+*/
 struct Position {
-    struct track_node *node;
+    track_node *node;
     int offset;
 };
 
-void plan_route(struct track_node *start, struct track_node *end);
+#define MAX_PATH_LENGTH TRACK_MAX // very generous
+/**
+PathBuffer for passing around paths.
+Array of track_node indecies, ordered from destination (0) to source (length).
+*/
+typedef struct PathBuffer {
+    track_node *tracknodes[MAX_PATH_LENGTH];
+    int length;
+} PathBuffer;
 
-int distanceBetween(struct track_node *from, struct track_node *to);
-struct track_edge *getNextEdge(struct track_node *node);
-struct track_node *getNextNode(struct track_node *currentNode);
-struct track_node *getNextSensor(struct track_node *node);
+
+int planRoute(track_node *start, track_node *end, PathBuffer *pb);
+
+int distanceBetween(track_node *from, track_node *to);
+track_edge *getNextEdge(track_node *node);
+track_node *getNextNode(track_node *currentNode);
+track_node *getNextSensor(track_node *node);
 
 #endif
