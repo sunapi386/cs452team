@@ -2,6 +2,7 @@
 #include "heap.h"
 #include <string.h> // memset
 #include <stdio.h>
+#include <stdlib.h>
 ////
 
 struct Position {
@@ -130,15 +131,34 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     return path_length;
 }
 
+void printPath(PathBuffer *pb) {
+    printf("Path:\n");
+    for (int i = 0; i < pb->length; i++) {
+        printf("-> %s ", pb->tracknodes[i]->name);
+    }
+    printf("\n");
+}
+
 track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
 
-int main() {
+// compile with: gcc track_data.c pathfinding.c -o a.out
+int main(int argc, char const *argv[]) {
+    if (argc != 3) {
+        printf("Usage: %s <from node number> <to node number>", argv[0]);
+        return -1;
+    }
+    int from = atoi(argv[1]);
+    int to = atoi(argv[2]);
+    if (0 <= from && from <= 144 && 0 <= to && to <= 144) {
+        printf("Bad node number %d %d", from, to);
+        return -1;
+    }
     init_tracka(g_track);
-    // track_node *start =
-    track_node *src = &g_track[0];
-    track_node *dst = &g_track[101];
+    track_node *src = &g_track[from];
+    track_node *dst = &g_track[to];
     PathBuffer pb;
     int ret = planRoute(src, dst, &pb);
+    printPath(&pb);
     printf("%d\n", ret);
     return 0;
 }
