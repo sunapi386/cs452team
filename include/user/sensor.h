@@ -4,14 +4,14 @@
 #define MESSAGE_SENSOR_WORKER  11
 #define MESSAGE_SENSOR_COURIER 12
 
-// sensorCourier -> sensorServer
+// sensorWorker -> sensorServer
 typedef struct SensorMessage {
     char data;  // actual data from com1
     char seq;   // sequence number [0,2*NUM_SENSORS-1]
     int time;   // timestamp in ticks
 } SensorMessage;
 
-// sensorServer -> engineer
+// sensorServer -> sensorCourier
 typedef struct SensorUpdate {
     int sensor;
     int time;

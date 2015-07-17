@@ -50,10 +50,6 @@ static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
 }
 
-static inline int indexFromSensorUpdate(SensorUpdate *update) {
-    return 16 * (update->sensor >> 8) + (update->sensor & 0xff) - 1;
-}
-
 /*
     Sensor Courier
 */
@@ -455,7 +451,7 @@ void engineerTask() {
             }
 
             case updateSensor: {
-                // unblock sensor
+                // unblock sensor courier
                 Reply(tid, 0, 0);
 
                 // Get sensor update data
@@ -468,7 +464,7 @@ void engineerTask() {
                 if (sensor_update.time <= creationTime) continue;
 
                 // Update some stuff
-                prevNode = &g_track[indexFromSensorUpdate(&sensor_update)];
+                prevNode = &g_track[sensor_update.sensor];
                 prevNodeTime = sensor_update.time;
                 prevSensor = prevNode;
 
@@ -484,8 +480,8 @@ void engineerTask() {
                 distSoFar = 0;
 
                 // update constant velocity calibration data
-                int last_index = indexFromSensorUpdate(&last_update);
-                int index = indexFromSensorUpdate(&sensor_update);
+                int last_index = last_update.sensor;
+                int index = sensor_update.sensor;
 
                 int expectedTime = timeDeltas[(int)speed][last_index][index];
                 int actualTime = sensor_update.time - last_update.time;

@@ -31,6 +31,10 @@ static SensorData recent_sensors[NUM_RECENT_SENSORS];
 static int halt_train_number;
 static SensorData halt_reading;
 
+static inline int getSensorIndex(int group, int offset) {
+    return 16 * group + offset - 1;
+}
+
 static void initDrawSensorArea() {
     String s;
     sinit(&s);
@@ -123,24 +127,6 @@ static inline void handleChar(char c, int reply_index) {
     }
 }
 
-void sensorHalt(int train_number, char sensor_group, int sensor_number) {
-    // gets called by the parser
-    assert(0 < train_number && train_number < 80);
-    assert('a' <= sensor_group && sensor_group <= 'e');
-    assert(1 <= sensor_number && sensor_number <= 16);
-
-    int group = sensor_group - 'a';
-    halt_train_number = train_number;
-    setSensorData(&halt_reading, group, sensor_number);
-}
-
-void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2) {
-    time_sensor_pair.sensor1_group = sensor1->group;
-    time_sensor_pair.sensor1_offset = sensor1->offset;
-    time_sensor_pair.sensor2_group = sensor2->group;
-    time_sensor_pair.sensor2_offset = sensor2->offset;
-}
-
 void pushSensorData(SensorMessage *message, IBuffer *sensorBuf, IBuffer *timeBuf)
 {
     char data = message->data;
@@ -164,6 +150,24 @@ void pushSensorData(SensorMessage *message, IBuffer *sensorBuf, IBuffer *timeBuf
             IBufferPush(timeBuf, time);
         }
     }
+}
+
+void sensorHalt(int train_number, char sensor_group, int sensor_number) {
+    // gets called by the parser
+    assert(0 < train_number && train_number < 80);
+    assert('a' <= sensor_group && sensor_group <= 'e');
+    assert(1 <= sensor_number && sensor_number <= 16);
+
+    int group = sensor_group - 'a';
+    halt_train_number = train_number;
+    setSensorData(&halt_reading, group, sensor_number);
+}
+
+void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2) {
+    time_sensor_pair.sensor1_group = sensor1->group;
+    time_sensor_pair.sensor1_offset = sensor1->offset;
+    time_sensor_pair.sensor2_group = sensor2->group;
+    time_sensor_pair.sensor2_offset = sensor2->offset;
 }
 
 static void clearScreen()
@@ -233,34 +237,77 @@ void sensorWorker()
     }
 }
 
+// the engineer "claims" upcoming sensors via the sensor courier. When the sensor actually hits and
+// matches a claim, the sensor is "attributed" to that train, and set to the prevSensor
 typedef struct {
+    // tells if the sensor server could reply directly to tid
+    char isBlocked;
+
+    // the tid of the sensor courier to reply to
+    int tid;
+
+    // the time when prevSensor is hit
     int prevTime;
-    track_node *prevSensor;
+
+    // the prevSensor that is hit by the particular engineer
+    int prevSensor;
+
+    // the next sensor that the engineer expects to hit
+    int primaryClaim;
+
+    // the sensor that the engineer expects to hit if the primary sensor fails / turnout failure
+    int secondaryClaim;
+
+    // when each of the claimed sensors is expected to be triggered
+    // int primaryTime;
+    // int secondaryTime;
 } Attribution;
 
 static inline
-void initAttribution(int courierTids[], Attribution attrs[], int size)
+void initAttribution(Attribution attrs[])
 {
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < MAX_NUM_ENGINEER; i++)
     {
-        courierTids[i] = 0;
+        attrs[i].isBlocked = 0;
+        attrs[i].tid = 0;
         attrs[i].prevTime = 0;
         attrs[i].prevSensor = 0;
+        attrs[i].primaryClaim = 0;
+        attrs[i].secondaryClaim = 0;
+        // attrs[i].primaryTime = 0;
+        // attrs[i].secondaryTime = 0;
     }
 }
 
-// Given the tid of a courier, populate the courierList if needed, and
-// return the index.
-static inline
-int getIndex(int tid, int courierTids[], int size)
+Attribution* getAttribution(int tid, int *numEngineer, Attribution attrs[])
 {
-    return 0;
+    assert(*numEngineer <= MAX_NUM_ENGINEER);
+    for (int i = 0; i < *numEngineer; i++)
+    {
+        if (attrs[i].tid == tid)
+        {
+            // found one; returning it
+            return &attrs[i];
+        }
+    }
+
+    if (*numEngineer == MAX_NUM_ENGINEER)
+    {
+        // attribution buffer is full and did not find the tid; returning NULL
+        uassert(0);
+        return 0;
+    }
+
+    // adding the tid into the list
+    Attribution *attribution = &attrs[(*numEngineer)++];
+    attribution->tid = tid;
+    printf(COM2, "attribution created for new engineer courier tid: %d, numEngineer: %d\n\r", tid, *numEngineer);
+    return attribution;
 }
 
 void sensorServer()
 {
     int tid = 0;
-    int engieCourierTid = 0;
     SensorRequest req;
     int sb[SENSOR_BUF_SIZE];
     int tb[SENSOR_BUF_SIZE];
@@ -269,9 +316,9 @@ void sensorServer()
     IBufferInit(&sensorBuf, sb, SENSOR_BUF_SIZE);
     IBufferInit(&timeBuf, tb, SENSOR_BUF_SIZE);
 
-    int courierTids[MAX_NUM_ENGINEER];
+    int numEngineer = 0;
     Attribution attrs[MAX_NUM_ENGINEER];
-    initAttribution(courierTids, attrs, MAX_NUM_ENGINEER);
+    initAttribution(attrs);
 
     RegisterAs("sensorServer");
 
@@ -286,51 +333,128 @@ void sensorServer()
         {
             case MESSAGE_SENSOR_WORKER:
             {
-                // push the sensor into buffer
-                pushSensorData(&(req.data.sm), &sensorBuf, &timeBuf);
+                SensorMessage *message = &(req.data.sm);
 
-                if (engieCourierTid)
+                // get the byte and the timestamp
+                char data = message->data;
+                char offset = ((message->seq % 2 == 0) ? 0 : 8);
+                int timestamp = message->time;
+
+                // loop over the byte
+                char i, index;
+                for (i = 0, index = 8; i < 8; i++, index--)
                 {
-                    assert(engieCourierTid > 0);
+                    if ((1 << i) & data)
+                    {
+                        // calculate the nodeIndex from group & number
+                        int sensorIndex = getSensorIndex(message->seq / 2,
+                                                         index + offset);
 
-                    // Pop a sensor and a timestamp then reply to the engineer
-                    SensorUpdate su;
-                    su.sensor = IBufferPop(&sensorBuf);
-                    su.time = IBufferPop(&timeBuf);
-                    Reply(engieCourierTid, &su, sizeof(su));
+                        // loop over the attributions [looking for primary with the minimal prevTime]
+                        int minPrimaryTime = -1;
+                        int minPrimaryIndex = -1;
+                        int minSecondaryTime = -1;
+                        int minSecondaryIndex = -1;
+                        for (int i = 0; i < numEngineer; i++)
+                        {
+                            // get the attribution info
+                            Attribution *attr = &attrs[i];
 
-                    // reset flag
-                    engieCourierTid = 0;
+                            // TODO: check for timeout
+                            // if (timestamp - delta blah blah)
+
+                            // compute effective primary & secondary claims
+                            if (attr->primaryClaim == sensorIndex)
+                            {
+                                if (minPrimaryTime == -1 ||
+                                    attr->prevTime < minPrimaryTime)
+                                {
+                                    minPrimaryIndex = i;
+                                    minPrimaryTime = attr->prevTime;
+                                }
+                            }
+                            else if (attr->secondaryClaim == sensorIndex)
+                            {
+                                if (minSecondaryTime == -1 ||
+                                    attr->prevTime < minSecondaryTime)
+                                {
+                                    minSecondaryIndex = i;
+                                    minSecondaryTime = attr->prevTime;
+                                }
+                            }
+                        }
+
+                        int attrIndex = (minPrimaryIndex > 0) ? minPrimaryIndex : minSecondaryIndex;
+
+                        if (attrIndex > 0)
+                        {
+                            Attribution *attribution = &attrs[attrIndex];
+
+                            while (attribution->isBlocked == 0)
+                            {
+                                // MAYBE TODO: Implement a reply queue; if the courier
+                                // is not blocked, add it into the reply queue
+                                printf(COM2, "Warning: sensor server calling Pass() - %d not send blocked\n\r", attribution->tid);
+                                Pass();
+                            }
+
+                            // preparing reply to the sensor courier
+                            SensorUpdate su;
+                            su.sensor = sensorIndex;
+                            su.time   = timestamp;
+
+                            // reply to the courier
+                            Reply(attribution->tid, &su, sizeof(su));
+                            attribution->isBlocked = 0;
+
+                            // set prevTime & prevSensor, clear the claims
+                            attribution->prevTime = timestamp;
+                            attribution->prevSensor = sensorIndex;
+                            attribution->primaryClaim = 0;
+                            attribution->secondaryClaim = 0;
+                        }
+                        else
+                        {
+                            // spurious sensor hit: ignore
+                            printf(COM2, "spurious sensor hit\n\r");
+                        }
+                    }
                 }
 
-                // unblock the sensor courier
+                // unblock the sensor worker
                 Reply(tid, 0, 0);
 
                 break;
             }
             case MESSAGE_SENSOR_COURIER:
             {
-                // Which engineer's sensor courier is this?
-                // how many trains are there?
+                // Sensor courier is
 
-                // given a tid, (added it to list and)
-                // get the index in our courierList
-                getIndex(tid, courierTids, MAX_NUM_ENGINEER);
+                // // Who's courier is this?
+                // int index = getIndex(tid, courierTids, &numEngineer);
+                // assert(index >= 0 && index < MAX_NUM_COURIER);
 
-                if (IBufferIsEmpty(&sensorBuf))
-                {
-                    engieCourierTid = tid;
-                }
-                else
-                {
-                    // Pop a sensor and a timestamp then reply to the engineer
-                    SensorUpdate su;
-                    su.sensor = IBufferPop(&sensorBuf);
-                    su.time = IBufferPop(&timeBuf);
+                // // the message from sensor courier contains:
+                // // current velocity
 
-                    Reply(tid, &su, sizeof(su));
-                }
-                break;
+                // // if the sensor buffer is empty, block thecourier
+
+                // // else
+
+                // if (IBufferIsEmpty(&sensorBuf))
+                // {
+                //     engieCourierTid = tid;
+                // }
+                // else
+                // {
+                //     // Pop a sensor and a timestamp then reply to the engineer
+                //     SensorUpdate su;
+                //     su.sensor = IBufferPop(&sensorBuf);
+                //     su.time = IBufferPop(&timeBuf);
+
+                //     Reply(tid, &su, sizeof(su));
+                // }
+                // break;
             }
             default:
                 assert(0);
