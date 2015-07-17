@@ -2,6 +2,7 @@
 #include <debug.h>
 #include <user/turnout.h>
 #include <utils.h>
+#include <heap.h>
 
 typedef struct PathNode {
     struct PathNode *from;
@@ -20,6 +21,12 @@ static inline void setPathNode(PathNode *p, PathNode *f, track_node *t, int c) {
     p->tn = t;
     p->cost = c;
 }
+
+static inline int nodeCost(PathNode *pn) {
+    return pn->cost;
+}
+
+DECLARE_HEAP(PQHeap, PathNode*, nodeCost, 8, <);
 
 /**
 Returns the number of track_node pointers to from src to dst.
@@ -44,11 +51,15 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     PathNode *start = &g_nodes[num_nodes++];
     PathNode *end;
     setPathNode(start, 0, src, 0);
-    PQPush(start);
+
+    PQHeap pq;
+    pq.count = 0;
+
+    PQHeapPush(&pq, start);
     while (1) {
         uassert(num_nodes < EXPLORE_SIZE);
 
-        PathNode *popd = PQPop();
+        PathNode *popd = PQHeapPop(&pq);
         if (popd->tn->type == NODE_BRANCH) {
             PathNode *straight = &g_nodes[num_nodes++];
             setPathNode(straight,
@@ -59,7 +70,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                 end = straight;
                 break;
             }
-            PQPush(straight);
+            PQHeapPush(&pq, straight);
 
             PathNode *curved = &g_nodes[num_nodes++];
             setPathNode(curved,
@@ -71,7 +82,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                 end = curved;
                 break;
             }
-            PQPush(curved);
+            PQHeapPush(&pq, curved);
         }
         else {
             PathNode *ahead = &g_nodes[num_nodes++];
@@ -83,7 +94,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                 end = ahead;
                 break;
             }
-            PQPush(ahead);
+            PQHeapPush(&pq, ahead);
         }
     }
 

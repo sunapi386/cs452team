@@ -8,10 +8,10 @@ Preprocessor generated template for heap binary heap (priority queue) structure.
 #define LEFT(x)     (2 * (x) + 1)
 
 #define DECLARE_HEAP(heaptype, valuetype, value_func, height, comp)\
-struct heaptype {\
+typedef struct heaptype {\
     valuetype heap[1 + (1<<height)];\
     int count;\
-};\
+} heaptype;\
 \
 void heaptype##SiftUp(struct heaptype *heap, int idx){\
     if(idx == 1) return;\
@@ -30,7 +30,7 @@ void heaptype##SiftDown(struct heaptype *heap, int idx){\
         heap->heap[idx] = heap->heap[RIGHT(idx)];\
         heap->heap[RIGHT(idx)] = tmp;\
         heaptype##SiftDown(heap, RIGHT(idx));\
-    }
+    }\
     else if(LEFT(idx) <= heap->count &&\
         value_func(heap->heap[LEFT(idx)]) comp value_func(heap->heap[idx])){\
         valuetype tmp = heap->heap[idx];\
