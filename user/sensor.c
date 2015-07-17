@@ -7,42 +7,15 @@
 #include <user/train.h> // halting
 #include <user/trackserver.h>
 #include <user/nameserver.h>
+#include <user/track_data.h>
+#include <user/pathfinding.h>
 
 #define NUM_SENSORS         5
 #define SENSOR_RESET        192
 #define SENSOR_QUERY        (128 + NUM_SENSORS)
 #define NUM_RECENT_SENSORS  7
 #define SENSOR_BUF_SIZE     128
-
-static char *trackA =
-"\033[2;44H"    "-- Track A --"
-"\033[4;24H"    "---------12--11----------------------------------\\"
-"\033[5;24H"    "-------4/   /  ---------13--------10-----------\\  \\"
-"\033[6;24H"    "          14--/           \\   |  /              \\  \\"
-"\033[7;24H"    "          /                \\  |/155              \\--9"
-"\033[8;24H"    "         |                156\\|                    |"
-"\033[9;24H"    "         |                    |\\154                |"
-"\033[10;24H"   "          \\               153/|  \\               /--8"
-"\033[11;24H"   "          15--\\            /  |   \\             /  /"
-"\033[12;24H"   "--------\\   \\  ----------S---------S-----------/  /"
-"\033[13;24H"   "---------1\\  \\---------6------------7------------/"
-"\033[14;24H"   "-----------2\\           \\          /"
-"\033[15;24H"   "-------------3-----------18--------5------------";
-
-static char *trackB =
-"\033[2;44H"    "-- Track B --"
-"\033[4;24H"    "        ------------5--------18-----------3-------------"
-"\033[5;24H"    "                    /          \\           \\2-----------"
-"\033[6;24H"    "      /------------7------------6---------\\  \\1---------"
-"\033[7;24H"    "     /  /-----------17--------16---------  \\   \\        "
-"\033[8;24H"    "    /  /              \\  |  /            \\--15  \\-\\     "
-"\033[9;24H"    "   8--/                \\ |/153               \\     -\\   "
-"\033[10;24H"   "   |                 154\\|                    |     |   "
-"\033[11;24H"   "   |                     |\\156                |     |   "
-"\033[12;24H"   "  9--\\               155/|  \\                /    /-/   "
-"\033[13;24H"   "    \\  \\              /  |   \\           /--14   /      "
-"\033[14;24H"   "     \\  \\-----------10--------13---------  /   /4-------"
-"\033[15;24H"   "      \\----------------------------------11--12---------";
+#define MAX_NUM_ENGINEER    2
 
 static struct {
     char sensor1_group;
@@ -168,18 +141,6 @@ void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2) {
     time_sensor_pair.sensor2_offset = sensor2->offset;
 }
 
-void drawTrackLayoutGraph(char which_track) {
-    String s;
-    sinit(&s);
-    sputstr(&s, VT_CURSOR_SAVE);
-    vt_pos(&s, VT_TRACK_GRAPH_ROW, VT_TRACK_GRAPH_COL);
-    sputstr(&s, VT_RESET);
-    sputstr(&s, which_track == 'a' ? trackA : trackB);
-    sputstr(&s, VT_RESET);
-    sputstr(&s, VT_CURSOR_RESTORE);
-    PutString(COM2, &s);
-}
-
 void pushSensorData(SensorMessage *message, IBuffer *sensorBuf, IBuffer *timeBuf)
 {
     char data = message->data;
@@ -272,6 +233,30 @@ void sensorWorker()
     }
 }
 
+typedef struct {
+    int prevTime;
+    track_node *prevSensor;
+} Attribution;
+
+static inline
+void initAttribution(int courierTids[], Attribution attrs[], int size)
+{
+    for (int i = 0; i < size; i++)
+    {
+        courierTids[i] = 0;
+        attrs[i].prevTime = 0;
+        attrs[i].prevSensor = 0;
+    }
+}
+
+// Given the tid of a courier, populate the courierList if needed, and
+// return the index.
+static inline
+int getIndex(int tid, int courierTids[], int size)
+{
+    return 0;
+}
+
 void sensorServer()
 {
     int tid = 0;
@@ -283,6 +268,10 @@ void sensorServer()
     IBuffer timeBuf;
     IBufferInit(&sensorBuf, sb, SENSOR_BUF_SIZE);
     IBufferInit(&timeBuf, tb, SENSOR_BUF_SIZE);
+
+    int courierTids[MAX_NUM_ENGINEER];
+    Attribution attrs[MAX_NUM_ENGINEER];
+    initAttribution(courierTids, attrs, MAX_NUM_ENGINEER);
 
     RegisterAs("sensorServer");
 
@@ -324,6 +313,10 @@ void sensorServer()
                 // Which engineer's sensor courier is this?
                 // how many trains are there?
 
+                // given a tid, (added it to list and)
+                // get the index in our courierList
+                getIndex(tid, courierTids, MAX_NUM_ENGINEER);
+
                 if (IBufferIsEmpty(&sensorBuf))
                 {
                     engieCourierTid = tid;
@@ -347,9 +340,6 @@ void sensorServer()
 }
 
 void initSensor() {
-    assert(STR_MAX_LEN > strlen(trackA));
-    assert(STR_MAX_LEN > strlen(trackB));
-
     recently_read = 0;
     halt_train_number = 0;
     halt_reading.group = halt_reading.offset = 0;

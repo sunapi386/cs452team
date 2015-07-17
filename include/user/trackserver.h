@@ -33,9 +33,8 @@ typedef struct {
 } TrackRequest;
 
 
-// Called by sensor task to update the controller on latest fired sensor
-void sensorTrigger(char group, int offset);
-
+void drawTrackLayoutGraph(char track);
+void loadTrackStructure(char which_track);
 void initTrackServer();
 
 #endif  //__TRACKSERVER_H

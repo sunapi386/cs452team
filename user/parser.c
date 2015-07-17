@@ -6,7 +6,6 @@
 #include <user/turnout.h> // to handle sw
 #include <user/train.h> // to handle sw
 #include <kernel/task.h> // to call taskDisplayAll()
-#include <user/sensor.h> // drawTrackLayoutGraph
 #include <user/engineer.h> // createEngineer
 #include <user/trackserver.h> // since the typedef for SensorData is moved there..
 #include <debug.h>
@@ -801,7 +800,7 @@ static bool parse(Parser *p, char c) {
             case K_which_track: {
                 char which_track = p->data.track.which_track;
                 sputstr(&disp_msg, "Loading track");
-                engineerLoadTrackStructure(which_track);
+                loadTrackStructure(which_track);
                 break;
             }
             case C_loops: {

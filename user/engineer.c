@@ -21,6 +21,8 @@
 #define LOC_MESSAGE_LANDMARK 22
 #define LOC_MESSAGE_SENSOR   23
 
+extern track_node g_track[TRACK_MAX];
+
 typedef struct LocationMessage {
     int type;
     int error;
@@ -42,16 +44,20 @@ typedef enum {
 
 static int active_train = -1; // static for now, until controller is implemented
 static int timeDeltas[NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
-static track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
 static int engineerTaskId = -1;
 
 static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
 }
 
-// static bool activated_engineers[NUM_TRAINS];
+static inline int indexFromSensorUpdate(SensorUpdate *update) {
+    return 16 * (update->sensor >> 8) + (update->sensor & 0xff) - 1;
+}
 
-// Courier: sensorServer -> engineer
+/*
+    Sensor Courier
+*/
+
 static void sensorCourier() {
     int engineer = MyParentTid();
     int sensor = WhoIs("sensorServer");
@@ -70,9 +76,9 @@ static void sensorCourier() {
     }
 }
 
-static inline int indexFromSensorUpdate(SensorUpdate *update) {
-    return 16 * (update->sensor >> 8) + (update->sensor & 0xff) - 1;
-}
+/*
+    Location Worker
+*/
 
 static inline void initializeScreen()
 {
@@ -187,6 +193,10 @@ void locationWorker()
     }
 }
 
+/*
+    Command Worker
+*/
+
 void commandWorker()
 {
     int pid = MyParentTid();
@@ -240,6 +250,10 @@ executeCommand:
         }
     }
 }
+
+/*
+    Engineer
+*/
 
 void engineerTask() {
     int tid = 0;
@@ -662,17 +676,6 @@ void engineerReverse() {
     EngineerMessage message;
     message.type = setReverse;
     Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
-}
-
-void engineerLoadTrackStructure(char which_track) {
-    // draw track
-    drawTrackLayoutGraph(which_track);
-    if(which_track == 'a') {
-        init_tracka(g_track);
-    }
-    else {
-        init_trackb(g_track);
-    }
 }
 
 void engineerXMarksTheSpot(int index, int offset) {
