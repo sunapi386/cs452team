@@ -112,6 +112,22 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     return path_length;
 }
 
+int shortestRoute(track_node *src, track_node *dst, PathBuffer *pathb) {
+    PathBuffer pb[4];
+    planRoute(src, dst, &pb[0]);
+    planRoute(src, dst->reverse, &pb[1]);
+    planRoute(src->reverse, dst, &pb[2]);
+    planRoute(src->reverse, dst->reverse, &pb[3]);
+
+    PathBuffer *lowest = &pb[0];
+    for (int i = 1; i < 4; i++)
+        if (lowest->length > pb[i].length)
+            lowest = &pb[i];
+
+    memcpy(pathb, lowest, sizeof(PathBuffer));
+    return lowest->length;
+}
+
 void printPath(PathBuffer *pb) {
     String s;
     sinit(&s);

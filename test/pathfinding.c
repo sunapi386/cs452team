@@ -138,6 +138,22 @@ void printPath(PathBuffer *pb) {
     printf("\n");
 }
 
+int shortestRoute(track_node *src, track_node *dst, PathBuffer *pathb) {
+    PathBuffer pb[4];
+    planRoute(src, dst, &pb[0]);
+    planRoute(src, dst->reverse, &pb[1]);
+    planRoute(src->reverse, dst, &pb[2]);
+    planRoute(src->reverse, dst->reverse, &pb[3]);
+
+    PathBuffer *lowest = &pb[0];
+    for (int i = 1; i < 4; i++)
+        if (lowest->length > pb[i].length)
+            lowest = &pb[i];
+
+    memcpy(pathb, lowest, sizeof(PathBuffer));
+    return lowest->length;
+}
+
 track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
 
 // compile with: gcc track_data.c pathfinding.c -o a.out
@@ -156,7 +172,8 @@ int main(int argc, char const *argv[]) {
     track_node *src = &g_track[from];
     track_node *dst = &g_track[to];
     PathBuffer pb;
-    int ret = planRoute(src, dst, &pb);
+    // int ret = planRoute(src, dst, &pb);
+    int ret = shortestRoute(src, dst, &pb);
     printPath(&pb);
     printf("%d\n", ret);
     return 0;
