@@ -363,6 +363,8 @@ void sensorServer()
                             // TODO: check for timeout
                             // if (timestamp - delta blah blah)
 
+                            // TODO: handle initial attribution
+
                             // compute effective primary & secondary claims
                             if (attr->primaryClaim == sensorIndex)
                             {
@@ -428,36 +430,18 @@ void sensorServer()
             }
             case MESSAGE_SENSOR_COURIER:
             {
-                // Sensor courier is
+                // get the attribution pointer
+                Attribution *attribution = getAttribution(tid, &numEngineer, attrs);
+                assert(attribution != 0);
 
-                // // Who's courier is this?
-                // int index = getIndex(tid, courierTids, &numEngineer);
-                // assert(index >= 0 && index < MAX_NUM_COURIER);
-
-                // // the message from sensor courier contains:
-                // // current velocity
-
-                // // if the sensor buffer is empty, block thecourier
-
-                // // else
-
-                // if (IBufferIsEmpty(&sensorBuf))
-                // {
-                //     engieCourierTid = tid;
-                // }
-                // else
-                // {
-                //     // Pop a sensor and a timestamp then reply to the engineer
-                //     SensorUpdate su;
-                //     su.sensor = IBufferPop(&sensorBuf);
-                //     su.time = IBufferPop(&timeBuf);
-
-                //     Reply(tid, &su, sizeof(su));
-                // }
-                // break;
+                // set the primary and secondary claim
+                attribution->isBlocked = 1;
+                attribution->primaryClaim = req.data.sc.primaryClaim;
+                attribution->secondaryClaim = req.data.sc.secondaryClaim;
+                break;
             }
             default:
-                assert(0);
+                uassert(0);
                 break;
         }
     }

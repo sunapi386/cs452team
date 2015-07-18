@@ -17,11 +17,18 @@ typedef struct SensorUpdate {
     int time;
 } SensorUpdate;
 
+// sensorCourier ->
+typedef struct {
+    int primaryClaim;
+    int secondaryClaim;
+} SensorClaim;
+
 typedef struct SensorRequest {
     char type;
     union {
         SensorMessage sm;
         SensorUpdate su;
+        SensorClaim sc;
     } data;
 } SensorRequest;
 
