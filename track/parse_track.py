@@ -323,6 +323,7 @@ struct track_edge {
 
 struct track_node {
     int idx;              /* index into the track table */
+    int owner;            /* train_num whoever owns this, -1 otherwise */
     const char *name;
     node_type type;
     int num;              /* sensor or switch number */
@@ -361,6 +362,7 @@ void %s(track_node *track) {
   for nd in tracks[fun].nodes:
     idx = nd.index
     fh.write("  track[%d].idx = %d;\n" % (idx, idx))
+    fh.write("  track[%d].owner = -1;\n" % (idx))
     fh.write("  track[%d].name = \"%s\";\n" % (idx, nd.name))
     nodetype = 'NODE_' + nd.nodetype.upper()
     fh.write("  track[%d].type = %s;\n" % (idx, nodetype))

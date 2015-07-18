@@ -134,6 +134,9 @@ void printResetTurnouts() {
 
 static int trackServerId;
 static void turnoutTask() {
+    /* Commenting out turnout task because trackserver no longer supports this.
+    In the future the engineer would be communicating here and switching
+    his own turnouts.
     printResetTurnouts();
     trackServerId = WhoIs("trackServer");
     assert(trackServerId >= 0);
@@ -150,7 +153,7 @@ static void turnoutTask() {
 
         setTurnout(turnout_number, direction);
     }
-
+    */
 }
 
 bool turnoutIsCurved(int turnout_number) {
@@ -160,5 +163,5 @@ bool turnoutIsCurved(int turnout_number) {
 }
 
 void initTurnout() {
-    Create(PRIORITY_TURNOUT_TASK, turnoutTask);
+    // Create(PRIORITY_TURNOUT_TASK, turnoutTask);
 }
