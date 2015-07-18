@@ -31,7 +31,7 @@ void heaptype##SiftDown(struct heaptype *heap, int idx){\
         heap->heap[RIGHT(idx)] = tmp;\
         heaptype##SiftDown(heap, RIGHT(idx));\
     }\
-    else if(LEFT(idx) <= heap->count &&\
+    if(LEFT(idx) <= heap->count &&\
         value_func(heap->heap[LEFT(idx)]) comp value_func(heap->heap[idx])){\
         valuetype tmp = heap->heap[idx];\
         heap->heap[idx] = heap->heap[LEFT(idx)];\
@@ -41,13 +41,13 @@ void heaptype##SiftDown(struct heaptype *heap, int idx){\
 }\
 \
 void heaptype##Push(struct heaptype *heap, valuetype value){\
-    assert(heap->count < (1<<height));\
+    uassert(heap->count < (1<<height));\
     heap->heap[++heap->count] = value;\
     heaptype##SiftUp(heap, heap->count);\
 }\
 \
 valuetype heaptype##Pop(struct heaptype *heap){\
-    assert(heap->count > 0);\
+    uassert(heap->count > 0);\
     valuetype ret = heap->heap[1];\
     heap->heap[1] = heap->heap[heap->count--];\
     heaptype##SiftDown(heap, 1);\

@@ -3,6 +3,7 @@
 #include <user/turnout.h>
 #include <utils.h>
 #include <heap.h>
+#include <user/syscall.h>
 
 typedef struct PathNode {
     struct PathNode *from;
@@ -13,7 +14,7 @@ typedef struct PathNode {
 /**
 Because there is no malloc, a large buffer is preallocated for PathNode.
 */
-#define EXPLORE_SIZE 1000
+#define EXPLORE_SIZE 4096
 static PathNode g_nodes[EXPLORE_SIZE];
 
 static inline void setPathNode(PathNode *p, PathNode *f, track_node *t, int c) {
@@ -26,7 +27,7 @@ static inline int nodeCost(PathNode *pn) {
     return pn->cost;
 }
 
-DECLARE_HEAP(PQHeap, PathNode*, nodeCost, 8, <);
+DECLARE_HEAP(PQHeap, PathNode*, nodeCost, 12, <);
 
 /**
 Returns the number of track_node pointers to from src to dst.
@@ -60,16 +61,21 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         uassert(num_nodes < EXPLORE_SIZE);
 
         PathNode *popd = PQHeapPop(&pq);
+        if (dst == popd->tn) {
+            end = popd;
+            break;
+        }
+
+        if (popd->tn->type == NODE_EXIT) {
+            continue;
+        }
+
         if (popd->tn->type == NODE_BRANCH) {
             PathNode *straight = &g_nodes[num_nodes++];
             setPathNode(straight,
                         popd,
                         popd->tn->edge[DIR_STRAIGHT].dest,
                         popd->cost + popd->tn->edge[DIR_STRAIGHT].dist);
-            if (dst == popd->tn->edge[DIR_STRAIGHT].dest) {
-                end = straight;
-                break;
-            }
             PQHeapPush(&pq, straight);
 
             PathNode *curved = &g_nodes[num_nodes++];
@@ -78,10 +84,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd->tn->edge[DIR_CURVED].dest,
                         popd->cost + popd->tn->edge[DIR_CURVED].dist);
 
-            if (dst == popd->tn->edge[DIR_CURVED].dest) {
-                end = curved;
-                break;
-            }
             PQHeapPush(&pq, curved);
         }
         else {
@@ -90,10 +92,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->edge[DIR_AHEAD].dest,
                         popd->cost + popd->tn->edge[DIR_AHEAD].dist);
-            if (dst == popd->tn->edge[DIR_AHEAD].dest) {
-                end = ahead;
-                break;
-            }
             PQHeapPush(&pq, ahead);
         }
     }
@@ -114,6 +112,20 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     return path_length;
 }
 
+void printPath(PathBuffer *pb) {
+    String s;
+    sinit(&s);
+    sputstr(&s, "Path:\n\r");
+    for (int i = 0; i < pb->length; i++) {
+        sputstr(&s, "-> [");
+        sputstr(&s, pb->tracknodes[i]->name);
+        sputstr(&s, ",");
+        sputint(&s, pb->tracknodes[i]->idx, 10);
+        sputstr(&s, "] ");
+    }
+    sputstr(&s, "\n\r");
+    PutString(COM2, &s);
+}
 
 track_edge *getNextEdge(track_node *node) {
     if(node->type == NODE_BRANCH) {

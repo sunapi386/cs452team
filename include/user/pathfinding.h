@@ -22,7 +22,7 @@ typedef struct PathBuffer {
 
 
 int planRoute(track_node *start, track_node *end, PathBuffer *pb);
-
+void printPath(PathBuffer *pb);
 int distanceBetween(track_node *from, track_node *to);
 track_edge *getNextEdge(track_node *node);
 track_node *getNextNode(track_node *currentNode);
