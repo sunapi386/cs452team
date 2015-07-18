@@ -31,7 +31,7 @@ void heaptype##SiftDown(struct heaptype *heap, int idx){\
         heap->heap[RIGHT(idx)] = tmp;\
         heaptype##SiftDown(heap, RIGHT(idx));\
     }\
-    else if(LEFT(idx) <= heap->count &&\
+    if(LEFT(idx) <= heap->count &&\
         value_func(heap->heap[LEFT(idx)]) comp value_func(heap->heap[idx])){\
         valuetype tmp = heap->heap[idx];\
         heap->heap[idx] = heap->heap[LEFT(idx)];\

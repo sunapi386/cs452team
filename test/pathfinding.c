@@ -30,7 +30,7 @@ typedef struct PathNode {
 /**
 Because there is no malloc, a large buffer is preallocated for PathNode.
 */
-#define EXPLORE_SIZE 1000
+#define EXPLORE_SIZE 4096
 static PathNode g_nodes[EXPLORE_SIZE];
 
 static inline void setPathNode(PathNode *p, PathNode *f, track_node *t, int c) {
@@ -43,7 +43,7 @@ static inline int nodeCost(PathNode *pn) {
     return pn->cost;
 }
 
-DECLARE_HEAP(PQHeap, PathNode*, nodeCost, 8, <);
+DECLARE_HEAP(PQHeap, PathNode*, nodeCost, 12, <);
 
 /**
 Returns the number of track_node pointers to from src to dst.
@@ -77,16 +77,21 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         // uassert(num_nodes < EXPLORE_SIZE);
 
         PathNode *popd = PQHeapPop(&pq);
+        if (dst == popd->tn) {
+            end = popd;
+            break;
+        }
+
+        if (popd->tn->type == NODE_EXIT) {
+            continue;
+        }
+
         if (popd->tn->type == NODE_BRANCH) {
             PathNode *straight = &g_nodes[num_nodes++];
             setPathNode(straight,
                         popd,
                         popd->tn->edge[DIR_STRAIGHT].dest,
                         popd->cost + popd->tn->edge[DIR_STRAIGHT].dist);
-            if (dst == popd->tn->edge[DIR_STRAIGHT].dest) {
-                end = straight;
-                break;
-            }
             PQHeapPush(&pq, straight);
 
             PathNode *curved = &g_nodes[num_nodes++];
@@ -95,10 +100,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd->tn->edge[DIR_CURVED].dest,
                         popd->cost + popd->tn->edge[DIR_CURVED].dist);
 
-            if (dst == popd->tn->edge[DIR_CURVED].dest) {
-                end = curved;
-                break;
-            }
             PQHeapPush(&pq, curved);
         }
         else {
@@ -107,10 +108,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->edge[DIR_AHEAD].dest,
                         popd->cost + popd->tn->edge[DIR_AHEAD].dist);
-            if (dst == popd->tn->edge[DIR_AHEAD].dest) {
-                end = ahead;
-                break;
-            }
             PQHeapPush(&pq, ahead);
         }
     }
@@ -134,7 +131,9 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
 void printPath(PathBuffer *pb) {
     printf("Path:\n");
     for (int i = 0; i < pb->length; i++) {
-        printf("-> %s ", pb->tracknodes[i]->name);
+        printf("-> [%s,%d] ",
+            pb->tracknodes[i]->name,
+            pb->tracknodes[i]->idx);
     }
     printf("\n");
 }
@@ -149,7 +148,7 @@ int main(int argc, char const *argv[]) {
     }
     int from = atoi(argv[1]);
     int to = atoi(argv[2]);
-    if (0 <= from && from <= 144 && 0 <= to && to <= 144) {
+    if (! (0 <= from && from <= 144 && 0 <= to && to <= 144)) {
         printf("Bad node number %d %d", from, to);
         return -1;
     }
