@@ -132,8 +132,8 @@ void printResetTurnouts() {
     }
 }
 
-static int trackServerId;
-static void turnoutTask() {
+// static int trackServerId;
+// static void turnoutTask() {
     /* Commenting out turnout task because trackserver no longer supports this.
     In the future the engineer would be communicating here and switching
     his own turnouts.
@@ -154,7 +154,7 @@ static void turnoutTask() {
         setTurnout(turnout_number, direction);
     }
     */
-}
+// }
 
 bool turnoutIsCurved(int turnout_number) {
     // checking a bit: bit = (number >> x) & 1;
