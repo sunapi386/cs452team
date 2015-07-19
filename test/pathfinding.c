@@ -18,6 +18,7 @@ Array of track_node indecies, ordered from destination (0) to source (length).
 typedef struct PathBuffer {
     int train_num;
     track_node *tracknodes[MAX_PATH_LENGTH];
+    int cost;
     int length;
 } PathBuffer;
 
@@ -26,6 +27,7 @@ typedef struct PathNode {
     struct PathNode *from;
     track_node *tn;
     int cost;
+    int length;
 } PathNode;
 
 /**
@@ -34,10 +36,12 @@ Because there is no malloc, a large buffer is preallocated for PathNode.
 #define EXPLORE_SIZE 4096
 static PathNode g_nodes[EXPLORE_SIZE];
 
-static inline void setPathNode(PathNode *p, PathNode *f, track_node *t, int c) {
+static inline
+void setPathNode(PathNode *p, PathNode *f, track_node *t, int c, int l) {
     p->from = f;
     p->tn = t;
     p->cost = c;
+    p->length = l;
 }
 
 static inline int nodeCost(PathNode *pn) {
@@ -68,7 +72,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     */
     PathNode *start = &g_nodes[num_nodes++];
     PathNode *end;
-    setPathNode(start, 0, src, 0);
+    setPathNode(start, 0, src, 0, 0);
 
     PQHeap pq;
     pq.count = 0;
@@ -78,22 +82,54 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         // uassert(num_nodes < EXPLORE_SIZE);
 
         PathNode *popd = PQHeapPop(&pq);
+        if (! popd) {
+            /**
+            Null pointer was popped, so no path.
+            */
+            printf("No path\n");
+            pb->cost = -1;
+            pb->length = -1;
+            return -1;
+        }
+
+        if (popd->from) {
+            printf("popd from %s, cur %s, cost %d, len %d\n",
+                popd->from->tn->name, popd->tn->name, popd->cost, popd->length);
+        }
+
         if (dst == popd->tn) {
             end = popd;
             break;
         }
 
+        // if (popd->length > 18) {
+            /**
+            No path is longer than this length.
+            */
+            // continue;
+        // }
+
         if (popd->tn->type == NODE_EXIT) {
+            /**
+            Exit nodes do not lead anywhere.
+            */
             continue;
         }
 
+
         if (popd->tn->owner != -1 && popd->tn->owner != pb->train_num) {
             /**
-            Make the cost effectively infinite high, so it is not considered.
-            77950 is sum of all distances on tracks A & B.
-            TODO: but even with cost very high it is possible to get a path.
+            Reached a node not owned by current train.
             */
-            popd->cost += 77950;
+            continue;
+        }
+
+        if (popd->length > 22) {
+            /**
+            Stop checking this path early, longest path is
+            18 for track A and 22 for track B.
+            */
+            continue;
         }
 
         if (popd->tn->type == NODE_BRANCH) {
@@ -101,14 +137,16 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             setPathNode(straight,
                         popd,
                         popd->tn->edge[DIR_STRAIGHT].dest,
-                        popd->cost + popd->tn->edge[DIR_STRAIGHT].dist);
+                        popd->cost + popd->tn->edge[DIR_STRAIGHT].dist,
+                        popd->length + 1);
             PQHeapPush(&pq, straight);
 
             PathNode *curved = &g_nodes[num_nodes++];
             setPathNode(curved,
                         popd,
                         popd->tn->edge[DIR_CURVED].dest,
-                        popd->cost + popd->tn->edge[DIR_CURVED].dist);
+                        popd->cost + popd->tn->edge[DIR_CURVED].dist,
+                        popd->length + 1);
 
             PQHeapPush(&pq, curved);
         }
@@ -117,7 +155,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             setPathNode(ahead,
                         popd,
                         popd->tn->edge[DIR_AHEAD].dest,
-                        popd->cost + popd->tn->edge[DIR_AHEAD].dist);
+                        popd->cost + popd->tn->edge[DIR_AHEAD].dist,
+                        popd->length + 1);
             PQHeapPush(&pq, ahead);
         }
     }
@@ -134,6 +173,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         at = at->from;
     };
     pb->tracknodes[path_length++] = at->tn;
+    pb->cost = end->cost;
     pb->length = path_length;
 
     /**
@@ -149,7 +189,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
 }
 
 void printPath(PathBuffer *pb) {
-    printf("Path:\n");
+    printf("Path (%d):\n", pb->cost);
     for (int i = 0; i < pb->length; i++) {
         printf("-> [%s,%d] ",
             pb->tracknodes[i]->name,
@@ -215,8 +255,8 @@ int main(int argc, char const *argv[]) {
     track_node *dst = &g_track[to];
     PathBuffer pb;
     pb.train_num = 66;
-    int ret = planRoute(src, dst, &pb);
-    // int ret = shortestRoute(src, dst, &pb);
+    // int ret = planRoute(src, dst, &pb);
+    int ret = shortestRoute(src, dst, &pb);
     printPath(&pb);
     printf("%d\n", ret);
     return 0;
