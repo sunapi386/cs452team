@@ -40,6 +40,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     pb->length = 0;
     memset(g_nodes, 0, EXPLORE_SIZE);
     int num_nodes = 0;
+    int train_num = pb->train_num;
 
     /**
     At any time in the PQ, it only contains the horizon PathNode.
@@ -68,6 +69,14 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
 
         if (popd->tn->type == NODE_EXIT) {
             continue;
+        }
+
+        if (popd->tn->owner != -1 && popd->tn->owner != train_num) {
+            /**
+            Make the cost effectively infinite high, so it is not considered.
+            77950 is sum of all distances on tracks A & B.
+            */
+            popd->cost += 77950;
         }
 
         if (popd->tn->type == NODE_BRANCH) {

@@ -16,6 +16,7 @@ PathBuffer for passing around paths.
 Array of track_node indecies, ordered from destination (0) to source (length).
 */
 typedef struct PathBuffer {
+    int train_num;
     track_node *tracknodes[MAX_PATH_LENGTH];
     int length;
 } PathBuffer;
@@ -86,6 +87,15 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             continue;
         }
 
+        if (popd->tn->owner != -1 && popd->tn->owner != pb->train_num) {
+            /**
+            Make the cost effectively infinite high, so it is not considered.
+            77950 is sum of all distances on tracks A & B.
+            TODO: but even with cost very high it is possible to get a path.
+            */
+            popd->cost += 77950;
+        }
+
         if (popd->tn->type == NODE_BRANCH) {
             PathNode *straight = &g_nodes[num_nodes++];
             setPathNode(straight,
@@ -118,12 +128,22 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     */
     PathNode *at = end;
     int path_length = 0;
-    do {
+    while (at != start) {
         // uassert(path_length < MAX_PATH_LENGTH);
         pb->tracknodes[path_length++] = at->tn;
         at = at->from;
-    } while (at != start);
+    };
+    pb->tracknodes[path_length++] = at->tn;
     pb->length = path_length;
+
+    /**
+    A path from start to end is easier to read, so we'll reverse in place.
+    */
+    for (int i = 0, j = path_length - 1; i < j; i++, j--) {
+        track_node *c = pb->tracknodes[i];
+        pb->tracknodes[i] = pb->tracknodes[j];
+        pb->tracknodes[j] = c;
+    }
 
     return path_length;
 }
@@ -156,24 +176,47 @@ int shortestRoute(track_node *src, track_node *dst, PathBuffer *pathb) {
 
 track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
 
+typedef enum {false = 0, true = 1} bool;
+bool valid_node(int n) {
+    return 0 <= n && n <= 144;
+}
+
 // compile with: gcc track_data.c pathfinding.c -o a.out
 int main(int argc, char const *argv[]) {
-    if (argc != 3) {
-        printf("Usage: %s <from node number> <to node number>", argv[0]);
-        return -1;
+    int from, to;
+    int blocked = -1;
+    int blocked2 = -1;
+    switch(argc) {
+        case 5:
+            blocked2 = atoi(argv[4]);
+        case 4:
+            blocked = atoi(argv[3]);
+        case 3:
+            to = atoi(argv[2]);
+            from = atoi(argv[1]);
+            break;
+        default:
+            printf("Usage: %s [from to [blocked [blocked]]]", argv[0]);
+            return -1;
     }
-    int from = atoi(argv[1]);
-    int to = atoi(argv[2]);
-    if (! (0 <= from && from <= 144 && 0 <= to && to <= 144)) {
+    if (! (valid_node(from) && valid_node(to))) {
         printf("Bad node number %d %d", from, to);
         return -1;
     }
     init_tracka(g_track);
+    printf("Loaded track A\n");
+    if (blocked != -1 && valid_node(blocked)) {
+        g_track[blocked].owner = 90; /* 90 is a non-existant train number */
+    }
+    if (blocked2 != -1 && valid_node(blocked2)) {
+        g_track[blocked2].owner = 90; /* 90 is a non-existant train number */
+    }
     track_node *src = &g_track[from];
     track_node *dst = &g_track[to];
     PathBuffer pb;
-    // int ret = planRoute(src, dst, &pb);
-    int ret = shortestRoute(src, dst, &pb);
+    pb.train_num = 66;
+    int ret = planRoute(src, dst, &pb);
+    // int ret = shortestRoute(src, dst, &pb);
     printPath(&pb);
     printf("%d\n", ret);
     return 0;

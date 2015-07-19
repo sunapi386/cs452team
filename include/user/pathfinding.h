@@ -16,6 +16,7 @@ PathBuffer for passing around paths.
 Array of track_node indecies, ordered from destination (0) to source (length).
 */
 typedef struct PathBuffer {
+    int train_num;   /* Engineer: train_number for reservation planning */
     track_node *tracknodes[MAX_PATH_LENGTH];
     int length;
 } PathBuffer;

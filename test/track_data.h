@@ -27,6 +27,7 @@ struct track_edge {
 
 struct track_node {
     int idx;              /* index into the track table */
+    int owner;            /* train_num whoever owns this, -1 otherwise */
     const char *name;
     node_type type;
     int num;              /* sensor or switch number */
