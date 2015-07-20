@@ -3,11 +3,11 @@
 #include <user/train.h>
 #include <user/syscall.h>
 
-#define REVERSE   15
-#define STRAIGHT 33
-#define CURVED 34
+#define REVERSE      15
+#define STRAIGHT     33
+#define CURVED       34
 #define SOLENOID_OFF 32
-#define NUM_TRAINS 80
+#define NUM_TRAINS   80
 
 static unsigned short speeds[NUM_TRAINS];
 

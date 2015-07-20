@@ -21,7 +21,6 @@
 #define LOC_MESSAGE_LANDMARK 22
 #define LOC_MESSAGE_SENSOR   23
 
-extern track_node g_track[TRACK_MAX];
 
 typedef struct LocationMessage {
     int type;
@@ -35,16 +34,16 @@ typedef struct LocationMessage {
 } LocationMessage;
 
 typedef enum {
-    Init = 0,           // initial state
-    Stop,               // stop command issued
-    Running,            // running
-    Reversing,  // reverse stage 2: reverse issued
-    Decelerating
+    Init = 0,       // initial state
+    CouriersCreated,   // couriers created
+    Stop,           // stop command issued
+    Running,        // running
+    Reversing,      // reverse issued
+    Decelerating    // comming to a stop
 } TrainState;
 
-static int active_train = -1; // static for now, until controller is implemented
-static int timeDeltas[NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
-static int engineerTaskId = -1;
+extern track_node g_track[TRACK_MAX];
+static unsigned int timeDeltas[MAX_NUM_ENGINEER][NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
 
 static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
@@ -251,11 +250,15 @@ executeCommand:
     Engineer
 */
 
-void engineerTask() {
+void engineerServer()
+{
     int tid = 0;
     int locationWorkerTid = 0;
     int commandWorkerTid = 0;
 
+    int trainNumber = 0;
+    int initialSensorIndex = 0;
+    int timeDeltas[NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
     TrainState state = Init;
 
     bool isForward = true;
@@ -287,11 +290,6 @@ void engineerTask() {
     LocationMessage locationMessage;
     EngineerMessage message;
 
-    // Create child tasks
-    Create(PRIORITY_SENSOR_COURIER, sensorCourier);
-    Create(PRIORITY_SENSOR_COURIER, commandWorker);
-    locationWorkerTid = Create(PRIORITY_SENSOR_COURIER, locationWorker);
-
     // All sensor reports with timestamp before this time are invalid
     int creationTime = Time();
 
@@ -304,7 +302,8 @@ void engineerTask() {
         {
             case updateLocation:
             {
-                if (state == Init)
+                uassert(state != Init);
+                if (state == CouriersCreated)
                 {
                     // If we are just starting, block until we reach the first sensor
                     break;
@@ -373,7 +372,7 @@ void engineerTask() {
                         // issue stop command
                         Command cmd = {
                             .type = COMMAND_SET_SPEED,
-                            .trainNumber = active_train,
+                            .trainNumber = trainNumber,
                             .trainSpeed = 0,
                         };
 
@@ -449,8 +448,10 @@ void engineerTask() {
                 }
                 break;
             }
-
+            
             case updateSensor: {
+                uassert(state != Init);
+                
                 // unblock sensor courier
                 Reply(tid, 0, 0);
 
@@ -513,7 +514,7 @@ void engineerTask() {
                 last_update.time = sensor_update.time;
                 last_update.sensor = sensor_update.sensor;
 
-                if (state == Init)
+                if (state == CouriersCreated)
                 {
                     state = speed ? Running : Stop;
 
@@ -527,6 +528,7 @@ void engineerTask() {
 
             case xMark:
             {
+                uassert(state != Init);
                 Reply(tid, 0, 0);
                 targetNode = &g_track[message.data.xMark.index];
                 targetOffset = message.data.xMark.offset;
@@ -535,11 +537,12 @@ void engineerTask() {
 
             case setSpeed:
             {
+                uassert(state != Init);
                 Reply(tid, 0, 0);
 
                 Command command = {
                     .type = COMMAND_SET_SPEED,
-                    .trainNumber = (char)(active_train),
+                    .trainNumber = (char)(trainNumber),
                     .trainSpeed = (char)(message.data.setSpeed.speed)
                 };
 
@@ -552,7 +555,7 @@ void engineerTask() {
                 {
                     if (enqueueCommand(&commandQueue, &command) != 0)
                     {
-                        printf(COM2, "[engineerTask] Command buffer overflow!\n\r");
+                        printf(COM2, "[engineerTaskengineerServer] Command buffer overflow!\n\r");
                         uassert(0);
                     }
                 }
@@ -561,11 +564,12 @@ void engineerTask() {
 
             case setReverse:
             {
+                uassert(state != Init);
                 Reply(tid, 0, 0);
 
                 Command command = {
                     .type = COMMAND_REVERSE,
-                    .trainNumber = active_train,
+                    .trainNumber = trainNumber,
                     .trainSpeed = speed
                 };
 
@@ -578,7 +582,7 @@ void engineerTask() {
                 {
                     if (enqueueCommand(&commandQueue, &command) != 0)
                     {
-                        printf(COM2, "[engineerTask] Command buffer overflow!\n\r");
+                        printf(COM2, "[engineerServer] Command buffer overflow!\n\r");
                         uassert(0);
                     }
                 }
@@ -588,6 +592,7 @@ void engineerTask() {
             // Command worker looking for work
             case commandWorkerRequest:
             {
+                uassert(state != Init);
                 if (isCommandQueueEmpty(&commandQueue))
                 {
                     // case 1: no work; block it
@@ -633,12 +638,46 @@ void engineerTask() {
                 prevSpeed = speed;
                 speed = (char)(message.data.setSpeed.speed);
                 printf(COM2, "Speed set: %d, currentState: %d\n\r", speed, state);
-                if      (state == Init || state == Reversing) break;
+                if      (state == CouriersCreated || state == Reversing) break;
+                else if (state == Stop && speed == 0) break;
                 else if (speed == 0) state = Decelerating;
                 else    state = Running;
                 break;
             }
 
+            case initialize:
+            {
+                // unblock parser
+                Reply(tid, 0, 0);
+                uassert(state == Init && trainNumber == 0 && initialSensorIndex == 0);
+                
+                // assign inital values: train number and inital sensor index
+                trainNumber = message.data.initialize.trainNumber;
+                initialSensorIndex = message.data.initialize.sensorIndex;
+    
+                // create child tasks
+                int ret;
+                
+                ret = Create(PRIORITY_SENSOR_COURIER, commandWorker);
+                uassert(ret > 0);
+                
+                ret = Create(PRIORITY_SENSOR_COURIER, sensorCourier);
+                uassert(ret > 0);
+                
+                locationWorkerTid = Create(PRIORITY_SENSOR_COURIER, locationWorker);
+                uassert(ret > 0);
+                state = CouriersCreated;
+                break;
+            }
+            
+            case initializeSensorCourier:
+            {
+                uassert(state == CouriersCreated);
+                
+                // reply the sensor courier with the expected first
+                // sensor hit so it could claim it in sensor server
+                Reply(tid, &initialSensorIndex, sizeof(initialSensorIndex));
+            }
             default:
             {
                 uassert(0);
@@ -646,48 +685,4 @@ void engineerTask() {
             }
         }
     }
-}
-
-void initEngineer() {
-    for(int i = 0; i < NUM_SPEEDS; i++) {
-        for(int j = 0; j < NUM_SENSORS; j++) {
-            for (int k = 0; k < NUM_SENSORS; k++) {
-                int val = 50;
-                if (i == 0) val = 0;
-
-                timeDeltas[i][j][k] = val;
-            }
-        }
-    }
-    engineerTaskId = Create(PRIORITY_ENGINEER, engineerTask);
-    uassert(engineerTaskId >= 0);
-}
-
-void engineerPleaseManThisTrain(int train_number, int speed) {
-    uassert(1 <= train_number && train_number <= 80 && 0 <= speed && speed <= 14);
-    active_train = train_number;
-}
-
-void engineerReverse() {
-    EngineerMessage message;
-    message.type = setReverse;
-    Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
-}
-
-void engineerXMarksTheSpot(int index, int offset) {
-    uassert(0 <= index && index <= 139);
-    uassert(engineerTaskId >= 0);
-    EngineerMessage message;
-    message.type = xMark;
-    message.data.xMark.index = index;
-    message.data.xMark.offset = offset * 1000; // convert mm to um
-    Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
-}
-
-void engineerSpeedUpdate(int speed) {
-    EngineerMessage message;
-    message.type = setSpeed;
-    message.data.setSpeed.speed = speed;
-    uassert(engineerTaskId >= 0);
-    Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
 }

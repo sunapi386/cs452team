@@ -1,8 +1,12 @@
 #ifndef __ENGINEER_H
 #define __ENGINEER_H
 
+#define MAX_NUM_ENGINEER 2
+
 typedef struct {
     enum {
+        initialize,
+        initializeSensorCourier,
         updateSensor,
         updateLocation,
         xMark,
@@ -13,6 +17,10 @@ typedef struct {
         commandWorkerReverseSet,
     } type;
     union {
+        struct {
+            int trainNumber;
+            int sensorIndex;
+        } initialize;
         struct {
             int sensor;
             int time;
@@ -27,11 +35,6 @@ typedef struct {
     } data;
 } EngineerMessage;
 
-
-void initEngineer();
-void engineerPleaseManThisTrain(); // returns id of engineer task
-void engineerReverse();
-void engineerSpeedUpdate(int speed); // for now just use 1 train
-void engineerXMarksTheSpot(int nodeNumber, int offset);
+void engineerServer();
 
 #endif

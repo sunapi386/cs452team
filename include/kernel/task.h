@@ -27,7 +27,7 @@
 #define TASK_UNIQUE_MASK    ((TASK_MAX_UNIQUES - 1) << TASK_UNIQUE_OFFSET)
 
 // each task has own trapframe and stack
-#define TASK_STACK_SIZE     12000
+#define TASK_STACK_SIZE     TASK_MAX_TASKS * 1024
 #define TASK_STACK_HIGH     0x1f00000
 #define TASK_STACK_LOW      (TASK_STACK_HIGH - \
                             TASK_MAX_TASKS * (TASK_STACK_SIZE + TASK_TRAP_SIZE))

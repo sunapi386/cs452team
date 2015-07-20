@@ -3,8 +3,9 @@
 #include <priority.h>
 #include <user/vt100.h>
 #include <user/syscall.h>
-#include <debug.h> // assert
-#include <user/train.h> // halting
+#include <debug.h>
+#include <user/train.h>
+#include <user/engineer.h>
 #include <user/trackserver.h>
 #include <user/nameserver.h>
 #include <user/track_data.h>
@@ -15,7 +16,6 @@
 #define SENSOR_QUERY        (128 + NUM_SENSORS)
 #define NUM_RECENT_SENSORS  7
 #define SENSOR_BUF_SIZE     128
-#define MAX_NUM_ENGINEER    2
 
 static struct {
     char sensor1_group;
@@ -163,13 +163,6 @@ void sensorHalt(int train_number, char sensor_group, int sensor_number) {
     setSensorData(&halt_reading, group, sensor_number);
 }
 
-void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2) {
-    time_sensor_pair.sensor1_group = sensor1->group;
-    time_sensor_pair.sensor1_offset = sensor1->offset;
-    time_sensor_pair.sensor2_group = sensor2->group;
-    time_sensor_pair.sensor2_offset = sensor2->offset;
-}
-
 static void clearScreen()
 {
     String s;
@@ -309,12 +302,6 @@ void sensorServer()
 {
     int tid = 0;
     SensorRequest req;
-    int sb[SENSOR_BUF_SIZE];
-    int tb[SENSOR_BUF_SIZE];
-    IBuffer sensorBuf;
-    IBuffer timeBuf;
-    IBufferInit(&sensorBuf, sb, SENSOR_BUF_SIZE);
-    IBufferInit(&timeBuf, tb, SENSOR_BUF_SIZE);
 
     int numEngineer = 0;
     Attribution attrs[MAX_NUM_ENGINEER];
@@ -428,6 +415,8 @@ void sensorServer()
 
                 break;
             }
+            // Engineer -> sensor courier -> sensor server
+            // Message contains: primaryClaim and secondaryClaim
             case MESSAGE_SENSOR_COURIER:
             {
                 // get the attribution pointer

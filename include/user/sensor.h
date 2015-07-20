@@ -26,9 +26,9 @@ typedef struct {
 typedef struct SensorRequest {
     char type;
     union {
-        SensorMessage sm;
-        SensorUpdate su;
-        SensorClaim sc;
+        SensorMessage sm; // sensor worker -> engineer
+        SensorUpdate su;  // sensor server -> sensor courier -> enigneer
+        SensorClaim sc;   // engineer -> sensor courier - > sensor server
     } data;
 } SensorRequest;
 
@@ -40,9 +40,6 @@ a certain sensor.
 struct SensorData; // defined in trackserver.h
 
 void initSensor();
-// displays the time taken to tigger sensor1 then sensor2
-void sensorTime(struct SensorData *sensor1, struct SensorData *sensor2);
-// e.g. sensorHalt(42, 'a', 3);
 void sensorHalt(int train_number, char sensor_group, int sensor_number);
 void drawTrackLayoutGraph(char which_track);
 
