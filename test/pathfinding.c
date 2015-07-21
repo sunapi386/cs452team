@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 ////
+typedef enum {false = 0, true = 1} bool;
 
 struct Position {
     track_node *node;
@@ -20,6 +21,7 @@ typedef struct PathBuffer {
     track_node *tracknodes[MAX_PATH_LENGTH];
     int cost;
     int length;
+    bool reverse[MAX_PATH_LENGTH];
 } PathBuffer;
 
 ////
@@ -28,6 +30,7 @@ typedef struct PathNode {
     track_node *tn;
     int cost;
     int length;
+    bool reverse;
 } PathNode;
 
 /**
@@ -37,11 +40,12 @@ Because there is no malloc, a large buffer is preallocated for PathNode.
 static PathNode g_nodes[EXPLORE_SIZE];
 
 static inline
-void setPathNode(PathNode *p, PathNode *f, track_node *t, int c, int l) {
+void setPathNode(PathNode *p, PathNode *f, track_node *t, int c, int l, bool r) {
     p->from = f;
     p->tn = t;
     p->cost = c;
     p->length = l;
+    p->reverse = r;
 }
 
 static inline int nodeCost(PathNode *pn) {
@@ -63,7 +67,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     int num_nodes = 0;
 
     /**
-    No path if src and dst are the same node, reversed.
+    No path if src and dst are the same node, reverse.
     */
     if (src->reverse->idx == dst->idx) {
         printf("Source and destination node are same.\n");
@@ -82,7 +86,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     */
     PathNode *start = &g_nodes[num_nodes++];
     PathNode *end;
-    setPathNode(start, 0, src, 0, 0);
+    setPathNode(start, 0, src, 0, 0, false);
 
     PQHeap pq;
     pq.count = 0;
@@ -121,7 +125,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->reverse->edge[DIR_STRAIGHT].dest,
                         popd->cost + popd->tn->reverse->edge[DIR_STRAIGHT].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        true);
             PQHeapPush(&pq, reverse);
             continue;
         }
@@ -151,7 +156,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->edge[DIR_STRAIGHT].dest,
                         popd->cost + popd->tn->edge[DIR_STRAIGHT].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        false);
             PQHeapPush(&pq, straight);
 
             PathNode *curved = &g_nodes[num_nodes++];
@@ -159,7 +165,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->edge[DIR_CURVED].dest,
                         popd->cost + popd->tn->edge[DIR_CURVED].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        false);
 
             PQHeapPush(&pq, curved);
         }
@@ -172,7 +179,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->edge[DIR_AHEAD].dest,
                         popd->cost + popd->tn->edge[DIR_AHEAD].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        false);
             PQHeapPush(&pq, ahead);
 
             PathNode *reverse = &g_nodes[num_nodes++];
@@ -180,7 +188,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->reverse->edge[DIR_AHEAD].dest,
                         popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        true);
             PQHeapPush(&pq, reverse);
         }
     }
@@ -193,6 +202,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     int path_length = 0;
     while (at != start) {
         // uassert(path_length < MAX_PATH_LENGTH);
+        pb->reverse[path_length] = at->reverse;
         pb->tracknodes[path_length++] = at->tn;
         at = at->from;
     };
@@ -217,16 +227,14 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
 void printPath(PathBuffer *pb) {
     printf("Path (%d):\n", pb->cost);
     for (int i = 0; i < pb->length; i++) {
-        printf("-> [%s,%d] ",
-            pb->tracknodes[i]->name,
-            pb->tracknodes[i]->idx);
+        printf("[%s,%d] ", pb->tracknodes[i]->name, pb->tracknodes[i]->idx);
+        printf("%s ", pb->reverse[i] ? "<- " : "-> ");
     }
     printf("\n");
 }
 
 track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
 
-typedef enum {false = 0, true = 1} bool;
 bool valid_node(int n) {
     return 0 <= n && n <= 144;
 }

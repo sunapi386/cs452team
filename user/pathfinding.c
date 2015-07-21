@@ -10,6 +10,7 @@ typedef struct PathNode {
     track_node *tn;
     int cost;
     int length;
+    bool reverse;
 } PathNode;
 
 /**
@@ -18,11 +19,13 @@ Because there is no malloc, a large buffer is preallocated for PathNode.
 #define EXPLORE_SIZE 4096
 static PathNode g_nodes[EXPLORE_SIZE];
 
-static inline void setPathNode(PathNode *p, PathNode *f, track_node *t, int c, int l) {
+static inline
+void setPathNode(PathNode *p, PathNode *f, track_node *t, int c, int l, bool r) {
     p->from = f;
     p->tn = t;
     p->cost = c;
     p->length = l;
+    p->reverse = r;
 }
 
 static inline int nodeCost(PathNode *pn) {
@@ -43,7 +46,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     memset(g_nodes, 0, EXPLORE_SIZE);
     int num_nodes = 0;
     /**
-    No path if src and dst are the same node, reversed.
+    No path if src and dst are the same node, reverse.
     */
     if (src->reverse->idx == dst->idx) {
         printf(COM2, "Source and destination node are same.\n");
@@ -62,7 +65,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     */
     PathNode *start = &g_nodes[num_nodes++];
     PathNode *end;
-    setPathNode(start, 0, src, 0, 0);
+    setPathNode(start, 0, src, 0, 0, false);
 
     PQHeap pq;
     pq.count = 0;
@@ -95,7 +98,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->reverse->edge[DIR_STRAIGHT].dest,
                         popd->cost + popd->tn->reverse->edge[DIR_STRAIGHT].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        true);
             PQHeapPush(&pq, reverse);
             continue;
         }
@@ -124,7 +128,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->edge[DIR_STRAIGHT].dest,
                         popd->cost + popd->tn->edge[DIR_STRAIGHT].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        false);
             PQHeapPush(&pq, straight);
 
             PathNode *curved = &g_nodes[num_nodes++];
@@ -132,7 +137,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->edge[DIR_CURVED].dest,
                         popd->cost + popd->tn->edge[DIR_CURVED].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        false);
 
             PQHeapPush(&pq, curved);
         }
@@ -145,7 +151,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->edge[DIR_AHEAD].dest,
                         popd->cost + popd->tn->edge[DIR_AHEAD].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        false);
             PQHeapPush(&pq, ahead);
 
             PathNode *reverse = &g_nodes[num_nodes++];
@@ -153,7 +160,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd,
                         popd->tn->reverse->edge[DIR_AHEAD].dest,
                         popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
-                        popd->length + 1);
+                        popd->length + 1,
+                        true);
             PQHeapPush(&pq, reverse);
         }
     }
@@ -164,11 +172,12 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     */
     PathNode *at = end;
     int path_length = 0;
-    do {
+    while (at != start) {
         uassert(path_length < MAX_PATH_LENGTH);
+        pb->reverse[path_length] = at->reverse;
         pb->tracknodes[path_length++] = at->tn;
         at = at->from;
-    } while (at != start);
+    };
     pb->cost = end->cost;
     pb->length = path_length;
 
@@ -182,11 +191,12 @@ void printPath(PathBuffer *pb) {
     sinit(&s);
     sputstr(&s, "Path:\n\r");
     for (int i = 0; i < pb->length; i++) {
-        sputstr(&s, "-> [");
+        sputstr(&s, "[");
         sputstr(&s, pb->tracknodes[i]->name);
         sputstr(&s, ",");
         sputint(&s, pb->tracknodes[i]->idx, 10);
         sputstr(&s, "] ");
+        sputstr(&s, pb->reverse[i] ? "<- " : "-> ");
     }
     sputstr(&s, "\n\r");
     PutString(COM2, &s);

@@ -1,6 +1,7 @@
 #ifndef __PATHFINDING_H
 #define __PATHFINDING_H
 #include <user/track_data.h>
+#include <utils.h> // bool
 
 /**
 Position for XMarksTheSpot stopping.
@@ -20,6 +21,7 @@ typedef struct PathBuffer {
     track_node *tracknodes[MAX_PATH_LENGTH];
     int cost;
     int length;
+    bool reverse[MAX_PATH_LENGTH];
 } PathBuffer;
 
 /**
