@@ -63,6 +63,16 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     int num_nodes = 0;
 
     /**
+    No path if src and dst are the same node, reversed.
+    */
+    if (src->reverse->idx == dst->idx) {
+        printf("Source and destination node are same.\n");
+        pb->cost = 0;
+        pb->length = 0;
+        return 0;
+    }
+
+    /**
     At any time in the PQ, it only contains the horizon PathNode.
     The PathNode with the minimum pathcost is popped from the PQ,
     and is followed for one more node, and pushed back onto the PQ.
@@ -92,20 +102,27 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             return -1;
         }
 
-        if (popd->from) {
-            printf("popd from %s, cur %s, cost %d, len %d\n",
-                popd->from->tn->name, popd->tn->name, popd->cost, popd->length);
-        }
+        // if (popd->from) {
+        //     printf("popd from %s, cur %s, cost %d, len %d\n",
+        //         popd->from->tn->name, popd->tn->name, popd->cost, popd->length);
+        // }
 
         if (dst == popd->tn) {
             end = popd;
             break;
         }
 
-        if (popd->tn->type == NODE_EXIT) {
+        if (popd->tn->type == NODE_EXIT || popd->tn->type == NODE_ENTER) {
             /**
             Exit nodes do not lead anywhere.
             */
+            PathNode *reverse = &g_nodes[num_nodes++];
+            setPathNode(reverse,
+                        popd,
+                        popd->tn->reverse->edge[DIR_STRAIGHT].dest,
+                        popd->cost + popd->tn->reverse->edge[DIR_STRAIGHT].dist,
+                        popd->length + 1);
+            PQHeapPush(&pq, reverse);
             continue;
         }
 
@@ -192,6 +209,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         pb->tracknodes[j] = c;
     }
 
+    printf("Searched %d nodes.\n", num_nodes);
+
     return path_length;
 }
 
@@ -214,28 +233,53 @@ bool valid_node(int n) {
 
 // compile with: gcc track_data.c pathfinding.c -o a.out
 int main(int argc, char const *argv[]) {
-    int from, to;
+    char track = 0;
+    int from = -1;
+    int to = -1;
     int blocked = -1;
     int blocked2 = -1;
     switch(argc) {
+        case 6:
+            blocked2 = atoi(argv[5]);
+            if (! valid_node(from)) {
+                printf("Bad blocked 2 node %d", blocked2);
+                return -1;
+            }
         case 5:
-            blocked2 = atoi(argv[4]);
+            blocked = atoi(argv[4]);
+            if (! valid_node(from)) {
+                printf("Bad blocked node %d", blocked);
+                return -1;
+            }
         case 4:
-            blocked = atoi(argv[3]);
-        case 3:
-            to = atoi(argv[2]);
-            from = atoi(argv[1]);
+            track = argv[1][0];
+            to = atoi(argv[3]);
+            from = atoi(argv[2]);
+            if (track == 'a') {
+                printf("Loaded track A\n");
+                init_tracka(g_track);
+            }
+            else if (track == 'b') {
+                printf("Loaded track B\n");
+                init_trackb(g_track);
+            }
+            else {
+                printf("Bad track %c", track);
+                return -1;
+            }
+            if (! valid_node(to)) {
+                printf("Bad to node %d", to);
+                return -1;
+            }
+            if (! valid_node(from)) {
+                printf("Bad from node %d", from);
+                return -1;
+            }
             break;
         default:
-            printf("Usage: %s [from to [blocked [blocked]]]", argv[0]);
+            printf("Usage: %s track from to [blocked [blocked]]", argv[0]);
             return -1;
     }
-    if (! (valid_node(from) && valid_node(to))) {
-        printf("Bad node number %d %d", from, to);
-        return -1;
-    }
-    init_tracka(g_track);
-    printf("Loaded track A\n");
     if (blocked != -1 && valid_node(blocked)) {
         g_track[blocked].owner = 90; /* 90 is a non-existant train number */
     }

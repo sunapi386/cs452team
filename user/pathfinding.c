@@ -42,7 +42,15 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     pb->length = 0;
     memset(g_nodes, 0, EXPLORE_SIZE);
     int num_nodes = 0;
-    int train_num = pb->train_num;
+    /**
+    No path if src and dst are the same node, reversed.
+    */
+    if (src->reverse->idx == dst->idx) {
+        printf(COM2, "Source and destination node are same.\n");
+        pb->cost = 0;
+        pb->length = 0;
+        return 0;
+    }
 
     /**
     At any time in the PQ, it only contains the horizon PathNode.
@@ -78,14 +86,21 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             break;
         }
 
-        if (popd->tn->type == NODE_EXIT) {
+        if (popd->tn->type == NODE_EXIT || popd->tn->type == NODE_ENTER) {
             /**
             Exit nodes do not lead anywhere.
             */
+            PathNode *reverse = &g_nodes[num_nodes++];
+            setPathNode(reverse,
+                        popd,
+                        popd->tn->reverse->edge[DIR_STRAIGHT].dest,
+                        popd->cost + popd->tn->reverse->edge[DIR_STRAIGHT].dist,
+                        popd->length + 1);
+            PQHeapPush(&pq, reverse);
             continue;
         }
 
-        if (popd->tn->owner != -1 && popd->tn->owner != train_num) {
+        if (popd->tn->owner != -1 && popd->tn->owner != pb->train_num) {
             /**
             Reached a node not owned by the current train.
             */
@@ -156,6 +171,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     } while (at != start);
     pb->cost = end->cost;
     pb->length = path_length;
+
+    printf(COM2, "Searched %d nodes.\n", num_nodes);
 
     return path_length;
 }

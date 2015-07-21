@@ -22,7 +22,10 @@ typedef struct PathBuffer {
     int length;
 } PathBuffer;
 
-
+/**
+planRoute
+Returns -1 if no path exists, otherwise the length of the path.
+*/
 int planRoute(track_node *start, track_node *end, PathBuffer *pb);
 void printPath(PathBuffer *pb);
 int distanceBetween(track_node *from, track_node *to);
