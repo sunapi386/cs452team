@@ -11,6 +11,7 @@ typedef struct {
         commandWorkerRequest,
         commandWorkerSpeedSet,
         commandWorkerReverseSet,
+        go,
     } type;
     union {
         struct {
@@ -24,6 +25,10 @@ typedef struct {
         struct {
             int speed;
         } setSpeed;
+        struct {
+            int train_num;
+            int node_num;
+        } go;
     } data;
 } EngineerMessage;
 
@@ -34,5 +39,6 @@ void engineerReverse();
 void engineerSpeedUpdate(int speed); // for now just use 1 train
 void engineerLoadTrackStructure(char which_track);
 void engineerXMarksTheSpot(int nodeNumber, int offset);
+void engineerGo(int train_num, int node_num);
 
 #endif

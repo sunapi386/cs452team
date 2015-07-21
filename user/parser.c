@@ -30,6 +30,7 @@ static char *help_message =
 "c tr_num speed char num loops      | Calibration: at speed delay loop\r\n"
 "k track_A_or_B_char                | load tracK A or B\r\n"
 "x track_node_index distance        | x mark the track node\r\n"
+"go train_num track_node_index      | \r\n"
 "------------------ Misc. commands\r\n"
 "q                                  | Quit\r\n"
 "o                                  | redraw turnOuts\r\n"
@@ -105,6 +106,12 @@ typedef struct Parser {
         X_node_number,
         X_space2,
         X_distance,
+        G,          // go train_num node_num
+        GO,
+        GO_,
+        GO_t,
+        GO_t_,
+        GO_t_n,
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -149,6 +156,10 @@ typedef struct Parser {
             int node_number;
             int distance;
         } x_marks_the_spot;
+        struct Go {
+            int train_number;
+            int node_number;
+        } go;
     } data;
 
 } Parser;
@@ -184,6 +195,7 @@ static bool parse(Parser *p, char c) {
         switch(p->state) {
             case Empty: {
                 switch(c) {
+                    case 'g': p->state = G; break;
                     case 't': p->state = TR_T; break;
                     case 'r': p->state = RV_R; break;
                     case 's': p->state = SW_S; break;
@@ -200,6 +212,40 @@ static bool parse(Parser *p, char c) {
                     case 'x': p->state = X; break;
                     case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
+                }
+                break;
+            }
+            case G: {
+                REQUIRE('O', GO);
+                break;
+            }
+            case GO: {
+                REQUIRE(' ', GO_);
+                break;
+            }
+            case GO_: {
+                p->data.go.train_number = 0;
+                p->state =  append_number(c, &(p->data.go.train_number)) ?
+                            GO_t :
+                            Error;
+                break;
+            }
+            case GO_t: {
+                if(! append_number(c, &(p->data.go.train_number))) {
+                    REQUIRE(' ', GO_t_);
+                }
+                break;
+            }
+            case GO_t_: {
+                p->data.go.node_number = 0;
+                p->state =  append_number(c, &(p->data.go.node_number)) ?
+                            GO_t_n :
+                            Error;
+                break;
+            }
+            case GO_t_n: {
+                if(! append_number(c, &(p->data.go.node_number))) {
+                    p->state = Error;
                 }
                 break;
             }
@@ -596,6 +642,19 @@ static bool parse(Parser *p, char c) {
         sputstr(&disp_msg, "  | ");
         // should be on an end state
         switch(p->state) {
+            case GO_t_n: {
+                int node_number = p->data.go.node_number;
+                int train_number = p->data.go.train_number;
+                if (1 <= train_number && train_number <= 80 &&
+                    0 <= node_number && node_number <= 143 ) {
+                    engineerGo(train_number, node_number);
+                }
+                else {
+                    sputstr(&disp_msg,
+                        "GO: bad train number or node number\r\n");
+                }
+                break;
+            }
             case M_s2_n: {
                 char sensor1_group = p->data.sensor_time.sensor1_group;
                 int sensor1_offset = p->data.sensor_time.sensor1_offset;

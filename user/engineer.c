@@ -643,6 +643,14 @@ void engineerTask() {
                 break;
             }
 
+            case go: {
+                Reply(tid, 0, 0);
+                int train = message.data.go.train_num;
+                int node = message.data.go.node_num;
+                printf(COM2, "Go: %d node %d\n\r", train, node);
+                // TODO: implement this
+                break;
+            }
             default:
             {
                 uassert(0);
@@ -690,13 +698,24 @@ void engineerLoadTrackStructure(char which_track) {
 }
 
 void engineerXMarksTheSpot(int index, int offset) {
-    uassert(0 <= index && index <= 139);
+    uassert(0 <= index && index <= 143);
     uassert(engineerTaskId >= 0);
     EngineerMessage message;
     message.type = xMark;
     message.data.xMark.index = index;
     message.data.xMark.offset = offset * 1000; // convert mm to um
     Send(engineerTaskId, &message, sizeof(EngineerMessage), 0, 0);
+}
+
+void engineerGo(int train_number, int node_number) {
+    uassert(0 <= train_number && train_number <= 80);
+    uassert(0 <= node_number && node_number <= 143);
+    uassert(engineerTaskId >= 0);
+    EngineerMessage msg;
+    msg.type = go;
+    msg.data.go.train_num = train_number;
+    msg.data.go.node_num = node_number;
+    Send(engineerTaskId, &msg, sizeof(msg), 0, 0);
 }
 
 void engineerSpeedUpdate(int speed) {
