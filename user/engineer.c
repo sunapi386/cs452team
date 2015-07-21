@@ -21,6 +21,8 @@
 #define LOC_MESSAGE_LANDMARK 22
 #define LOC_MESSAGE_SENSOR   23
 
+#define PICK_UP_OFFSET 105 * 1000
+
 typedef struct LocationMessage {
     int type;
     int error;
@@ -353,7 +355,8 @@ void engineerTask() {
                 // check for stopping at landmark
                 if (targetNode != 0)
                 {
-                    int pickUpOffset = isForward ? 0 : 45 * 1000;
+                    int pickUpOffset = isForward ? 0 : PICK_UP_OFFSET;
+                    //int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
                     int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
 
                     int stoppingDist = stoppingDistance[(int)speed];
@@ -466,7 +469,7 @@ void engineerTask() {
                 uassert(nextNode && nextEdge);
 
                 // resetting distSoFar: non-sensor node reached
-                distSoFar = 0;
+                distSoFar = isForward ? 0 : PICK_UP_OFFSET;
 
                 // update constant velocity calibration data
                 int last_index = indexFromSensorUpdate(&last_update);
