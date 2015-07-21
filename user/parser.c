@@ -26,7 +26,6 @@ static char *help_message =
 "e train_num speed                  | create Engineer for train and give speed\r\n"
 "h train_num group_char sensor_num  | Halts on sensor \r\n"
 "m s1_grp s1_num s2_grp s2_num      | tiMing sensor1 to sensor2 \r\n"
-"g                                  | Go again at last speed\r\n"
 "0                                  | set last train speed to 0\r\n"
 "c tr_num speed char num loops      | Calibration: at speed delay loop\r\n"
 "k track_A_or_B_char                | load tracK A or B\r\n"
@@ -86,7 +85,6 @@ typedef struct Parser {
         M_s2_g,
         M_space_4,
         M_s2_n,
-        G,          // g go again at last speed
         C,          // c tr_num speed grp_char snsr_num (calibration)
         C_space_1,
         C_train_number,
@@ -196,7 +194,6 @@ static bool parse(Parser *p, char c) {
                     case 'o': p->state = O; break;
                     case 'e': p->state = E; break;
                     case 'm': p->state = M; break;
-                    case 'g': p->state = G; break;
                     case '0': p->state = Zero; break;
                     case 'c': p->state = C; break;
                     case 'k': p->state = K; break;
@@ -329,11 +326,6 @@ static bool parse(Parser *p, char c) {
             }
             // ----------- 0 set last speed 0 ------//
             case Zero: {
-                p->state = Error;
-                break;
-            }
-            // ----------- g go again at last speed ------//
-            case G: {
                 p->state = Error;
                 break;
             }
@@ -739,19 +731,6 @@ static bool parse(Parser *p, char c) {
                      if( ! (0 <= train_speed  && train_speed  <= 14) ) {
                         sputstr(&disp_msg,"   Warning last train speed.\r\n");
                      }
-                } else {
-                    sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
-                }
-                break;
-            }
-            case G: {
-                sputstr(&disp_msg, "Going again at last speed!\r\n");
-                int train_number = p->data.speed.train_number;
-                int train_speed = p->data.speed.train_speed;
-                if((1 <= train_number && train_number <= 80) &&
-                   (0 <= train_speed  && train_speed  <= 14)) {
-                    // FIXME
-                    // trainSetSpeed(train_number, train_speed);
                 } else {
                     sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
                 }
