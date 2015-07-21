@@ -101,6 +101,9 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         }
 
         if (popd->tn->type == NODE_BRANCH) {
+            /**
+            Consider both straight and curved directions.
+            */
             PathNode *straight = &g_nodes[num_nodes++];
             setPathNode(straight,
                         popd,
@@ -119,6 +122,9 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             PQHeapPush(&pq, curved);
         }
         else {
+            /**
+            Consider both going ahead and reverse.
+            */
             PathNode *ahead = &g_nodes[num_nodes++];
             setPathNode(ahead,
                         popd,
@@ -126,6 +132,14 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         popd->cost + popd->tn->edge[DIR_AHEAD].dist,
                         popd->length + 1);
             PQHeapPush(&pq, ahead);
+
+            PathNode *reverse = &g_nodes[num_nodes++];
+            setPathNode(reverse,
+                        popd,
+                        popd->tn->reverse->edge[DIR_AHEAD].dest,
+                        popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
+                        popd->length + 1);
+            PQHeapPush(&pq, reverse);
         }
     }
 
@@ -144,22 +158,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     pb->length = path_length;
 
     return path_length;
-}
-
-int shortestRoute(track_node *src, track_node *dst, PathBuffer *pathb) {
-    PathBuffer pb[4];
-    planRoute(src, dst, &pb[0]);
-    planRoute(src, dst->reverse, &pb[1]);
-    planRoute(src->reverse, dst, &pb[2]);
-    planRoute(src->reverse, dst->reverse, &pb[3]);
-
-    PathBuffer *lowest = &pb[0];
-    for (int i = 1; i < 4; i++)
-        if (lowest->length > pb[i].length)
-            lowest = &pb[i];
-
-    memcpy(pathb, lowest, sizeof(PathBuffer));
-    return lowest->length;
 }
 
 void printPath(PathBuffer *pb) {

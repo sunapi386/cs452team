@@ -24,7 +24,6 @@ typedef struct PathBuffer {
 
 
 int planRoute(track_node *start, track_node *end, PathBuffer *pb);
-int shortestRoute(track_node *src, track_node *dst, PathBuffer *pathb);
 void printPath(PathBuffer *pb);
 int distanceBetween(track_node *from, track_node *to);
 track_edge *getNextEdge(track_node *node);
