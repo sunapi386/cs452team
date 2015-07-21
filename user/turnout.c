@@ -124,6 +124,10 @@ void printResetTurnouts() {
     PutString(COM2, &s);
 
     for (int i = 1; i <= 18; ++i) {
+        if (i == 11) {
+            setTurnout(i, 'c');
+            continue;
+        }
         setTurnout(i, 's');
     }
 

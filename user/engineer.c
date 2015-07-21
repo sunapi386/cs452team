@@ -21,6 +21,8 @@
 #define LOC_MESSAGE_LANDMARK 22
 #define LOC_MESSAGE_SENSOR   23
 
+#define PICK_UP_OFFSET 105 * 1000
+
 typedef struct LocationMessage {
     int type;
     int error;
@@ -33,11 +35,12 @@ typedef struct LocationMessage {
 } LocationMessage;
 
 typedef enum {
-    Init = 0,           // initial state
-    Stop,               // stop command issued
-    Running,            // running
-    Reversing,  // reverse stage 2: reverse issued
-    Decelerating
+    Init = 0,     // initial state
+    Stopped,      // stop command issued
+    Running,      // running
+    Reversing,    // reverse stage 2: reverse issued
+    Decelerating,
+    Accelerating
 } TrainState;
 
 static int active_train = -1; // static for now, until controller is implemented
@@ -333,28 +336,27 @@ void engineerTask() {
                     {
                         velocity = 0;
                         deceleration = 0;
-                        state = Stop;
+                        state = Stopped;
                     }
+                    distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
                 }
-                else if (state == Stop)
-                {
-                    velocity = 0;
-                }
-                else
+                else if (state != Stopped)
                 {
                     velocity = sensorDist / timeDeltas[(int)speed][prevSensor->idx][nextSensor->idx];
+                    distSoFar = (currentTime - prevNodeTime) * velocity;
                 }
 
                 // velocity: the estimated velocity in the current track segment
                 // lasttime: the last time distSoFar is incremented
-                distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
+                //distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
                 lastLocationUpdateTime = currentTime;
                 int distToNextNode = nextEdge->dist * 1000 - distSoFar;
 
                 // check for stopping at landmark
                 if (targetNode != 0)
                 {
-                    int pickUpOffset = isForward ? 0 : 15 * 1000;
+                    int pickUpOffset = isForward ? 0 : PICK_UP_OFFSET;
+                    //int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
                     int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
 
                     int stoppingDist = stoppingDistance[(int)speed];
@@ -385,7 +387,7 @@ void engineerTask() {
                     }
                 }
 
-                if (distToNextNode <= 0)
+                if (distToNextNode <= 0 && nextNode->type != NODE_SENSOR)
                 {
                     // We've "reached" the next non-sensor landmark
                     // Update previous landmark
@@ -427,7 +429,7 @@ void engineerTask() {
                     locationMessage.distToNext = distToNextNode;
                     Reply(tid, &locationMessage, sizeof(locationMessage));
 
-                    state = (speed == 0) ? Stop : Running;
+                    state = (speed == 0) ? Stopped : Accelerating;
                 }
                 else // distToNextNode > 0
                 {
@@ -467,7 +469,7 @@ void engineerTask() {
                 uassert(nextNode && nextEdge);
 
                 // resetting distSoFar: non-sensor node reached
-                distSoFar = 0;
+                distSoFar = isForward ? 0 : PICK_UP_OFFSET;
 
                 // update constant velocity calibration data
                 int last_index = indexFromSensorUpdate(&last_update);
@@ -480,10 +482,13 @@ void engineerTask() {
                 if(last_index >= 0)
                 {
                     // apply learning
-                    int past_difference = timeDeltas[(int)speed][last_index][index];
-                    int new_difference = sensor_update.time - last_update.time;
-                    timeDeltas[(int)speed][last_index][index] =  (new_difference * ALPHA
-                        + past_difference * (100 - ALPHA)) / 100;
+                    if (state == Running)
+                    {
+                        int past_difference = timeDeltas[(int)speed][last_index][index];
+                        int new_difference = sensor_update.time - last_update.time;
+                        timeDeltas[(int)speed][last_index][index] =  (new_difference * ALPHA
+                            + past_difference * (100 - ALPHA)) / 100;
+                    }
 
                     // prepare output
                     int distanceToNextNode = nextEdge->dist * 1000;
@@ -505,12 +510,18 @@ void engineerTask() {
 
                 if (state == Init)
                 {
-                    state = speed ? Running : Stop;
+                    state = speed ? Accelerating : Stopped;
 
                     // kick start UI refresh
                     locationMessage.type = LOC_MESSAGE_INIT;
                     Reply(locationWorkerTid, &locationMessage, sizeof(locationMessage));
                     locationWorkerTid = 0;
+                }
+                else if (state == Accelerating)
+                {
+                    // Assume that after hitting a sensor, the train has reached constant velocity.
+                    // therefore transition to Running
+                    state = Running;
                 }
                 break;
             }
@@ -623,9 +634,12 @@ void engineerTask() {
                 prevSpeed = speed;
                 speed = (char)(message.data.setSpeed.speed);
                 printf(COM2, "Speed set: %d, currentState: %d\n\r", speed, state);
-                if      (state == Init || state == Reversing) break;
-                else if (speed == 0) state = Decelerating;
-                else    state = Running;
+
+                if (state == Init || state == Reversing) break;
+                else if (state == Stopped && speed > 0) state = Accelerating;
+                else if (state == Running && speed == 0) state = Decelerating;
+                else if (state == Decelerating && speed > 0) state = Accelerating;
+                else if (state == Accelerating && speed == 0) state = Decelerating;
                 break;
             }
 
