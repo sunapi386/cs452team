@@ -1,7 +1,7 @@
 #ifndef __CACHE_H
 #define __CACHE_H
 
-void cacheEnable();
-void cacheDisable();
+void enableCache();
+void disableCache();
 
 #endif

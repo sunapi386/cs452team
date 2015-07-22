@@ -1,6 +1,6 @@
 #include <kernel/cache.h>
 
-void cacheEnable() {
+void enableCache() {
     asm volatile(
         "mrc p15, 0, r0, c1, c0, 0\n\t"
         "ldr r1, =0x40001004\n\t"
@@ -9,7 +9,7 @@ void cacheEnable() {
     );
 }
 
-void cacheDisable() {
+void disableCache() {
     asm volatile(
         "mrc p15, 0, r0, c1, c0, 0\n\t"
         "ldr r1, =0xbfffeffb\n\t"
