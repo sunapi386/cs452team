@@ -32,18 +32,6 @@ void trainSetSwitch(int switch_number, char direction) {
     printf(COM1, "%c%c%c", operation, switch_number, SOLENOID_OFF);
 }
 
-void trainSetLight(int train_number, int on) {
-    assert(1 <= train_number && train_number <= 80);
-    if(on) {
-        Putc(COM1, speeds[train_number] + 16);
-        Putc(COM1, train_number);
-    }
-    else {
-        Putc(COM1, speeds[train_number]);
-        Putc(COM1, train_number);
-    }
-}
-
 void initTrain() {
     for(int i = 0; i < NUM_TRAINS; i++) speeds[i] = 0;
 }
