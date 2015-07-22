@@ -21,6 +21,7 @@
 #define LOC_MESSAGE_LANDMARK 22
 #define LOC_MESSAGE_SENSOR   23
 
+#define PICK_UP_OFFSET 105 * 1000
 
 typedef struct LocationMessage {
     int type;
@@ -34,12 +35,13 @@ typedef struct LocationMessage {
 } LocationMessage;
 
 typedef enum {
-    Init = 0,       // initial state
-    CouriersCreated,   // couriers created
-    Stop,           // stop command issued
-    Running,        // running
-    Reversing,      // reverse issued
-    Decelerating    // comming to a stop
+    Init = 0,        // initial state
+    CouriersCreated, // couriers created
+    Stopped,         // stop command issued
+    Running,         // running
+    Reversing,       // reverse issued
+    Decelerating,    // comming to a stop
+    Accelerating
 } TrainState;
 
 extern track_node g_track[TRACK_MAX];
@@ -342,28 +344,27 @@ void engineerServer()
                     {
                         velocity = 0;
                         deceleration = 0;
-                        state = Stop;
+                        state = Stopped;
                     }
+                    distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
                 }
-                else if (state == Stop)
-                {
-                    velocity = 0;
-                }
-                else
+                else if (state != Stopped)
                 {
                     velocity = sensorDist / timeDeltas[(int)speed][prevSensor->idx][nextSensor->idx];
+                    distSoFar = (currentTime - prevNodeTime) * velocity;
                 }
 
                 // velocity: the estimated velocity in the current track segment
                 // lasttime: the last time distSoFar is incremented
-                distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
+                //distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
                 lastLocationUpdateTime = currentTime;
                 int distToNextNode = nextEdge->dist * 1000 - distSoFar;
 
                 // check for stopping at landmark
                 if (targetNode != 0)
                 {
-                    int pickUpOffset = isForward ? 0 : 15 * 1000;
+                    int pickUpOffset = isForward ? 0 : PICK_UP_OFFSET;
+                    //int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
                     int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
 
                     int stoppingDist = stoppingDistance[(int)speed];
@@ -394,7 +395,7 @@ void engineerServer()
                     }
                 }
 
-                if (distToNextNode <= 0)
+                if (distToNextNode <= 0 && nextNode->type != NODE_SENSOR)
                 {
                     // We've "reached" the next non-sensor landmark
                     // Update previous landmark
@@ -436,7 +437,7 @@ void engineerServer()
                     locationMessage.distToNext = distToNextNode;
                     Reply(tid, &locationMessage, sizeof(locationMessage));
 
-                    state = (speed == 0) ? Stop : Running;
+                    state = (speed == 0) ? Stopped : Accelerating;
                 }
                 else // distToNextNode > 0
                 {
@@ -448,10 +449,10 @@ void engineerServer()
                 }
                 break;
             }
-            
+
             case updateSensor: {
                 uassert(state != Init);
-                
+
                 // unblock sensor courier
                 Reply(tid, 0, 0);
 
@@ -478,7 +479,7 @@ void engineerServer()
                 uassert(nextNode && nextEdge);
 
                 // resetting distSoFar: non-sensor node reached
-                distSoFar = 0;
+                distSoFar = isForward ? 0 : PICK_UP_OFFSET;
 
                 // update constant velocity calibration data
                 int last_index = last_update.sensor;
@@ -491,10 +492,13 @@ void engineerServer()
                 if(last_index >= 0)
                 {
                     // apply learning
-                    int past_difference = timeDeltas[(int)speed][last_index][index];
-                    int new_difference = sensor_update.time - last_update.time;
-                    timeDeltas[(int)speed][last_index][index] =  (new_difference * ALPHA
-                        + past_difference * (100 - ALPHA)) / 100;
+                    if (state == Running)
+                    {
+                        int past_difference = timeDeltas[(int)speed][last_index][index];
+                        int new_difference = sensor_update.time - last_update.time;
+                        timeDeltas[(int)speed][last_index][index] =  (new_difference * ALPHA
+                            + past_difference * (100 - ALPHA)) / 100;
+                    }
 
                     // prepare output
                     int distanceToNextNode = nextEdge->dist * 1000;
@@ -516,12 +520,18 @@ void engineerServer()
 
                 if (state == CouriersCreated)
                 {
-                    state = speed ? Running : Stop;
+                    state = speed ? Accelerating : Stopped;
 
                     // kick start UI refresh
                     locationMessage.type = LOC_MESSAGE_INIT;
                     Reply(locationWorkerTid, &locationMessage, sizeof(locationMessage));
                     locationWorkerTid = 0;
+                }
+                else if (state == Accelerating)
+                {
+                    // Assume that after hitting a sensor, the train has reached constant velocity.
+                    // therefore transition to Running
+                    state = Running;
                 }
                 break;
             }
@@ -638,10 +648,12 @@ void engineerServer()
                 prevSpeed = speed;
                 speed = (char)(message.data.setSpeed.speed);
                 printf(COM2, "Speed set: %d, currentState: %d\n\r", speed, state);
-                if      (state == CouriersCreated || state == Reversing) break;
-                else if (state == Stop && speed == 0) break;
-                else if (speed == 0) state = Decelerating;
-                else    state = Running;
+
+                if (state == CouriersCreated || state == Reversing) break;
+                else if (state == Stopped && speed > 0) state = Accelerating;
+                else if (state == Running && speed == 0) state = Decelerating;
+                else if (state == Decelerating && speed > 0) state = Accelerating;
+                else if (state == Accelerating && speed == 0) state = Decelerating;
                 break;
             }
 
@@ -650,30 +662,30 @@ void engineerServer()
                 // unblock parser
                 Reply(tid, 0, 0);
                 uassert(state == Init && trainNumber == 0 && initialSensorIndex == 0);
-                
+
                 // assign inital values: train number and inital sensor index
                 trainNumber = message.data.initialize.trainNumber;
                 initialSensorIndex = message.data.initialize.sensorIndex;
-    
+
                 // create child tasks
                 int ret;
-                
+
                 ret = Create(PRIORITY_SENSOR_COURIER, commandWorker);
                 uassert(ret > 0);
-                
+
                 ret = Create(PRIORITY_SENSOR_COURIER, sensorCourier);
                 uassert(ret > 0);
-                
+
                 locationWorkerTid = Create(PRIORITY_SENSOR_COURIER, locationWorker);
                 uassert(ret > 0);
                 state = CouriersCreated;
                 break;
             }
-            
+
             case initializeSensorCourier:
             {
                 uassert(state == CouriersCreated);
-                
+
                 // reply the sensor courier with the expected first
                 // sensor hit so it could claim it in sensor server
                 Reply(tid, &initialSensorIndex, sizeof(initialSensorIndex));
@@ -686,3 +698,4 @@ void engineerServer()
         }
     }
 }
+

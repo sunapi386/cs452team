@@ -123,7 +123,7 @@ tc1
 \end_layout
 
 \begin_layout Itemize
-Or, checkout by SHA1 hash: ff5d16e4
+Or, checkout by SHA1 hash: 26cd1dcd
 \end_layout
 
 \begin_layout Itemize
@@ -137,7 +137,7 @@ Compiling by running
 \family default
  to
 \family typewriter
- /u/cs452/tftp/ARM/sunchang/tc1.elf
+ /u/cs452/tftp/ARM/sunchang/k5.elf
 \end_layout
 
 \begin_layout Subsection
@@ -414,7 +414,7 @@ Load track A or B
 \begin_layout Plain Layout
 
 \family typewriter
-x track_node_index
+x nodeIndex offset
 \end_layout
 
 \end_inset
@@ -423,7 +423,7 @@ x track_node_index
 \begin_inset Text
 
 \begin_layout Plain Layout
-X marks the spot: stop the train at that node
+Stop the train at offset millimeters before that node
 \end_layout
 
 \end_inset
@@ -551,12 +551,12 @@ Kernel Structure Details
 \end_layout
 
 \begin_layout Section
-Trap Frame
+Stack Layout
 \end_layout
 
 \begin_layout Standard
-When the user does a syscall, a trap frame is set up on the top of the user
- stack to store user’s current registers.
+When the user does a syscall, the top of the user stack to store user’s
+ current registers.
  The layout of registers stored is: 
 \end_layout
 
@@ -1769,7 +1769,7 @@ Calculate user sp after pushing cpsr and pc
 \begin_layout Plain Layout
 
 \family typewriter
-msr cpsr_c, #0xd3
+mrs r2, sps3
 \end_layout
 
 \end_inset
@@ -1778,7 +1778,7 @@ msr cpsr_c, #0xd3
 \begin_inset Text
 
 \begin_layout Plain Layout
-Change back to supervisor mode
+Put spsr (user cpsr) in r2
 \end_layout
 
 \end_inset
@@ -1791,7 +1791,7 @@ Change back to supervisor mode
 \begin_layout Plain Layout
 
 \family typewriter
-mrs r2, spsr
+msr cpsr_c, #0xd3
 \end_layout
 
 \end_inset
@@ -1800,7 +1800,7 @@ mrs r2, spsr
 \begin_inset Text
 
 \begin_layout Plain Layout
-Put spsr (user cpsr) in r2
+Change back to supervisor mode
 \end_layout
 
 \end_inset
@@ -2368,35 +2368,41 @@ Sensor Update
 
 \begin_layout Standard
 The sensor updates from the track is received by the trainOutServer.
- It is polled by the sensorCourier task, time-stamped, displayed onto the
- screen, then delivered to the sensor server.
- The sensor server then stores them inside a buffer; the engineerCourier
- then calls Send() to the sensor server, which is replied with data from
- the buffer.
-\end_layout
-
-\begin_layout Subsection
-Sensor Courier
+ It is polled by the sensorWorker task by calling Getc(COM1), time-stamped
+ by calling Time(), displayed onto the screen, then delivered to the sensor
+ server.
+ The sensor server then stores them into a buffer; the sensorCourier then
+ calls Send() to the sensor server, which is replied with data from the
+ buffer.
 \end_layout
 
 \begin_layout Standard
-The sensor courier is created by the sensor server.
- On start, the sensor courier calls Putc(COM1, 133) to request for sensor
+All sensor updates are attributed to the same engineer task as we only support
+ one train at this moment.
+\end_layout
+
+\begin_layout Subsection
+Sensor Worker
+\end_layout
+
+\begin_layout Standard
+The sensor worker is created by the sensor server.
+ On start, the sensor worker calls Putc(COM1, 133) to request for sensor
  data for all sensors.
  It then receives 10 bytes of sensor data.
  When the first of the 10 bytes is received, the courier calls Time(), which
  is used as the timestamp for all 10 sensor updates.
- On receiving each byte, the sensor courier prints out the triggered sensors
+ On receiving each byte, the sensor worker prints out the triggered sensors
  onto the screen.
- For each byte, the sensor courier then sends to the sensor server with
- both the sensor and the timestamp.
+ For each byte, the sensor worker then sends to the sensor server with both
+ the sensor and the timestamp.
 \end_layout
 
 \begin_layout Standard
-To prevent stuck sensor from repeatedly triggered, the courier saves each
- byte it receives in an character array of size 10.
+To prevent stuck sensor from repeatedly being triggered, the courier saves
+ each byte it receives in an character array of size 10.
  When a 0 byte is received by the courier, it sets the stored state to 0;
- else, the sensor courier AND the byte with the NEGATION of the stored byte.
+ else, the sensor worker AND the byte with the NEGATION of the stored byte.
  The result is printed and delivered only when the AND result is non-zero.
 \end_layout
 
@@ -2405,10 +2411,10 @@ Sensor Server
 \end_layout
 
 \begin_layout Standard
-The sensor server receives from both the engineer courier and and the sensor
- courier.
- The sensor courier moves sensor updates from the trackOutServer to the
- sensor server; the engineer courier moves sensor updates from the buffer
+The sensor server receives from both the sensor courier and and the sensor
+ worker.
+ The sensor worker moves sensor updates from the COM1 output server to the
+ sensor server; the sensor courier moves sensor updates from the buffer
  of sensor server to the engineer task.
 \end_layout
 
@@ -2438,25 +2444,7 @@ Track Controller
 
 \begin_layout Standard
 Not implemented in TC1.
- The train controller manages: 
-\end_layout
-
-\begin_layout Enumerate
-Sensor attribution
-\end_layout
-
-\begin_layout Enumerate
-Track reservation
-\end_layout
-
-\begin_layout Enumerate
-Path finding
-\end_layout
-
-\begin_layout Standard
-When the controller is implemented in the future, the engineer would receive
- commands from the controller and execute the command that was replied.
- 
+ The train controller will manage track reservation.
 \end_layout
 
 \begin_layout Subsection
@@ -2464,17 +2452,85 @@ Engineer
 \end_layout
 
 \begin_layout Standard
-A train engineer is the task that calculates immediete information regarding
- the train.
- It is a server which receives from the UIWorker, engineerCourier, and the
- parser.
+A train engineer is the task that calculates information such as displacement
+ and velocity of a train.
+ It is a server which receives from the LocationWorker, CommandWorker, SensorCou
+rier, and the parser.
  Associated with the Engineer are data such as: 
 \end_layout
 
 \begin_layout Itemize
-Position
+State
 \end_layout
 
+\begin_deeper
+\begin_layout Itemize
+Init: the initial state when the engineer is created.
+\end_layout
+
+\begin_layout Itemize
+Stopped: when the train has been given speed 0, and has finished 
+\begin_inset Quotes eld
+\end_inset
+
+Decelerating
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Running: when the train is running in constant velocity
+\end_layout
+
+\begin_layout Itemize
+Reversing: when the train has came to a complete stop, and just issued a
+ reverse command
+\end_layout
+
+\begin_layout Itemize
+Decelerating: when the train is going in constant velocity, and the command
+ of setting speed to 0 is executed
+\end_layout
+
+\begin_layout Itemize
+Accelerating: when the speed is transitioning from 0 to a value that is
+ greater than 0
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+Position and displacement
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Direction of the train, which forward is defined as the pick up being at
+ the front of the train
+\end_layout
+
+\begin_layout Itemize
+Previous sensor node
+\end_layout
+
+\begin_layout Itemize
+Next sensor node
+\end_layout
+
+\begin_layout Itemize
+Previous track node
+\end_layout
+
+\begin_layout Itemize
+Next track node
+\end_layout
+
+\begin_layout Itemize
+Distance after the previous track node
+\end_layout
+
+\end_deeper
 \begin_layout Itemize
 Speed (from 0 to 14)
 \end_layout
@@ -2484,55 +2540,22 @@ Velocity
 \end_layout
 
 \begin_layout Itemize
-Last hit sensors and time pair
+Timestamps for the previous sensor update
 \end_layout
 
 \begin_layout Itemize
-Upon starting the engineer it drives until it hits a sensor.
- This tells it where it is and it updates its landmarks.
- When it receives a sensor update, or an location update from the UI worker,
- it recalculates its current landmark.
- 
-\end_layout
-
-\begin_layout Itemize
-It also keeps track of which sensor will be hit next and when.
+A buffer of queued commands
 \end_layout
 
 \begin_layout Subsubsection
-Sensor Update
-\end_layout
-
-\begin_layout Standard
-The engineer task is notified of sensor update via the engineerCourier,
- with the other end being the sensorServer.
- The engineerCourier first calls Send() to the sensorServer, and when the
- sensor server receives an update, the engineerCourier is replied with the
- sensor ID and a timestamp.
- The courier then call Send() to the engineer task.
-\end_layout
-
-\begin_layout Standard
-When a sensor update is delivered to the engineer, the engineer knows that
- a sensor has been triggered.
- The sensor updates the sensor-time table that stores time between pairs
- of sensors, updates the previous landmark, next landmark, distance to next
- landmark, previous sensor (which is the sensor in this sensor update),
- current velocity (length of segment between two sensors / time since last
- sensor ), expected time (which is computed from the time of previous sensor
- update plus the value in the sensor-time table), the actual time (which
- is the timestamp of the sensor update), and error (abs(actual time - expected
- time)).
-\end_layout
-
-\begin_layout Subsubsection
-Display Of Location Information
+Update And Display Of Location Information
 \end_layout
 
 \begin_layout Standard
 The display of location information is managed by both the engineer and
- the UIWorker.
- The UIWorker is a worker task that Send() an 
+ the LocationWorker.
+ The LocationWorker is a worker task created by the Engineer that calls
+ Send() to the engineer with an 
 \begin_inset Quotes eld
 \end_inset
 
@@ -2540,11 +2563,11 @@ update_location
 \begin_inset Quotes erd
 \end_inset
 
- request to the engineer every 5 ticks.
- After the engineer process the request, it is replied with updates to the
- screen.
- It then prints out the replied data to COM2 via a printf() call, and then
- calls Send() to the engineer again.
+ request to the 5 ticks.
+ After the engineer process the request, it is replied with data to be printed
+ onto the screen.
+ Upon being unblocked, it then prints out the replied data to COM2 output
+ server via a printf() call.
 \end_layout
 
 \begin_layout Standard
@@ -2556,17 +2579,185 @@ update_location
 \begin_inset Quotes erd
 \end_inset
 
- request, the engineer computes how far it's gone over previous landmark,
- then computes the next landmark.
- If the next landmark is a sensor, then the engineer replies to the UIWorker
- with the distance to the next sensor.
- If the next landmark is not a sensor, then the engineer get the distance
- from previous landmark to next landmark from the track graph; it checks
- to see if the distance that the train has gone past the previous landmark
- is greater or equal to that distance.
- If it is, then we assume that we've reached the next landmark and output
- all of the related information; else, only the distance to the next landmark
- is printed.
+ request, the engineer computes it's velocity based on the current state
+ of the train.
+ For example, if the state is 
+\begin_inset Quotes eld
+\end_inset
+
+Decelerating
+\begin_inset Quotes erd
+\end_inset
+
+, then the acceleration estimation of the train is computed, and velocity
+ is decreased until zero; otherwise, if the state of the train is anything
+ other than 
+\begin_inset Quotes eld
+\end_inset
+
+Stopped
+\begin_inset Quotes erd
+\end_inset
+
+, the velocity is computed by 
+\family typewriter
+(distance between previous and next sensor) / (calibrated time between the
+ previous and next sensor)
+\family default
+.
+ If the current train state is 
+\begin_inset Quotes eld
+\end_inset
+
+Reversing
+\begin_inset Quotes erd
+\end_inset
+
+, the previous and the next node, as well as the previous and the next sensor
+ nodes recorded by the engineer, are swapped.
+\end_layout
+
+\begin_layout Standard
+With velocity calculated, the task then could compute how far it's gone
+ over previous track node, and the remaining distance to the next track
+ node.
+ If the remaining distance is equal to or smaller than 0 and that the next
+ node is not a sensor node, then the current node and the next node is updated
+ and replied to the LocationWorker.
+ If the engineer has yet to reach the next node, the LocationWorker is replied
+ with the updated distance to next node.
+\end_layout
+
+\begin_layout Standard
+If the next node is a sensor and the distance to the sensor node is smaller
+ or equal to zero, a negative distance is outputed.
+ This is done because we only reach a sensor when the engineer receives
+ a sensor update.
+\end_layout
+
+\begin_layout Subsubsection
+Linear Deceleration
+\end_layout
+
+\begin_layout Standard
+The deceleration is computed using the following formula:
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\acceleration}{}
+{-v_{i}*v_{i}/(2*stoppingDistance)}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When the train enters into the 
+\begin_inset Quotes eld
+\end_inset
+
+Decelerating
+\begin_inset Quotes erd
+\end_inset
+
+ state, this acceleration value is computed once, and the velocity is decremente
+d according to the deceleration until it reaches zero, then the state of
+ the train is set to 
+\begin_inset Quotes eld
+\end_inset
+
+Stopped
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsubsection
+Sensor Update
+\end_layout
+
+\begin_layout Standard
+The engineer task notified of sensor update via the sensorCourier, with
+ the other end being the sensorServer.
+ The sensorCourier first calls Send() to the sensorServer, and when the
+ sensor server receives an update, the sensorCourier is replied with the
+ sensor node index and a timestamp.
+ The courier then call Send() to the engineer task with the exact data.
+\end_layout
+
+\begin_layout Standard
+When a sensor update is delivered to the engineer, the engineer knows that
+ a sensor has been triggered.
+ The sensor updates the timeDeltas table that stores time differences between
+ pairs of sensors, updates the previous landmark, next landmark, distance
+ to next landmark, previous sensor (which is the sensor in this sensor update),
+ current velocity (
+\family typewriter
+length of segment between previous & next sensor / time since last sensor
+\family default
+), expected time (which is looked up from timeDeltas table), the actual
+ time (which is the timestamp of the sensor update), and error (
+\family typewriter
+abs(actual time - expected time)
+\family default
+).
+\end_layout
+
+\begin_layout Subsubsection
+Execution Of Train Commands And Command Notifications
+\end_layout
+
+\begin_layout Standard
+Previously, the execution of train commands are directly sent to the COM1
+ input server by the parser.
+ The downside of this solution is that it is not scalable for multiple trains,
+ since reverse require two Delay() calls.
+ Another problem that associates with this is that in the original solution
+ where the parser task puts commands to COM2 input server, the engineer
+ task is unaware of when these bytes are actually put into the buffer.
+ The commandWorker is introduced to resolve these issues.
+\end_layout
+
+\begin_layout Standard
+On start, the engineer creates a commandWorker.
+ The commandWorker then immedietly becomes receive blocked on the engineer.
+ When the engineer receives a command from the parser, the engineer puts
+ the command into it's command buffer.
+ The command worker would then be taken off the send queue by an Reply()
+ call with the first command on the command queue.
+\end_layout
+
+\begin_layout Standard
+The execution of the 
+\family typewriter
+tr
+\family default
+ and 
+\family typewriter
+rv
+\family default
+ command is carried out by the commandWorker.
+ Setting the speed is straight forward, where the worker simply print two
+ bytes, indicating the desired speed and the train number.
+ For reverse, 300 ticks of delay is inserted between setting the train to
+ speed 0 and setting reverse, and a delay of 15 ticks is inserted between
+ the reverse command and the setting of previous speed.
+\end_layout
+
+\begin_layout Standard
+After each set speed or set reverse command, the commandWorker calls Send()
+ to the engineer, letting it know that the certain action has been carried
+ out.
+ For an 
+\family typewriter
+rv
+\family default
+ call, the command worker receives three notifications: SetSpeed (0), SetReverse
+, and SetSpeed (original speed).
+ In this way, the engineer is able to garauntee to have the correct internal
+ state when various commands are executed.
 \end_layout
 
 \begin_layout Subsubsection
@@ -2588,14 +2779,15 @@ X Marks The Spot
 \begin_inset Quotes eld
 \end_inset
 
-x [node index]
+x [node index] [offset]
 \begin_inset Quotes erd
 \end_inset
 
  from the terminal, and the parser task would Send() to the engineer task.
  On receiving the message, the track node is retrieved using the track index.
  In subsequent update_location messages, the displacement between the current
- landmark and the target landmark is checked.
+ landmark and the target landmark is checked, with the offset taken into
+ consideration.
  If the distance is smaller or equal to the stopping distance of the current
  speed, the stop command is issued.
 \end_layout
@@ -2634,16 +2826,16 @@ Constant Velocity
 
 \begin_layout Standard
 A two dimensional array is declared in the engineer task to store time differenc
-es between any two sensors: int pairs[NUM_SENSORS][NUM_SENSOR];
+es between any two sensors: int timeDeltas[NUM_SENSORS][NUM_SENSOR];
 \end_layout
 
 \begin_layout Standard
-Constant velocity is calibrated by populating the sensor-time table described
+Constant velocity is calibrated by populating the timeDeltas table described
  above.
  The actual data recorded in the two-dimensional table, with the two indices
  being sensor node indices, are time difference between the two sensors.
- The table is updated in a feedback loop fashion for accurate train velocity
- estimation 
+ The table is updated upon hitting a new sensor in a feedback loop fashion
+ for accurate train velocity estimation 
 \begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
 \end_inset
 
@@ -2674,9 +2866,21 @@ The stopping distance of of the train is manually measured, with the help
 \end_layout
 
 \begin_layout Standard
-Currently the data for stopping distances, which consists of two arrays
- of size 15, are stored within the engineer task since we assume that only
- a single calibrated train is on the track.
+Currently the data for stopping distances, which is an arrays of size 15,
+ is stored within the engineer task.
+ This set of stopping distances, mapped to speed 0 to 14, is measured with
+ the pick-up of the train in the front (defined as forward direction of
+ the train).
+ In the case that the train is running in the 
+\begin_inset Quotes eld
+\end_inset
+
+backward
+\begin_inset Quotes erd
+\end_inset
+
+ direction, which means that the pick up is at the end of the train, an
+ additional offset of 105mm is added to the stopping distance.
 \end_layout
 
 \end_body
