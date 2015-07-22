@@ -36,7 +36,7 @@ typedef struct LocationMessage {
 
 typedef enum {
     Init = 0,        // initial state
-    ChildrenCreated, // couriers created
+    Ready,           // setup complete
     Stopped,         // stop command issued
     Running,         // running
     Reversing,       // reverse issued
@@ -55,7 +55,10 @@ static inline int abs(int num) {
     Sensor Courier
 */
 
-static void sensorCourier() {
+static void sensorCourier(int initialSensorIndex) {
+    uassert(initialSensorIndex >= 0 && initialSensorIndex < 80);
+    printf(COM2, "Sensor courier started; inital sensor index: %d\n\r", initialSensorIndex);
+
     int engineer = MyParentTid();
     int sensor = WhoIs("sensorServer");
 
@@ -64,11 +67,6 @@ static void sensorCourier() {
     sensorReq.type = MESSAGE_SENSOR_COURIER;
     SensorUpdate result;  // courier <-> sensorServer
     EngineerMessage engineerReq; // courier <-> engineer
-
-    // get the first sensor from the
-    // engineerReq.type = initialSensor;
-    // Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
-
     engineerReq.type = updateSensor;
 
     for (;;) {
@@ -258,41 +256,36 @@ executeCommand:
     Engineer
 */
 
-void initializeEngineer(EngineerMessage *message, int *trainNumber, int *initialSensorIndex, TrainState *state)
+void initializeEngineer(/*in */ EngineerMessage *message,
+                        /*out*/ int *trainNumber,
+                        /*out*/ int *locationWorkerTid)
 {
     int tid = 0;
 
     /*
         Stage 1: Initalize trainNumber and initialSensorIndex
     */
-    Receive(&tid, message, sizeof(EngineerMessage));
-    uassert(len == sizeof(EngineerMessage) && message->type == initialize);
+    int ret = Receive(&tid, message, sizeof(EngineerMessage));
+    uassert(ret == sizeof(EngineerMessage) && message->type == initialize);
 
     // unblock parser
     Reply(tid, 0, 0);
 
-    // assign inital values: train number and inital sensor index
-    *trainNumber = message.data.initialize.trainNumber;
-    *initialSensorIndex = message.data.initialize.sensorIndex;
+    // receive inital values: train number and inital sensor index
+    *trainNumber = message->data.initialize.trainNumber;
+    int initialSensorIndex = message->data.initialize.sensorIndex;
 
     /*
-        Stage 2: Create child tasks and transition to Children created state
+        Stage 2: Create child tasks and transition to Ready state
     */
-    int ret;
-
-    ret = Create(PRIORITY_SENSOR_COURIER, commandWorker);
+    ret = Spawn(PRIORITY_SENSOR_COURIER, sensorCourier, (void *)initialSensorIndex);
     uassert(ret > 0);
 
-    ret = Create(PRIORITY_SENSOR_COURIER, sensorCourier);
+    ret = Create(PRIORITY_COMMAND_WORKER, commandWorker);
     uassert(ret > 0);
 
-    locationWorkerTid = Create(PRIORITY_SENSOR_COURIER, locationWorker);
-    uassert(ret > 0);
-    *state = ChildrenCreated;
-
-    /*
-        Stage 3: Create
-    */
+    *locationWorkerTid = Create(PRIORITY_LOCATION_WORKER, locationWorker);
+    uassert(*locationWorkerTid > 0);
 }
 
 void engineerServer()
@@ -302,7 +295,6 @@ void engineerServer()
     int commandWorkerTid = 0;
 
     int trainNumber = 0;
-    int initialSensorIndex = 0;
     int timeDeltas[NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
     TrainState state = Init;
 
@@ -335,7 +327,8 @@ void engineerServer()
     LocationMessage locationMessage;
     EngineerMessage message;
 
-    initializeEngineer(&message);
+    initializeEngineer(&message, &trainNumber, &locationWorkerTid);
+    state = Ready;
 
     // All sensor reports with timestamp before this time are invalid
     int creationTime = Time();
@@ -349,8 +342,7 @@ void engineerServer()
         {
             case updateLocation:
             {
-                uassert(state != Init);
-                if (state == ChildrenCreated)
+                if (state == Ready)
                 {
                     // If we are just starting, block until we reach the first sensor
                     break;
@@ -563,7 +555,7 @@ void engineerServer()
                 last_update.time = sensor_update.time;
                 last_update.sensor = sensor_update.sensor;
 
-                if (state == ChildrenCreated)
+                if (state == Ready)
                 {
                     state = speed ? Accelerating : Stopped;
 
@@ -694,26 +686,12 @@ void engineerServer()
                 speed = (char)(message.data.setSpeed.speed);
                 printf(COM2, "Speed set: %d, currentState: %d\n\r", speed, state);
 
-                if (state == ChildrenCreated || state == Reversing) break;
+                if (state == Ready || state == Reversing) break;
                 else if (state == Stopped && speed > 0) state = Accelerating;
                 else if (state == Running && speed == 0) state = Decelerating;
                 else if (state == Decelerating && speed > 0) state = Accelerating;
                 else if (state == Accelerating && speed == 0) state = Decelerating;
                 break;
-            }
-
-            // Sensor courier: I'm started for the first time; gimme the first
-            // sensor that I claim
-            case initialSensor:
-            {
-                uassert(state == ChildrenCreated);
-
-                // transition into ready state
-                state = Ready;
-
-                // reply the sensor courier with the expected first
-                // sensor hit so it could claim it in sensor server
-                Reply(tid, &initialSensorIndex, sizeof(initialSensorIndex));
             }
 
             default:
