@@ -79,13 +79,23 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
             }
             break;
         }
-        case SYS_SPAWN: {
+        case SYS_SPAWN:
+        {
             TaskDescriptor *task = taskSpawn(request->arg1,
                                              (void *)(request->arg2),
                                              (void *)(request->arg3),
                                              taskGetIndex(td));
-            queueTask(task);
-            td->ret = task == NULL ? -1 : 0;
+            if (task == NULL)
+            {
+                // task is NULL, return -1 to caller of Spawn
+                taskSetRet(td, -1);
+            }
+            else
+            {
+                // queue the newly created task, then set the Spawn() retval to 0
+                queueTask(task);
+                taskSetRet(td, 0);
+            }
             break;
         }
         case SYS_MY_TID:

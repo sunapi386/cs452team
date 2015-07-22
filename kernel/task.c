@@ -153,7 +153,7 @@ TaskDescriptor* taskSpawn(int priority, void (*code)(void), void *argument, int 
     TaskDescriptor *spawnling = global_task_table + (tid & TASK_INDEX_MASK);
 
     // Molest it's r0
-    spawnling->ret = (int)argument;
+    taskSetRet(spawnling, (int)argument);
 
     // Spawnling is born
     return spawnling;
