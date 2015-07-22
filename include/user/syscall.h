@@ -8,16 +8,17 @@
 
 struct String;
 
-#define SYS_AWAIT_EVENT     1
-#define SYS_SEND            2
-#define SYS_RECEIVE         3
-#define SYS_REPLY           4
-#define SYS_CREATE          5
-#define SYS_EXIT            6
-#define SYS_MY_TID          7
-#define SYS_MY_PARENT_TID   8
-#define SYS_PASS            9
-#define SYS_HALT            10
+#define SYS_AWAIT_EVENT   1
+#define SYS_SEND          2
+#define SYS_RECEIVE       3
+#define SYS_REPLY         4
+#define SYS_CREATE        5
+#define SYS_EXIT          6
+#define SYS_MY_TID        7
+#define SYS_MY_PARENT_TID 8
+#define SYS_PASS          9
+#define SYS_SPAWN         10
+#define SYS_HALT          11
 
 typedef
 struct Syscall {
@@ -127,6 +128,7 @@ caller.
 int AwaitEvent(int eventType);
 
 /**
+<<<<<<< HEAD
 Returns:
 0   Success
 -1  Name table full
@@ -175,6 +177,12 @@ int Putc(int channel, char c);
 int PutStr(int channel, char *str);
 
 int PutString(int channel, struct String *s);
+
+/*
+    Spawn - the cooler cousin of Create()
+    Description. The cooler cousin of Create().
+*/
+int Spawn( int priority, void (*code) ( ), void * argument );
 
 void Halt();
 

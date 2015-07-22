@@ -92,3 +92,13 @@ void Halt() {
     s.type = SYS_HALT;
     swi(&s);
 }
+
+int Spawn(int priority, void (*code) ( ), void * argument )
+{
+    Syscall s;
+    s.type = SYS_SPAWN;
+    s.arg1 = priority;
+    s.arg2 = (unsigned int)code;
+    s.arg3 = (unsigned int)argument;
+    return swi(&s);
+}

@@ -1,13 +1,6 @@
 #ifndef __TASK_H
 #define __TASK_H
 
-// Trap size is # of registers pushed on stack during c-switch. Layout:
-// sp + 0 = r1 (pc)
-// sp + 1 = r2 (cpsr_user)
-// ...
-// sp + 11 = r12
-// sp + 12 = lr
-
 #define TASK_TRAP_SIZE      15
 #define TASK_BITS           7   // 2^8 = 128
 #define TASK_PRIORITY_BITS  5   // 2^5 = 32  Warning: Brujin table is 32.
@@ -36,29 +29,9 @@
 
 #define NULL 0
 
-
-/**
-Task.h
-Each task has a task descriptor (TD), which is the most important data structure
-in the kernel. The TDs should be local to the kernel, that is, on the kernel
-stack, allocated when the kernel begins executing. Each TD must either include
-1. a task identifier unique to this instance of the task,
-2. the task's state,
-3. the task's priority,
-4. the task identifier of the task's parent, the task that created this task,
-5. a stack pointer pointing to this task's private memory, and
-6. the task's return value, which is to be returned to the task when it
-next executes, or be able to calculate it using one or more fields of the td.
-The TD may include other fields. For example, a popular priority queue
-implementation is a doubly-linked circular list, using pointers to the TDs of
-tasks ahead and behind the task in the queue that are part of the TD.
-A good rule-of-thumb is that values accessed only by the context switch can be
-on the stack of the user task; other values should be in the task descriptor.
-*/
-
 typedef enum {
     ready,         // ready to be activated
-    send_block,  // task executed Send(), waiting for it to be received
+    send_block,    // task executed Send(), waiting for it to be received
     receive_block, // task executed Receive(), waiting for task to Send()
     reply_block,   // task executed Send(), its message received, waiting on reply
 } Status;
@@ -78,6 +51,7 @@ typedef struct TaskDescriptor {
 } TaskDescriptor;
 
 int taskCreate(int priority, void (*code)(void), int parent_id);
+TaskDescriptor* taskSpawn(int priority, void (*code)(void), void *argument, int parentId);
 void taskExit(TaskDescriptor *task);
 void initTaskSystem();
 void taskSetName(TaskDescriptor *task, char *name);

@@ -141,6 +141,24 @@ int taskCreate(int priority, void (*code)(void), int parent_id) {
     return new_task->id;
 }
 
+TaskDescriptor* taskSpawn(int priority, void (*code)(void), void *argument, int parentId)
+{
+    // Create a spawnling
+    int tid = taskCreate(priority, code, parentId);
+
+    // If spawnling is not real return NULL
+    if (tid < 0) return NULL;
+
+    // Get the spawnling
+    TaskDescriptor *spawnling = global_task_table + (tid & TASK_INDEX_MASK);
+
+    // Molest it's r0
+    spawnling->ret = (int)argument;
+
+    // Spawnling is born
+    return spawnling;
+}
+
 void taskExit(TaskDescriptor *task) {
     task->id = 0;
     task->parent_id = 0;

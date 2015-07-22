@@ -14,13 +14,14 @@
 #include <user/clockserver.h>
 
 static void initKernel(TaskQueue *sendQueues) {
-    cacheEnable();
+    enableCache();
     initTaskSystem();
     initScheduler();
     initMessagePassing(sendQueues);
     initInterrupts();
     initUART();
     initTimer();
+
     int create_ret = taskCreate(PRIORITY_INIT, bootstrapTask, 0);
     queueTask(taskGetTDById(create_ret));
 }
@@ -30,7 +31,7 @@ static void resetKernel() {
     resetTimer();
     resetInterrupts();
     resetUART();
-    cacheDisable();
+    disableCache();
 }
 
 int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
@@ -76,6 +77,15 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
             {
                 taskSetRet(td, create_ret);
             }
+            break;
+        }
+        case SYS_SPAWN: {
+            TaskDescriptor *task = taskSpawn(request->arg1,
+                                             (void *)(request->arg2),
+                                             (void *)(request->arg3),
+                                             taskGetIndex(td));
+            queueTask(task);
+            td->ret = task == NULL ? -1 : 0;
             break;
         }
         case SYS_MY_TID:
