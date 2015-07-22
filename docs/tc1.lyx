@@ -414,7 +414,7 @@ Load track A or B
 \begin_layout Plain Layout
 
 \family typewriter
-x track_node_index
+x nodeIndex offset
 \end_layout
 
 \end_inset
@@ -423,7 +423,7 @@ x track_node_index
 \begin_inset Text
 
 \begin_layout Plain Layout
-X marks the spot: stop the train at that node
+Stop the train at offset millimeters before that node
 \end_layout
 
 \end_inset
@@ -551,12 +551,12 @@ Kernel Structure Details
 \end_layout
 
 \begin_layout Section
-Trap Frame
+Stack Layout
 \end_layout
 
 \begin_layout Standard
-When the user does a syscall, a trap frame is set up on the top of the user
- stack to store user’s current registers.
+When the user does a syscall, the top of the user stack to store user’s
+ current registers.
  The layout of registers stored is: 
 \end_layout
 
@@ -2779,14 +2779,15 @@ X Marks The Spot
 \begin_inset Quotes eld
 \end_inset
 
-x [node index]
+x [node index] [offset]
 \begin_inset Quotes erd
 \end_inset
 
  from the terminal, and the parser task would Send() to the engineer task.
  On receiving the message, the track node is retrieved using the track index.
  In subsequent update_location messages, the displacement between the current
- landmark and the target landmark is checked.
+ landmark and the target landmark is checked, with the offset taken into
+ consideration.
  If the distance is smaller or equal to the stopping distance of the current
  speed, the stop command is issued.
 \end_layout
@@ -2865,9 +2866,21 @@ The stopping distance of of the train is manually measured, with the help
 \end_layout
 
 \begin_layout Standard
-Currently the data for stopping distances, which consists of two arrays
- of size 15, are stored within the engineer task since we assume that only
- a single calibrated train is on the track.
+Currently the data for stopping distances, which is an arrays of size 15,
+ is stored within the engineer task.
+ This set of stopping distances, mapped to speed 0 to 14, is measured with
+ the pick-up of the train in the front (defined as forward direction of
+ the train).
+ In the case that the train is running in the 
+\begin_inset Quotes eld
+\end_inset
+
+backward
+\begin_inset Quotes erd
+\end_inset
+
+ direction, which means that the pick up is at the end of the train, an
+ additional offset of 105mm is added to the stopping distance.
 \end_layout
 
 \end_body
