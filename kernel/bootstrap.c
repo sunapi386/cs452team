@@ -3,7 +3,6 @@
 #include <user/clock_drawer.h>
 #include <user/clockserver.h>
 #include <user/io.h>
-#include <user/logger.h>
 #include <user/nameserver.h>
 #include <user/parser.h>
 #include <user/sensor.h>
@@ -28,7 +27,6 @@ void bootstrapTask() {
 
     // Create user task
     Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
-    // initLogger();
     initTrackServer();
     initTrain();
     initTurnout();
