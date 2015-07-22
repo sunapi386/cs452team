@@ -6,7 +6,7 @@
 typedef struct {
     enum {
         initialize,
-        initializeSensorCourier,
+        initialSensor,
         updateSensor,
         updateLocation,
         xMark,
