@@ -190,7 +190,7 @@ void sensorWorker()
     }
 
     // start courier main loop
-    req.type = MESSAGE_SENSOR_WORKER;
+    req.type = newSensor;
 
     for (;;)
     {
@@ -217,9 +217,9 @@ void sensorWorker()
                 handleChar(c, i);
 
                 // send request to sensor server
-                req.data.wm.data = c;
-                req.data.wm.seq = i;
-                req.data.wm.time = timestamp;
+                req.data.newSensor.data = c;
+                req.data.newSensor.seq = i;
+                req.data.newSensor.time = timestamp;
                 Send(pid, &req, sizeof(req), 0, 0);
             }
             else
@@ -242,7 +242,7 @@ void engineerCourier()
     EngineerMessage engineerMessage; // courier -> engineer
 
     // setup messages
-    sensorRequest.type = MESSAGE_ENGINEER_COURIER;
+    sensorRequest.type = requestSensor;
     engineerMessage.type = updateSensor;
 
     // main loop
@@ -279,10 +279,10 @@ typedef struct {
     int prevSensor;
 
     // the next sensor that the engineer expects to hit
-    int primaryClaim;
+    int primary;
 
     // the sensor that the engineer expects to hit if the primary sensor fails / turnout failure
-    int secondaryClaim;
+    int secondary;
 
     // when each of the claimed sensors is expected to be triggered
     // int primaryTime;
@@ -298,8 +298,8 @@ void initAttribution(Attribution attrs[])
         attrs[i].tid = 0;
         attrs[i].prevTime = 0;
         attrs[i].prevSensor = 0;
-        attrs[i].primaryClaim = 0;
-        attrs[i].secondaryClaim = 0;
+        attrs[i].primary = 0;
+        attrs[i].secondary = 0;
         // attrs[i].primaryTime = 0;
         // attrs[i].secondaryTime = 0;
     }
@@ -361,7 +361,7 @@ void sensorServer()
         switch (req.type)
         {
             // engineer courier requesting for sensor message to
-            case MESSAGE_ENGINEER_COURIER:
+            case requestSensor:
             {
                 if (isSensorQueueEmpty(&sensorQueue))
                 {
@@ -378,14 +378,12 @@ void sensorServer()
                 }
                 break;
             }
-            case MESSAGE_SENSOR_WORKER:
+            case newSensor:
             {
-                WorkerMessage *message = &(req.data.wm);
-
                 // get the byte and the timestamp
-                char data = message->data;
-                char offset = ((message->seq % 2 == 0) ? 0 : 8);
-                int timestamp = message->time;
+                char data = req.data.newSensor.data;
+                char offset = ((req.data.newSensor.seq % 2 == 0) ? 0 : 8);
+                int timestamp = req.data.newSensor.time;
 
                 // loop over the byte
                 char i, index;
@@ -394,7 +392,7 @@ void sensorServer()
                     if ((1 << i) & data)
                     {
                         // calculate the nodeIndex from group & number
-                        int sensorIndex = getSensorIndex(message->seq / 2,
+                        int sensorIndex = getSensorIndex(req.data.newSensor.seq / 2,
                                                          index + offset);
 
                         // loop over the attributions [looking for primary with the minimal prevTime]
@@ -413,7 +411,7 @@ void sensorServer()
                             // TODO: handle initial attribution
 
                             // compute effective primary & secondary claims
-                            if (attr->primaryClaim == sensorIndex)
+                            if (attr->primary == sensorIndex)
                             {
                                 if (minPrimaryTime == -1 ||
                                     attr->prevTime < minPrimaryTime)
@@ -422,7 +420,7 @@ void sensorServer()
                                     minPrimaryTime = attr->prevTime;
                                 }
                             }
-                            else if (attr->secondaryClaim == sensorIndex)
+                            else if (attr->secondary == sensorIndex)
                             {
                                 if (minSecondaryTime == -1 ||
                                     attr->prevTime < minSecondaryTime)
@@ -459,8 +457,8 @@ void sensorServer()
                             // set prevTime & prevSensor, clear the claims
                             attribution->prevTime = timestamp;
                             attribution->prevSensor = sensorIndex;
-                            attribution->primaryClaim = 0;
-                            attribution->secondaryClaim = 0;
+                            attribution->primary = 0;
+                            attribution->secondary = 0;
                         }
                         else
                         {
@@ -476,8 +474,8 @@ void sensorServer()
                 break;
             }
             // Engineer -> sensor courier -> sensor server
-            // Message contains: primaryClaim and secondaryClaim
-            case MESSAGE_SENSOR_COURIER:
+            // Message contains: primary and secondary
+            case claimSensor:
             {
                 // get the attribution pointer
                 Attribution *attribution = getAttribution(tid, &numEngineer, attrs);
@@ -485,8 +483,8 @@ void sensorServer()
 
                 // set the primary and secondary claim
                 attribution->isBlocked = 1;
-                attribution->primaryClaim = req.data.sc.primaryClaim;
-                attribution->secondaryClaim = req.data.sc.secondaryClaim;
+                attribution->primary = req.data.claimSensor.primary;
+                attribution->secondary = req.data.claimSensor.secondary;
                 break;
             }
             default:

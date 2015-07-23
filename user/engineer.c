@@ -63,6 +63,10 @@ static inline int abs(int num) {
 
     The data carried from sensor courier to the sensor server must include the tid of 
     the engieer, which is basically the parent tid of the sensor courier.
+
+
+    TODO: can a sensor claim fail? What happens if same engineers claim the same sensor?
+            Do we panic in this scenario?
 */
 
 static void sensorCourier(int initialSensorIndex) {
@@ -74,7 +78,7 @@ static void sensorCourier(int initialSensorIndex) {
 
     // declare some variables
     SensorRequest sensorReq;  // courier <-> sensorServer
-    sensorReq.type = MESSAGE_SENSOR_COURIER;
+    sensorReq.type = claimSensor;
     SensorUpdate result;  // courier <-> sensorServer
     EngineerMessage engineerReq; // courier <-> engineer
     engineerReq.type = updateSensor;

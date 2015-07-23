@@ -1,23 +1,6 @@
 #ifndef __SENSOR_H
 #define __SENSOR_H
 
-#define MESSAGE_SENSOR_WORKER    11
-#define MESSAGE_SENSOR_COURIER   12
-#define MESSAGE_ENGINEER_COURIER 13
-
-// sensorWorker -> sensorServer
-typedef struct WorkerMessage {
-    char data;  // actual data from com1
-    char seq;   // sequence number [0,2*NUM_SENSORS-1]
-    int time;   // timestamp in ticks
-} WorkerMessage;
-
-// engineer -> sensorCourier -> sensor server
-typedef struct {
-    int primaryClaim;
-    int secondaryClaim;
-} SensorClaim;
-
 typedef struct SensorRequest {
     enum {
         newSensor,     // sensor worker: A new sensor has been triggered
@@ -26,8 +9,16 @@ typedef struct SensorRequest {
         //invalidateSensor ?
     } type;
     union {
-        WorkerMessage wm; // sensor worker <-> engineer
-        SensorClaim sc;   // engineer -> sensor courier - > sensor server
+        struct {
+            char data;
+            char seq;
+            int time;
+        } newSensor;
+
+        struct {
+            int primary;
+            int secondary;
+        } claimSensor;
     } data;
 } SensorRequest;
 
