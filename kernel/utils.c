@@ -177,7 +177,7 @@ void initSensorQueue(SensorQueue *q, size_t size, SensorDelivery *buffer)
     q->buffer = buffer;
 }
 
-int enqueueSensor(SensorQueue *q, SensorDelivery *in)
+int enqueueSensor(SensorQueue *q, int tid, int type, int nodeIndex, int timestamp)
 {
     int ret = 0;
     q->tail = (q->tail + 1) % q->size;
@@ -187,7 +187,10 @@ int enqueueSensor(SensorQueue *q, SensorDelivery *in)
         q->tail = (q->tail + 1) % q->size;
         ret = -1;
     }
-    sensorDeliveryCopy(&(q->buffer[q->tail]), in);
+    (q->buffer[q->tail]).tid = tid;
+    (q->buffer[q->tail]).type = type;
+    (q->buffer[q->tail]).nodeIndex = nodeIndex;
+    (q->buffer[q->tail]).timestamp = timestamp;
     return ret;
 }
 

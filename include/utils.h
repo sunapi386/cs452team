@@ -74,7 +74,7 @@ typedef struct {
 
 void sensorDeliveryCopy(SensorDelivery *dst, const SensorDelivery *src);
 void initSensorQueue(SensorQueue *q, size_t size, SensorDelivery *buffer);
-int enqueueSensor(SensorQueue *q, SensorDelivery *in);
+int enqueueSensor(SensorQueue *q, int tid, int type, int nodeIndex, int timestamp);
 int dequeueSensor(SensorQueue *q, SensorDelivery *out);
 int isSensorQueueEmpty(SensorQueue *q);
 
