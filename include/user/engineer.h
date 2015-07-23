@@ -5,15 +5,26 @@
 
 typedef struct {
     enum {
-        initialize,
+        /* engineer courier */
         updateSensor,
+        timeoutSensor,
+        
+        /* location worker */
         updateLocation,
+
+        /* parser */
         xMark,
         setSpeed,
         setReverse,
+        initialize,
+
+        /* command worker */
         commandWorkerRequest,
         commandWorkerSpeedSet,
         commandWorkerReverseSet,
+        
+        /* sensor courier */
+        sensorCourierRequest
     } type;
     union {
         struct {

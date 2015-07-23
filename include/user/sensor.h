@@ -1,36 +1,42 @@
 #ifndef __SENSOR_H
 #define __SENSOR_H
 
-#define MESSAGE_SENSOR_WORKER  11
-#define MESSAGE_SENSOR_COURIER 12
+#define MESSAGE_SENSOR_WORKER    11
+#define MESSAGE_SENSOR_COURIER   12
+#define MESSAGE_ENGINEER_COURIER 13
 
 // sensorWorker -> sensorServer
-typedef struct SensorMessage {
+typedef struct WorkerMessage {
     char data;  // actual data from com1
     char seq;   // sequence number [0,2*NUM_SENSORS-1]
     int time;   // timestamp in ticks
-} SensorMessage;
+} WorkerMessage;
 
-// sensorServer -> sensorCourier
-typedef struct SensorUpdate {
-    int sensor;
-    int time;
-} SensorUpdate;
-
-// sensorCourier ->
+// engineer -> sensorCourier -> sensor server
 typedef struct {
     int primaryClaim;
     int secondaryClaim;
 } SensorClaim;
 
 typedef struct SensorRequest {
-    char type;
+    enum {
+        newSensor,     // sensor worker: A new sensor has been triggered
+        claimSensor,   // sensor courier: I have a new claim to make for my engineer
+        requestSensor, // engineer courier: do you have a new delivery for me?
+        //invalidateSensor ?
+    } type;
     union {
-        SensorMessage sm; // sensor worker -> engineer
-        SensorUpdate su;  // sensor server -> sensor courier -> enigneer
+        WorkerMessage wm; // sensor worker <-> engineer
         SensorClaim sc;   // engineer -> sensor courier - > sensor server
     } data;
 } SensorRequest;
+
+
+// sensorServer -> engineerCourier -> engineer
+typedef struct SensorUpdate {
+    int sensor;
+    int time;
+} SensorUpdate;
 
 /**
 Sensor receives sensor data from tracks and handles drawning on the screen.

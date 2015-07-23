@@ -127,30 +127,30 @@ static inline void handleChar(char c, int reply_index) {
     }
 }
 
-void pushSensorData(SensorMessage *message, IBuffer *sensorBuf, IBuffer *timeBuf)
-{
-    char data = message->data;
-    char offset = ((message->seq % 2 == 0) ? 0 : 8);
-    int time = message->time;
+// void pushSensorData(WorkerMessage *message, IBuffer *sensorBuf, IBuffer *timeBuf)
+// {
+//     char data = message->data;
+//     char offset = ((message->seq % 2 == 0) ? 0 : 8);
+//     int time = message->time;
 
-    // loop over the byte
-    char i, index;
-    for (i = 0, index = 8; i < 8; i++, index--)
-    {
-        if ((1 << i) & data)
-        {
-            // calculate group and number
-            int group = message->seq / 2;
-            int number = index + offset;
+//     // loop over the byte
+//     char i, index;
+//     for (i = 0, index = 8; i < 8; i++, index--)
+//     {
+//         if ((1 << i) & data)
+//         {
+//             // calculate group and number
+//             int group = message->seq / 2;
+//             int number = index + offset;
 
 
-            // encode sensor and push into buffers
-            int sensor = (group << 8) | number;
-            IBufferPush(sensorBuf, sensor);
-            IBufferPush(timeBuf, time);
-        }
-    }
-}
+//             // encode sensor and push into buffers
+//             int sensor = (group << 8) | number;
+//             IBufferPush(sensorBuf, sensor);
+//             IBufferPush(timeBuf, time);
+//         }
+//     }
+// }
 
 void sensorHalt(int train_number, char sensor_group, int sensor_number) {
     // gets called by the parser
@@ -217,9 +217,9 @@ void sensorWorker()
                 handleChar(c, i);
 
                 // send request to sensor server
-                req.data.sm.data = c;
-                req.data.sm.seq = i;
-                req.data.sm.time = timestamp;
+                req.data.wm.data = c;
+                req.data.wm.seq = i;
+                req.data.wm.time = timestamp;
                 Send(pid, &req, sizeof(req), 0, 0);
             }
             else
@@ -227,6 +227,39 @@ void sensorWorker()
                 sensorStates[i] = 0;
             }
         }
+    }
+}
+
+// the task that communicates from sensor server to the engineer to deliver sensor updates
+// or sensor timeout notifications
+void engineerCourier()
+{
+    // get the tid of the sensor server
+    int sensorServerTid = MyParentTid();
+
+    SensorRequest sensorRequest;     // courier -> sensor server
+    SensorDelivery delivery;         // sensor server -> courier
+    EngineerMessage engineerMessage; // courier -> engineer
+
+    // setup messages
+    sensorRequest.type = MESSAGE_ENGINEER_COURIER;
+    engineerMessage.type = updateSensor;
+
+    // main loop
+    for (;;)
+    {
+        // send to and block on sensor server
+        // when the sensor server wants to send an update, it replies with either:
+        Send(sensorServerTid, &sensorRequest, sizeof(sensorRequest), &delivery, sizeof(delivery));
+
+        // populate engineer message
+        // TODO: support for timeout message type
+        int engineerTid = delivery.tid;
+        engineerMessage.data.updateSensor.sensor = delivery.nodeIndex;
+        engineerMessage.data.updateSensor.time = delivery.timestamp;
+
+        // send to the engineer (and immedietly gets unblocked)
+        Send(engineerTid, &engineerMessage, sizeof(engineerMessage), 0, 0);
     }
 }
 
@@ -301,26 +334,53 @@ Attribution* getAttribution(int tid, int *numEngineer, Attribution attrs[])
 void sensorServer()
 {
     int tid = 0;
+    int engineerCourierTid = 0;
+    int numEngineer = 0;
     SensorRequest req;
 
-    int numEngineer = 0;
+    // Sensor queue is needed to store outgoing sensor messages
+    // to engineer couriers
+    SensorDelivery sensorBuf[64];
+    SensorQueue sensorQueue;
+    initSensorQueue(&sensorQueue, 64, &(sensorBuf[0]));
+
     Attribution attrs[MAX_NUM_ENGINEER];
     initAttribution(attrs);
 
     RegisterAs("sensorServer");
 
-    // create the sensor courier
+    // create the sensor worker & engineer courier
     Create(PRIORITY_SENSOR_COURIER, sensorWorker);
-
+    Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
+    
     for (;;)
     {
-        Receive(&tid, &req, sizeof(req));
+        int len = Receive(&tid, &req, sizeof(req));
+        uassert(len == sizeof(SensorRequest));
 
         switch (req.type)
         {
+            // engineer courier requesting for sensor message to
+            case MESSAGE_ENGINEER_COURIER:
+            {
+                if (isSensorQueueEmpty(&sensorQueue))
+                {
+                    // case 1: no outgoing sensor; block it
+                    engineerCourierTid = tid;
+                }
+                else
+                {
+                    // case 2: dequeue a sensor trigger and reply the engineer courier
+                    SensorDelivery sd;
+                    int ret = dequeueSensor(&sensorQueue, &sd);
+                    uassert(ret == 0);
+                    Reply(tid, &sd, sizeof(sd));
+                }
+                break;
+            }
             case MESSAGE_SENSOR_WORKER:
             {
-                SensorMessage *message = &(req.data.sm);
+                WorkerMessage *message = &(req.data.wm);
 
                 // get the byte and the timestamp
                 char data = message->data;

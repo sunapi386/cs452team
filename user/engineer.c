@@ -53,6 +53,16 @@ static inline int abs(int num) {
 
 /*
     Sensor Courier
+
+    First submit the inital claim to the sensor server, gets unblocked immedietly.
+    Then block on the engineer. Whenever there is a new claim, or the existing claim
+    needs to be invalidated, the engineer unblocks the sensor courier by replying to
+    it with the message that it needs to send to sensor server.
+
+    The sensor server always immedietly unblocks the sensor courier.
+
+    The data carried from sensor courier to the sensor server must include the tid of 
+    the engieer, which is basically the parent tid of the sensor courier.
 */
 
 static void sensorCourier(int initialSensorIndex) {
@@ -70,6 +80,9 @@ static void sensorCourier(int initialSensorIndex) {
     engineerReq.type = updateSensor;
 
     for (;;) {
+        // 1. send to sensor req to sensor server to claim sensor
+
+        // 2. send to engineer to notice the sensor hit, and in the reply, get the next sensor claim
         Send(sensor, &sensorReq, sizeof(sensorReq), &result, sizeof(result));
         engineerReq.data.updateSensor.sensor = result.sensor;
         engineerReq.data.updateSensor.time = result.time;
@@ -256,24 +269,22 @@ executeCommand:
     Engineer
 */
 
-void initializeEngineer(/*in */ EngineerMessage *message,
-                        /*out*/ int *trainNumber,
-                        /*out*/ int *locationWorkerTid)
+void initializeEngineer(int *trainNumber, int *locationWorkerTid)
 {
     int tid = 0;
-
+    EngineerMessage message;
     /*
         Stage 1: Initalize trainNumber and initialSensorIndex
     */
-    int ret = Receive(&tid, message, sizeof(EngineerMessage));
-    uassert(ret == sizeof(EngineerMessage) && message->type == initialize);
+    int ret = Receive(&tid, &message, sizeof(EngineerMessage));
+    uassert(ret == sizeof(EngineerMessage) && message.type == initialize);
 
     // unblock parser
     Reply(tid, 0, 0);
 
     // receive inital values: train number and inital sensor index
-    *trainNumber = message->data.initialize.trainNumber;
-    int initialSensorIndex = message->data.initialize.sensorIndex;
+    *trainNumber = message.data.initialize.trainNumber;
+    int initialSensorIndex = message.data.initialize.sensorIndex;
 
     /*
         Stage 2: Create child tasks and transition to Ready state
@@ -327,7 +338,7 @@ void engineerServer()
     LocationMessage locationMessage;
     EngineerMessage message;
 
-    initializeEngineer(&message, &trainNumber, &locationWorkerTid);
+    initializeEngineer(&trainNumber, &locationWorkerTid);
     state = Ready;
 
     // All sensor reports with timestamp before this time are invalid
@@ -490,7 +501,7 @@ void engineerServer()
             case updateSensor: {
                 uassert(state != Init);
 
-                // unblock sensor courier
+                // unblock engineer courier
                 Reply(tid, 0, 0);
 
                 // Get sensor update data
