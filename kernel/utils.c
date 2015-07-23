@@ -118,47 +118,6 @@ int CBufferPushString(CBuffer *b, const String *s)
     return ret == 0 ? (int)i : ret;
 }
 
-void IBufferInit(IBuffer *b, int * array, size_t size)
-{
-    b->data = array;
-    b->size = size;
-    b->head = 0;
-    b->tail = 0;
-}
-
-int IBufferPush(IBuffer *b, int n)
-{
-    int ret = 0;
-    b->tail = (b->tail + 1) % b->size;
-    if (b->tail == b->head)
-    {
-        b->tail = (b->tail + 1) % b->size;
-        ret = -1;
-    }
-    b->data[b->tail] = n;
-    return ret;
-}
-
-int IBufferPop(IBuffer *b)
-{
-    if (b->head != b->tail)
-    {
-        // If no underflow, update head
-        b->head = (b->head + 1) % b->size;
-        return b->data[b->head];
-    }
-    else
-    {
-        //Return -1 if underflow
-        return -1;
-    }
-}
-
-bool IBufferIsEmpty(const IBuffer *b)
-{
-    return b->head == b->tail;
-}
-
 void commandCopy(Command *dst, const Command *src)
 {
     dst->type = src->type;
@@ -198,6 +157,50 @@ int dequeueCommand(CommandQueue *q, Command *out)
 }
 
 int isCommandQueueEmpty(CommandQueue *q)
+{
+    return q->head == q->tail;
+}
+
+void sensorDeliveryCopy(SensorDelivery *dst, const SensorDelivery *src)
+{
+    dst->type = src->type;
+    dst->tid = src->tid;
+    dst->nodeIndex = src->nodeIndex;
+    dst->timestamp = src->timestamp;
+}
+
+void initSensorQueue(SensorQueue *q, size_t size, SensorDelivery *buffer)
+{
+    q->head = 0;
+    q->tail = 0;
+    q->size = size;
+    q->buffer = buffer;
+}
+
+int enqueueSensor(SensorQueue *q, SensorDelivery *in)
+{
+    int ret = 0;
+    q->tail = (q->tail + 1) % q->size;
+    if (q->tail == q->head)
+    {
+        // overflow
+        q->tail = (q->tail + 1) % q->size;
+        ret = -1;
+    }
+    sensorDeliveryCopy(&(q->buffer[q->tail]), in);
+    return ret;
+}
+
+int dequeueSensor(SensorQueue *q, SensorDelivery *out)
+{
+    // underflow
+    if (q->head == q->tail) return -1;
+    q->head = (q->head + 1) % q->size;
+    sensorDeliveryCopy(out, &(q->buffer[q->head]));
+    return 0;
+}
+
+int isSensorQueueEmpty(SensorQueue *q)
 {
     return q->head == q->tail;
 }

@@ -34,20 +34,6 @@ int CBufferPushStr(CBuffer *b, const char *str);
 int CBufferPushString(CBuffer *b, const String *s);
 
 /*
-    IBuffer
-*/
-
-typedef struct IBuffer {
-    int *data;
-    size_t size, head, tail;
-} IBuffer;
-
-void IBufferInit(IBuffer *b, int * array, size_t size);
-int IBufferPush(IBuffer *b, int n);
-int IBufferPop(IBuffer *b);
-bool IBufferIsEmpty(const IBuffer *b);
-
-/*
     Command & CommandQueue
 */
 
@@ -69,6 +55,28 @@ int enqueueCommand(CommandQueue *q, Command *in);
 int dequeueCommand(CommandQueue *q, Command *out);
 int isCommandQueueEmpty(CommandQueue *q);
 void initCommandQueue(CommandQueue *q, size_t size, Command *buffer);
+
+/*
+    Sensor & SensorQueue
+*/
+
+#define SENSOR_TRIGGER 40
+#define SENSOR_TIMEOUT 41
+
+typedef struct {
+    int tid, type, nodeIndex, timestamp;
+} SensorDelivery;
+
+typedef struct {
+    size_t head, tail, size;
+    SensorDelivery *buffer;
+} SensorQueue;
+
+void sensorDeliveryCopy(SensorDelivery *dst, const SensorDelivery *src);
+void initSensorQueue(SensorQueue *q, size_t size, SensorDelivery *buffer);
+int enqueueSensor(SensorQueue *q, SensorDelivery *in);
+int dequeueSensor(SensorQueue *q, SensorDelivery *out);
+int isSensorQueueEmpty(SensorQueue *q);
 
 /*
     String
