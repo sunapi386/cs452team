@@ -17,6 +17,32 @@
 #define NUM_RECENT_SENSORS  7
 #define SENSOR_BUF_SIZE     128
 
+// the engineer "claims" upcoming sensors via the sensor courier. When the sensor actually hits and
+// matches a claim, the sensor is "attributed" to that train, and set to the prevSensor
+typedef struct {
+    // the tid of the sensor courier to reply to
+    int courierTid;
+
+    // the tid of the engineer that is supposed to be used by the engineer courier
+    int engineerTid;
+
+    // the time when prevSensor is hit
+    int prevTime;
+
+    // the prevSensor that is hit by the particular engineer
+    int prevSensor;
+
+    // the next sensor that the engineer expects to hit
+    int primary;
+
+    // the sensor that the engineer expects to hit if the primary sensor fails / turnout failure
+    int secondary;
+
+    // when each of the claimed sensors is expected to be triggered
+    // int primaryTime;
+    // int secondaryTime;
+} Attribution;
+
 static struct {
     char sensor1_group;
     char sensor1_offset;
@@ -127,31 +153,6 @@ static inline void handleChar(char c, int reply_index) {
     }
 }
 
-// void pushSensorData(WorkerMessage *message, IBuffer *sensorBuf, IBuffer *timeBuf)
-// {
-//     char data = message->data;
-//     char offset = ((message->seq % 2 == 0) ? 0 : 8);
-//     int time = message->time;
-
-//     // loop over the byte
-//     char i, index;
-//     for (i = 0, index = 8; i < 8; i++, index--)
-//     {
-//         if ((1 << i) & data)
-//         {
-//             // calculate group and number
-//             int group = message->seq / 2;
-//             int number = index + offset;
-
-
-//             // encode sensor and push into buffers
-//             int sensor = (group << 8) | number;
-//             IBufferPush(sensorBuf, sensor);
-//             IBufferPush(timeBuf, time);
-//         }
-//     }
-// }
-
 void sensorHalt(int train_number, char sensor_group, int sensor_number) {
     // gets called by the parser
     uassert(0 < train_number && train_number < 80);
@@ -255,7 +256,7 @@ void engineerCourier()
         // populate engineer message
         // TODO: support for timeout message type
         int engineerTid = delivery.tid;
-        uassert(engineerTid > 0);
+        uassert(engineerTid > 0 && delivery.type == SENSOR_TRIGGER);
         engineerMessage.data.updateSensor.sensor = delivery.nodeIndex;
         engineerMessage.data.updateSensor.time = delivery.timestamp;
 
@@ -264,72 +265,79 @@ void engineerCourier()
     }
 }
 
-// the engineer "claims" upcoming sensors via the sensor courier. When the sensor actually hits and
-// matches a claim, the sensor is "attributed" to that train, and set to the prevSensor
-typedef struct {
-    // tells if the sensor server could reply directly to tid
-    char isBlocked;
-
-    // the tid of the sensor courier to reply to
-    int tid;
-
-    // the time when prevSensor is hit
-    int prevTime;
-
-    // the prevSensor that is hit by the particular engineer
-    int prevSensor;
-
-    // the next sensor that the engineer expects to hit
-    int primary;
-
-    // the sensor that the engineer expects to hit if the primary sensor fails / turnout failure
-    int secondary;
-
-    // when each of the claimed sensors is expected to be triggered
-    // int primaryTime;
-    // int secondaryTime;
-} Attribution;
+static inline
+void setSensorDelivery(SensorDelivery *delivery, int tid, int type, int nodeIndex, int timestamp)
+{
+    delivery->tid = tid;
+    delivery->type = type;
+    delivery->nodeIndex = nodeIndex;
+    delivery->timestamp = timestamp;
+}
 
 static inline
 void initAttribution(Attribution attrs[])
 {
     for (int i = 0; i < MAX_NUM_ENGINEER; i++)
     {
-        attrs[i].isBlocked = 0;
-        attrs[i].tid = 0;
-        attrs[i].prevTime = 0;
-        attrs[i].prevSensor = 0;
-        attrs[i].primary = 0;
-        attrs[i].secondary = 0;
+        attrs[i].courierTid = -1;
+        attrs[i].engineerTid = -1;
+        attrs[i].prevTime = -1;
+        attrs[i].prevSensor = -1;
+        attrs[i].primary = -1;
+        attrs[i].secondary = -1;
         // attrs[i].primaryTime = 0;
         // attrs[i].secondaryTime = 0;
     }
 }
 
-Attribution* getAttribution(int tid, int *numEngineer, Attribution attrs[])
+static inline
+void initialAttribution(int courierTid,
+                                 SensorRequest *sensorRequest,
+                                 int *numEngineer,
+                                 Attribution attrs[])
 {
-    assert(*numEngineer <= MAX_NUM_ENGINEER);
-    for (int i = 0; i < *numEngineer; i++)
+    uassert(*numEngineer < MAX_NUM_ENGINEER);
+
+    // get pointer to attribution
+    Attribution *attr = &attrs[(*numEngineer)++];
+
+    uassert(attr->primary == -1 && attr->prevSensor == -1);
+
+    // set new values
+    attr->courierTid = courierTid;
+    attr->engineerTid = sensorRequest->data.initialClaim.engineerTid;
+    attr->primary = sensorRequest->data.initialClaim.index;
+}
+
+Attribution *getAttribution(int courierTid, int numEngineer, Attribution attrs[])
+{
+    uassert(numEngineer <= MAX_NUM_ENGINEER);
+
+    for (int i = 0; i < numEngineer; i++)
     {
-        if (attrs[i].tid == tid)
+        if (attrs[i].courierTid == courierTid)
         {
-            // found one; returning it
             return &attrs[i];
         }
     }
+    return 0;
+}
 
-    if (*numEngineer == MAX_NUM_ENGINEER)
+int setAttribution(int courierTid, SensorClaim *claim, int numEngineer, Attribution attrs[])
+{
+    // get the attribution of the specific courier
+    Attribution *attr = getAttribution(courierTid, numEngineer, attrs);
+    if (attr == 0)
     {
-        // attribution buffer is full and did not find the tid; returning NULL
         uassert(0);
-        return 0;
+        return -1;
     }
 
-    // adding the tid into the list
-    Attribution *attribution = &attrs[(*numEngineer)++];
-    attribution->tid = tid;
-    printf(COM2, "attribution created for new engineer courier tid: %d, numEngineer: %d\n\r", tid, *numEngineer);
-    return attribution;
+    // set the desired values from sensor request
+    attr->primary = claim->primary;
+    attr->secondary = claim->secondary;
+
+    return 0;
 }
 
 void sensorServer()
@@ -372,6 +380,7 @@ void sensorServer()
                 else
                 {
                     // case 2: dequeue a sensor trigger and reply the engineer courier
+                    uassert(engineerCourierTid == 0);
                     SensorDelivery sd;
                     int ret = dequeueSensor(&sensorQueue, &sd);
                     uassert(ret == 0);
@@ -437,29 +446,32 @@ void sensorServer()
                         if (attrIndex > 0)
                         {
                             Attribution *attribution = &attrs[attrIndex];
-
-                            while (attribution->isBlocked == 0)
+                            
+                            // reply via engineer courier
+                            if (engineerCourierTid != 0)
                             {
-                                // MAYBE TODO: Implement a reply queue; if the courier
-                                // is not blocked, add it into the reply queue
-                                printf(COM2, "Warning: sensor server calling Pass() - %d not send blocked\n\r", attribution->tid);
-                                Pass();
+                                uassert(engineerCourierTid > 0);
+
+                                // engineer courier blocked here, reply it directly
+                                SensorDelivery delivery;
+                                setSensorDelivery(&delivery,
+                                                  attribution->engineerTid,
+                                                  SENSOR_TRIGGER,
+                                                  sensorIndex,
+                                                  timestamp);
+
+                                Reply(engineerCourierTid, &delivery, sizeof(delivery));
+                                engineerCourierTid = 0;
                             }
-
-                            // preparing reply to the sensor courier
-                            SensorUpdate su;
-                            su.sensor = sensorIndex;
-                            su.time   = timestamp;
-
-                            // reply to the courier
-                            Reply(attribution->tid, &su, sizeof(su));
-                            attribution->isBlocked = 0;
-
-                            // set prevTime & prevSensor, clear the claims
-                            attribution->prevTime = timestamp;
-                            attribution->prevSensor = sensorIndex;
-                            attribution->primary = 0;
-                            attribution->secondary = 0;
+                            else
+                            {
+                                // engineer courier not blocked, add it to sensor queue
+                                enqueueSensor(&sensorQueue,
+                                              attribution->engineerTid,
+                                              SENSOR_TRIGGER,
+                                              sensorIndex,
+                                              timestamp);
+                            }
                         }
                         else
                         {
@@ -478,14 +490,23 @@ void sensorServer()
             // Message contains: primary and secondary
             case claimSensor:
             {
-                // get the attribution pointer
-                Attribution *attribution = getAttribution(tid, &numEngineer, attrs);
-                assert(attribution != 0);
+                // reply sensor courier
+                Reply(tid, 0, 0);
 
-                // set the primary and secondary claim
-                attribution->isBlocked = 1;
-                attribution->primary = req.data.claimSensor.primary;
-                attribution->secondary = req.data.claimSensor.secondary;
+                int ret = setAttribution(tid, &(req.data.claimSensor), numEngineer, attrs);
+                assert(ret == 0);
+                break;
+            }
+
+            // Engineer -> sensor courier -> sensor server
+            // Message contains: tid of engineer, node index of first sensor
+            case initialClaim:
+            {
+                // reply sensor courier
+                Reply(tid, 0, 0);
+
+                // add a new attribution entry
+                initialAttribution(tid, &req, &numEngineer, attrs);
                 break;
             }
             default:

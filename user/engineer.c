@@ -722,6 +722,8 @@ void engineerServer()
                 temp = prevSensor;
                 prevSensor = nextSensor->reverse;
                 nextSensor = temp->reverse;
+
+                // TODO: invalidate sensor claim using sensor courier
                 break;
             }
 
