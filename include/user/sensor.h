@@ -1,6 +1,11 @@
 #ifndef __SENSOR_H
 #define __SENSOR_H
 
+typedef struct {
+    int primary;
+    int secondary;
+} SensorClaim;
+
 typedef struct SensorRequest {
     enum {
         newSensor,     // sensor worker: A new sensor has been triggered
@@ -21,10 +26,7 @@ typedef struct SensorRequest {
             int engineerTid;
         } initialClaim;
 
-        struct {
-            int primary;
-            int secondary;
-        } claimSensor;
+        SensorClaim claimSensor;
 
     } data;
 } SensorRequest;

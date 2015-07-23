@@ -318,6 +318,7 @@ void engineerServer()
     int tid = 0;
     int locationWorkerTid = 0;
     int commandWorkerTid = 0;
+    int sensorCourierTid = 0;
 
     int trainNumber = 0;
     int timeDeltas[NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
@@ -595,6 +596,27 @@ void engineerServer()
                     // therefore transition to Running
                     state = Running;
                 }
+
+                // TODO: think about this:
+                // do we still need this when we have reservation?
+                // shouldn't we only claim sensors that we reserve?
+                if (sensorCourierTid)
+                {
+                    // compute the next claims
+                    SensorClaim claim;
+                    // computeClaims();
+                    
+                    Reply(sensorCourierTid, &claim, sizeof(claim));
+
+                    sensorCourierTid = 0;
+                }
+                break;
+            }
+
+            // sensor courier: hey, give me the next claim!
+            case sensorCourierRequest:
+            {
+                sensorCourierTid = tid;
                 break;
             }
 

@@ -255,6 +255,7 @@ void engineerCourier()
         // populate engineer message
         // TODO: support for timeout message type
         int engineerTid = delivery.tid;
+        uassert(engineerTid > 0);
         engineerMessage.data.updateSensor.sensor = delivery.nodeIndex;
         engineerMessage.data.updateSensor.time = delivery.timestamp;
 
