@@ -69,28 +69,38 @@ static inline int abs(int num) {
             Do we panic in this scenario?
 */
 
-static void sensorCourier(int initialSensorIndex) {
+static void sensorCourier(int initialSensorIndex)
+{
     uassert(initialSensorIndex >= 0 && initialSensorIndex < 80);
     printf(COM2, "Sensor courier started; inital sensor index: %d\n\r", initialSensorIndex);
 
-    int engineer = MyParentTid();
-    int sensor = WhoIs("sensorServer");
+    int engineerTid = MyParentTid();
+    int sensorTid = WhoIs("sensorServer");
 
-    // declare some variables
-    SensorRequest sensorReq;  // courier <-> sensorServer
-    sensorReq.type = claimSensor;
-    SensorUpdate result;  // courier <-> sensorServer
+    // claim the first sensor
+    SensorRequest sensorReq;
+    sensorReq.type = initialClaim;
+    sensorReq.data.initialClaim.engineerTid = engineerTid;
+    sensorReq.data.initialClaim.index = initialSensorIndex;
+
+    // message to block on engineer: give me next sensor claim!
     EngineerMessage engineerReq; // courier <-> engineer
-    engineerReq.type = updateSensor;
+    engineerReq.type = sensorCourierRequest;    
 
-    for (;;) {
-        // 1. send to sensor req to sensor server to claim sensor
+    for (;;)
+    {
+        // claim sensor at the sensor server
+        Send(sensorTid, &sensorReq, sizeof(sensorReq), 0, 0);
 
-        // 2. send to engineer to notice the sensor hit, and in the reply, get the next sensor claim
-        Send(sensor, &sensorReq, sizeof(sensorReq), &result, sizeof(result));
-        engineerReq.data.updateSensor.sensor = result.sensor;
-        engineerReq.data.updateSensor.time = result.time;
-        Send(engineer, &engineerReq, sizeof(engineerReq), 0, 0);
+        // block on engineer until replied with the next sensor claim
+        Send(engineerTid,
+            &engineerReq,
+            sizeof(engineerReq),
+            &(sensorReq.data.claimSensor), 
+            sizeof(sensorReq.data.claimSensor));
+
+        // reset sensor request type
+        sensorReq.type = claimSensor;
     }
 }
 
@@ -291,7 +301,7 @@ void initializeEngineer(int *trainNumber, int *locationWorkerTid)
     int initialSensorIndex = message.data.initialize.sensorIndex;
 
     /*
-        Stage 2: Create child tasks and transition to Ready state
+        Stage 2: Create child tasks
     */
     ret = Spawn(PRIORITY_SENSOR_COURIER, sensorCourier, (void *)initialSensorIndex);
     uassert(ret > 0);

@@ -4,6 +4,7 @@
 typedef struct SensorRequest {
     enum {
         newSensor,     // sensor worker: A new sensor has been triggered
+        initialClaim,  // sensor worker: here is the first sensor that the engineer will hit
         claimSensor,   // sensor courier: I have a new claim to make for my engineer
         requestSensor, // engineer courier: do you have a new delivery for me?
         //invalidateSensor ?
@@ -16,9 +17,15 @@ typedef struct SensorRequest {
         } newSensor;
 
         struct {
+            int index;
+            int engineerTid;
+        } initialClaim;
+
+        struct {
             int primary;
             int secondary;
         } claimSensor;
+
     } data;
 } SensorRequest;
 
