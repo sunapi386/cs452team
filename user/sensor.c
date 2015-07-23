@@ -183,7 +183,6 @@ void sensorWorker()
     clearScreen();
     initDrawSensorArea();
 
-
     // initialize sensor states
     for (int i = 0; i < 2 * NUM_SENSORS; i++)
     {
@@ -361,7 +360,7 @@ void sensorServer()
     // create the sensor worker & engineer courier
     Create(PRIORITY_SENSOR_COURIER, sensorWorker);
     Create(PRIORITY_ENGINEER_COURIER, engineerCourier);
-    
+
     for (;;)
     {
         int len = Receive(&tid, &req, sizeof(req));
@@ -446,7 +445,7 @@ void sensorServer()
                         if (attrIndex > 0)
                         {
                             Attribution *attribution = &attrs[attrIndex];
-                            
+
                             // reply via engineer courier
                             if (engineerCourierTid != 0)
                             {

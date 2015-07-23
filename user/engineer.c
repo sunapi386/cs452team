@@ -61,7 +61,7 @@ static inline int abs(int num) {
 
     The sensor server always immedietly unblocks the sensor courier.
 
-    The data carried from sensor courier to the sensor server must include the tid of 
+    The data carried from sensor courier to the sensor server must include the tid of
     the engieer, which is basically the parent tid of the sensor courier.
 
 
@@ -85,7 +85,7 @@ static void sensorCourier(int initialSensorIndex)
 
     // message to block on engineer: give me next sensor claim!
     EngineerMessage engineerReq; // courier <-> engineer
-    engineerReq.type = sensorCourierRequest;    
+    engineerReq.type = sensorCourierRequest;
 
     for (;;)
     {
@@ -96,7 +96,7 @@ static void sensorCourier(int initialSensorIndex)
         Send(engineerTid,
             &engineerReq,
             sizeof(engineerReq),
-            &(sensorReq.data.claimSensor), 
+            &(sensorReq.data.claimSensor),
             sizeof(sensorReq.data.claimSensor));
 
         // reset sensor request type
@@ -605,7 +605,7 @@ void engineerServer()
                     // compute the next claims
                     SensorClaim claim;
                     // computeClaims();
-                    
+
                     Reply(sensorCourierTid, &claim, sizeof(claim));
 
                     sensorCourierTid = 0;
