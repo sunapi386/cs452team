@@ -78,7 +78,7 @@ static void updateSensoryDisplay() {
     vt_pos(&s, VT_SENSOR_ROW + 1, VT_SENSOR_COL);
 
     for(int i = recently_read ; ; ) {
-        assert(0 <= i && i < NUM_RECENT_SENSORS);
+        uassert(0 <= i && i < NUM_RECENT_SENSORS);
         sensorFormat(&s, &recent_sensors[i]);
         i = (i == 0) ? (NUM_RECENT_SENSORS - 1) : (i - 1);
         if(i == recently_read) {
@@ -154,9 +154,9 @@ static inline void handleChar(char c, int reply_index) {
 
 void sensorHalt(int train_number, char sensor_group, int sensor_number) {
     // gets called by the parser
-    assert(0 < train_number && train_number < 80);
-    assert('a' <= sensor_group && sensor_group <= 'e');
-    assert(1 <= sensor_number && sensor_number <= 16);
+    uassert(0 < train_number && train_number < 80);
+    uassert('a' <= sensor_group && sensor_group <= 'e');
+    uassert(1 <= sensor_number && sensor_number <= 16);
 
     int group = sensor_group - 'a';
     halt_train_number = train_number;
