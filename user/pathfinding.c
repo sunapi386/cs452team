@@ -65,14 +65,16 @@ int distanceBetween(const track_node *from, const track_node *to)
 // and make that as primary. Then walk down the "wrong" direction, keep walking
 // to get the next sensor. that sensor is the secondary claim.
 
-int getNextClaims(const struct track_node *currentNode, struct SensorClaim *claim)
+int getNextClaims(const struct track_node *prevNode, struct SensorClaim *claim)
 {
-    uassert(currentNode && claim);
+    uassert(prevNode && claim);
 
     // given a track node, walk until encounter the next sensor/switch
-    const track_node *node = currentNode;
+    const track_node *node = prevNode;
     for (;;)
     {
+        node = getNextNode(node);
+
         if (node == 0)
         {
             uassert(0);
@@ -142,8 +144,6 @@ int getNextClaims(const struct track_node *currentNode, struct SensorClaim *clai
             uassert(0);
             return -1;
         }
-
-        node = getNextNode(node);
     }
 
     uassert(0);

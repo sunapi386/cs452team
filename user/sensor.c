@@ -307,7 +307,7 @@ void initialAttribution(int courierTid,
     attr->engineerTid = sensorRequest->data.initialClaim.engineerTid;
     attr->primary = sensorRequest->data.initialClaim.index;
 
-    printf(COM2, "initial sensor for courierTid %d, engineerTid %d, attr->primary %d, numEngineer %d\n\r", courierTid, attr->engineerTid, attr->primary, *numEngineer);
+    // printf(COM2, "initial sensor for courierTid %d, engineerTid %d, attr->primary %d, numEngineer %d\n\r", courierTid, attr->engineerTid, attr->primary, *numEngineer);
 }
 
 Attribution *getAttribution(int courierTid, int numEngineer, Attribution attrs[])
@@ -340,21 +340,19 @@ int setAttribution(int courierTid, SensorClaim *claim, int numEngineer, Attribut
     attr->primary = claim->primary;
     attr->secondary = claim->secondary;
 
-    const char *primaryName = "";
-    const char *secondaryName = "";
+    // const char *primaryName = "";
+    // const char *secondaryName = "";
 
-    // FIXME: Remove
-    if (attr->primary >= 0)
-    {
-        primaryName = g_track[attr->primary].name;
-    }
-    if (attr->secondary >= 0)
-    {
-        secondaryName = g_track[attr->secondary].name;
-    }
-
-
-    printf(COM2, "[setAttribution] indices: (%d, %d) primary: %s, secondary: %s\n\r", attr->primary, attr->secondary, g_track[attr->primary].name, g_track[attr->secondary].name);
+    // // FIXME: Remove
+    // if (attr->primary >= 0)
+    // {
+    //     primaryName = g_track[attr->primary].name;
+    // }
+    // if (attr->secondary >= 0)
+    // {
+    //     secondaryName = g_track[attr->secondary].name;
+    // }
+    // printf(COM2, "[setAttribution] indices: (%d, %d) primary: %s, secondary: %s\n\r", attr->primary, attr->secondary, g_track[attr->primary].name, g_track[attr->secondary].name);
 
     return 0;
 }

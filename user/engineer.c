@@ -604,7 +604,7 @@ void engineerServer()
                 {
                     // compute the next claims
                     SensorClaim claim;
-                    int ret = getNextClaims(nextSensor, &claim);
+                    int ret = getNextClaims(prevSensor, &claim);
                     uassert(ret == 0);
 
                     Reply(sensorCourierTid, &claim, sizeof(claim));
