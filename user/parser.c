@@ -100,6 +100,7 @@ int engineerCreate(int trainNumber, int sensorIndex)
     // record newly created Tid
     engineers[numEngineer].tid = tid;
     engineers[numEngineer].trainNumber = trainNumber;
+    numEngineer++;
     printf(COM2, "Engineer driving train %d, total number of engineers: %d\n\r", trainNumber, numEngineer);
     return 0;
 }
