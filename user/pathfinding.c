@@ -73,7 +73,6 @@ int getNextClaims(const struct track_node *currentNode, struct SensorClaim *clai
     const track_node *node = currentNode;
     for (;;)
     {
-        node = getNextNode(node);
         if (node == 0)
         {
             uassert(0);
@@ -143,6 +142,8 @@ int getNextClaims(const struct track_node *currentNode, struct SensorClaim *clai
             uassert(0);
             return -1;
         }
+
+        node = getNextNode(node);
     }
 
     uassert(0);

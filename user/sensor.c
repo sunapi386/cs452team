@@ -291,9 +291,9 @@ void initAttribution(Attribution attrs[])
 
 static inline
 void initialAttribution(int courierTid,
-                                 SensorRequest *sensorRequest,
-                                 int *numEngineer,
-                                 Attribution attrs[])
+                        SensorRequest *sensorRequest,
+                        int *numEngineer,
+                        Attribution attrs[])
 {
     uassert(*numEngineer < MAX_NUM_ENGINEER);
 
@@ -306,6 +306,8 @@ void initialAttribution(int courierTid,
     attr->courierTid = courierTid;
     attr->engineerTid = sensorRequest->data.initialClaim.engineerTid;
     attr->primary = sensorRequest->data.initialClaim.index;
+
+    printf(COM2, "initial sensor for courierTid %d, engineerTid %d, attr->primary %d, numEngineer %d\n\r", courierTid, attr->engineerTid, attr->primary, *numEngineer);
 }
 
 Attribution *getAttribution(int courierTid, int numEngineer, Attribution attrs[])
@@ -322,6 +324,8 @@ Attribution *getAttribution(int courierTid, int numEngineer, Attribution attrs[]
     return 0;
 }
 
+extern track_node g_track[TRACK_MAX];
+
 int setAttribution(int courierTid, SensorClaim *claim, int numEngineer, Attribution attrs[])
 {
     // get the attribution of the specific courier
@@ -335,6 +339,22 @@ int setAttribution(int courierTid, SensorClaim *claim, int numEngineer, Attribut
     // set the desired values from sensor request
     attr->primary = claim->primary;
     attr->secondary = claim->secondary;
+
+    const char *primaryName = "";
+    const char *secondaryName = "";
+
+    // FIXME: Remove
+    if (attr->primary >= 0)
+    {
+        primaryName = g_track[attr->primary].name;
+    }
+    if (attr->secondary >= 0)
+    {
+        secondaryName = g_track[attr->secondary].name;
+    }
+
+
+    printf(COM2, "[setAttribution] indices: (%d, %d) primary: %s, secondary: %s\n\r", attr->primary, attr->secondary, g_track[attr->primary].name, g_track[attr->secondary].name);
 
     return 0;
 }
@@ -423,7 +443,8 @@ void sensorServer()
                             if (attr->primary == sensorIndex)
                             {
                                 if (minPrimaryTime == -1 ||
-                                    attr->prevTime < minPrimaryTime)
+                                    attr->prevTime < minPrimaryTime ||
+                                    attr->prevTime == -1)
                                 {
                                     minPrimaryIndex = i;
                                     minPrimaryTime = attr->prevTime;
@@ -440,11 +461,12 @@ void sensorServer()
                             }
                         }
 
-                        int attrIndex = (minPrimaryIndex > 0) ? minPrimaryIndex : minSecondaryIndex;
+                        int attrIndex = (minPrimaryIndex >= 0) ? minPrimaryIndex : minSecondaryIndex;
 
-                        if (attrIndex > 0)
+                        if (attrIndex >= 0)
                         {
                             Attribution *attribution = &attrs[attrIndex];
+                            attribution->prevTime = timestamp;
 
                             // reply via engineer courier
                             if (engineerCourierTid != 0)
@@ -475,7 +497,7 @@ void sensorServer()
                         else
                         {
                             // spurious sensor hit: ignore
-                            printf(COM2, "spurious sensor hit\n\r");
+                            printf(COM2, "spurious sensor hit. attrIndex: %d\n\r", attrIndex);
                         }
                     }
                 }
