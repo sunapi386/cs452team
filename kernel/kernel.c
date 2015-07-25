@@ -13,6 +13,10 @@
 #include <kernel/cache.h>
 #include <user/clockserver.h>
 
+#define TIMER4_ENABLE   0x100;
+#define TIMER4_VAL      ((volatile unsigned int *) 0x80810060)
+#define TIMER4_CRTL     ((volatile unsigned int *) 0x80810064)
+
 static void initKernel(TaskQueue *sendQueues) {
     enableCache();
     initTaskSystem();
@@ -92,9 +96,10 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
             }
             else
             {
-                // queue the newly created task, then set the Spawn() retval to 0
+                // queue the newly created task, then set the Spawn()
+                // retval to the tid of the index of the new task
                 queueTask(task);
-                taskSetRet(td, 0);
+                taskSetRet(td, taskGetIndex(task));
             }
             break;
         }
@@ -120,10 +125,6 @@ int handleRequest(TaskDescriptor *td, Syscall *request, TaskQueue *sendQueues) {
     }
     return 0;
 }
-
-#define TIMER4_ENABLE   0x100;
-#define TIMER4_VAL      ((volatile unsigned int *) 0x80810060)
-#define TIMER4_CRTL     ((volatile unsigned int *) 0x80810064)
 
 int main()
 {
