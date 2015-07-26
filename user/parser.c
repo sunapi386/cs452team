@@ -101,7 +101,7 @@ int engineerCreate(int trainNumber, int sensorIndex)
     engineers[numEngineer].tid = tid;
     engineers[numEngineer].trainNumber = trainNumber;
     numEngineer++;
-    printf(COM2, "Engineer driving train %d, total number of engineers: %d\n\r", trainNumber, numEngineer);
+    printf(COM2, "Engineer %d -> train %d\n\r", tid, trainNumber);
     return 0;
 }
 
@@ -109,10 +109,13 @@ void engineerSetSpeed(int tid, int speed)
 {
     uassert(tid >= 0);
 
+    printf(COM2, "Engineer %d setting speed %d\n\r", tid, speed);
+
     EngineerMessage message;
     message.type = setSpeed;
     message.data.setSpeed.speed = speed;
-    Send(tid, &message, sizeof(EngineerMessage), 0, 0);
+    int ret = Send(tid, &message, sizeof(EngineerMessage), 0, 0);
+    uassert(ret >= 0);
 }
 
 void engineerSetReverse(int tid) {
@@ -120,7 +123,8 @@ void engineerSetReverse(int tid) {
 
     EngineerMessage message;
     message.type = setReverse;
-    Send(tid, &message, sizeof(EngineerMessage), 0, 0);
+    int ret = Send(tid, &message, sizeof(EngineerMessage), 0, 0);
+    uassert(ret >= 0);
 }
 
 void engineerXMarksTheSpot(int tid, int index, int offset) {
