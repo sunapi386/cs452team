@@ -87,7 +87,7 @@ int engineerCreate(int trainNumber, int sensorIndex)
     }
 
     // create the engineer task
-    int tid = Create(PRIORITY_ENGINEER, engineerServer);
+    int tid = Spawn(PRIORITY_ENGINEER, engineerServer, (void *)numEngineer);
 
     // initialize the engineer with trainNumber and initialSensorNode
     EngineerMessage initMessage;
@@ -794,7 +794,7 @@ static bool parse(Parser *p, char c) {
                 {
                     sputstr(&disp_msg, "Create engineer for ");
                     sputint(&disp_msg, trainNumber, 10);
-                    sputstr(&disp_msg, " with initial sensor \r\n");
+                    sputstr(&disp_msg, " with initial sensor ");
                     sputint(&disp_msg, sensorIndex, 10);
                     sputstr(&disp_msg, "\r\n");
                     engineerCreate(trainNumber, sensorIndex);

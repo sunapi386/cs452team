@@ -9,6 +9,7 @@
 #include <user/track_data.h>
 #include <user/turnout.h>
 #include <user/vt100.h>
+#include <user/engineer_ui.h>
 
 #define ALPHA                85
 #define NUM_SENSORS          (5 * 16)
@@ -45,7 +46,6 @@ typedef enum {
 } TrainState;
 
 extern track_node g_track[TRACK_MAX];
-static unsigned int timeDeltas[MAX_NUM_ENGINEER][NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
 
 static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
@@ -108,72 +108,7 @@ static void sensorCourier(int initialSensorIndex)
     Location Worker
 */
 
-static inline void initializeScreen()
-{
-    printf(COM2, VT_CURSOR_SAVE
-                 "\033[1;80HNext landmark:     "
-                 "\033[2;80HPrevious landmark: "
-                 "\033[3;80HDistance to next:  "
-                 "\033[4;80HPrevious sensor:   "
-                 "\033[5;80HExpected (ticks):  "
-                 "\033[6;80HActual   (ticks):  "
-                 "\033[7;80HError    (ticks):  "
-                 VT_CURSOR_RESTORE);
-}
-
-static inline void updateScreenDistToNext(int distToNext)
-{
-    // convert from um to cm
-    printf(COM2, VT_CURSOR_SAVE
-                 "\033[3;100H%d.%d cm     "
-                 VT_CURSOR_RESTORE,
-                 distToNext / 10000,
-                 abs(distToNext) % 10000);
-}
-
-static inline void updateScreenNewLandmark(const char *nextNode,
-                                           const char *prevNode,
-                                           int distToNext)
-{
-    printf(COM2, VT_CURSOR_SAVE
-                 "\033[1;100H%s    "
-                 "\033[2;100H%s    "
-                 "\033[3;100H%d.%d cm     "
-                 VT_CURSOR_RESTORE,
-                 nextNode,
-                 prevNode,
-                 distToNext / 10000,
-                 abs(distToNext) % 10000);
-}
-
-static inline void updateScreenNewSensor(const char *nextNode,
-                                         const char *prevNode,
-                                         int distToNext,
-                                         const char *prevSensor,
-                                         int expectedTime,
-                                         int actualTime,
-                                         int error)
-{
-    printf(COM2, VT_CURSOR_SAVE
-                 "\033[1;100H%s    "
-                 "\033[2;100H%s    "
-                 "\033[3;100H%d.%d cm     "
-                 "\033[4;100H%s    "
-                 "\033[5;100H%d    "
-                 "\033[6;100H%d    "
-                 "\033[7;100H%d    "
-                 VT_CURSOR_RESTORE,
-                 nextNode,
-                 prevNode,
-                 distToNext / 10000,
-                 abs(distToNext) % 10000,
-                 prevSensor,
-                 expectedTime,
-                 actualTime,
-                 error);
-}
-
-void locationWorker()
+void locationWorker(int numEngineer)
 {
     int pid = MyParentTid();
 
@@ -191,15 +126,17 @@ void locationWorker()
         switch (locationMessage.type)
         {
         case LOC_MESSAGE_DIST:
-            updateScreenDistToNext(locationMessage.distToNext);
+            updateScreenDistToNext(numEngineer, locationMessage.distToNext);
             break;
         case LOC_MESSAGE_LANDMARK:
-            updateScreenNewLandmark(locationMessage.nextNode,
+            updateScreenNewLandmark(numEngineer,
+                                    locationMessage.nextNode,
                                     locationMessage.prevNode,
                                     locationMessage.distToNext);
             break;
         case LOC_MESSAGE_SENSOR:
-            updateScreenNewSensor(locationMessage.nextNode,
+            updateScreenNewSensor(numEngineer,
+                                  locationMessage.nextNode,
                                   locationMessage.prevNode,
                                   locationMessage.distToNext,
                                   locationMessage.prevSensor,
@@ -209,7 +146,7 @@ void locationWorker()
 
             break;
         case LOC_MESSAGE_INIT:
-            initializeScreen();
+            initializeScreen(numEngineer);
             break;
         default:
             assert(0);
@@ -283,7 +220,7 @@ executeCommand:
     Engineer
 */
 
-void initializeEngineer(int *trainNumber, int *locationWorkerTid)
+void initializeEngineer(int numEngineer, int *trainNumber, int *locationWorkerTid)
 {
     int tid = 0;
     EngineerMessage message;
@@ -309,11 +246,11 @@ void initializeEngineer(int *trainNumber, int *locationWorkerTid)
     ret = Create(PRIORITY_COMMAND_WORKER, commandWorker);
     uassert(ret > 0);
 
-    *locationWorkerTid = Create(PRIORITY_LOCATION_WORKER, locationWorker);
+    *locationWorkerTid = Spawn(PRIORITY_LOCATION_WORKER, locationWorker, (void *)numEngineer);
     uassert(*locationWorkerTid > 0);
 }
 
-void engineerServer()
+void engineerServer(int numEngineer)
 {
     int tid = 0;
     int locationWorkerTid = 0;
@@ -321,7 +258,6 @@ void engineerServer()
     int sensorCourierTid = 0;
 
     int trainNumber = 0;
-    int timeDeltas[NUM_SPEEDS][NUM_SENSORS][NUM_SENSORS];
     TrainState state = Init;
 
     bool isForward = true;
@@ -339,6 +275,8 @@ void engineerServer()
     int sensorDist = 0;
     track_node *prevSensor = 0;
     track_node *nextSensor = 0;
+    int hasOutstandingClaim = 0;
+    SensorClaim outstandingClaim;
 
     SensorUpdate last_update = {0,0};
     int targetOffset = 0;
@@ -353,7 +291,18 @@ void engineerServer()
     LocationMessage locationMessage;
     EngineerMessage message;
 
-    initializeEngineer(&trainNumber, &locationWorkerTid);
+    // initialize timeDeltas table
+    int timeDeltas[NUM_SPEEDS][NUM_SENSORS];
+    for (int i = 0; i < NUM_SPEEDS; i++)
+    {
+        for (int j = 0; j < NUM_SENSORS; j++)
+        {
+            if (i == 0) timeDeltas[i][j] = 0;
+            else        timeDeltas[i][j] = 50;
+        }
+    }
+
+    initializeEngineer(numEngineer, &trainNumber, &locationWorkerTid);
     state = Ready;
 
     // All sensor reports with timestamp before this time are invalid
@@ -413,7 +362,7 @@ void engineerServer()
                 }
                 else if (state != Stopped)
                 {
-                    velocity = sensorDist / timeDeltas[(int)speed][prevSensor->idx][nextSensor->idx];
+                    velocity = sensorDist / timeDeltas[(int)speed][nextSensor->idx];
                     distSoFar = (currentTime - prevNodeTime) * velocity;
                 }
 
@@ -548,7 +497,7 @@ void engineerServer()
                 int last_index = last_update.sensor;
                 int index = sensor_update.sensor;
 
-                int expectedTime = timeDeltas[(int)speed][last_index][index];
+                int expectedTime = timeDeltas[(int)speed][index];
                 int actualTime = sensor_update.time - last_update.time;
                 int error = abs(expectedTime - actualTime);
 
@@ -557,9 +506,9 @@ void engineerServer()
                     // apply learning
                     if (state == Running)
                     {
-                        int past_difference = timeDeltas[(int)speed][last_index][index];
+                        int past_difference = timeDeltas[(int)speed][index];
                         int new_difference = sensor_update.time - last_update.time;
-                        timeDeltas[(int)speed][last_index][index] =  (new_difference * ALPHA
+                        timeDeltas[(int)speed][index] =  (new_difference * ALPHA
                             + past_difference * (100 - ALPHA)) / 100;
                     }
 
@@ -597,9 +546,6 @@ void engineerServer()
                     state = Running;
                 }
 
-                // TODO: think about this:
-                // do we still need this when we have reservation?
-                // shouldn't we only claim sensors that we reserve?
                 if (sensorCourierTid)
                 {
                     // compute the next claims
@@ -613,10 +559,14 @@ void engineerServer()
                 }
                 else
                 {
-                    // TODO
+                    uassert(hasOutstandingClaim == 0);
+
                     // sensor courier is not back; we would need to store it in some variable,
                     // and when the sensor courier request comes in, it will simply take that
                     // claim instead of waiting to be unblocked
+                    int ret = getNextClaims(prevSensor, &outstandingClaim);
+                    uassert(ret == 0);
+                    hasOutstandingClaim = 1;
                 }
                 break;
             }
@@ -624,12 +574,18 @@ void engineerServer()
             // sensor courier: hey, give me the next claim!
             case sensorCourierRequest:
             {
-                // if there is no outstanding claim, then block
-                sensorCourierTid = tid;
+                if (hasOutstandingClaim)
+                {
+                    Reply(tid, &outstandingClaim, sizeof(outstandingClaim));
 
-                // TODO
-                // else
-                // Reply(tid, &claim, sizeof(claim));
+                    hasOutstandingClaim = 0;
+
+                }
+                else
+                {
+                    // if there is no outstanding claim, then block
+                    sensorCourierTid = tid;
+                }
                 break;
             }
 
@@ -736,9 +692,23 @@ void engineerServer()
                 prevSensor = nextSensor->reverse;
                 nextSensor = temp->reverse;
 
-                // TODO: invalidate sensor claim using sensor courier
-                // if there is an outstanding claim, change it
-                // else, unblock sensor courier with a new claim
+                // update the claimed sensor to the new ones
+                if (hasOutstandingClaim)
+                {
+                    // if there is an outstanding claim, change it
+                    int ret = getNextClaims(prevSensor, &outstandingClaim);
+                    uassert(ret == 0);
+                }
+                else if (sensorCourierTid)
+                {
+                    // unblock sensor courier with a new claim
+                    SensorClaim claim;
+                    int ret = getNextClaims(prevSensor, &claim);
+                    uassert(ret == 0);
+
+                    Reply(sensorCourierTid, &claim, sizeof(claim));
+                    sensorCourierTid = 0;
+                }
 
                 break;
             }
