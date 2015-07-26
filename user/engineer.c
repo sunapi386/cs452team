@@ -611,13 +611,25 @@ void engineerServer()
 
                     sensorCourierTid = 0;
                 }
+                else
+                {
+                    // TODO
+                    // sensor courier is not back; we would need to store it in some variable,
+                    // and when the sensor courier request comes in, it will simply take that
+                    // claim instead of waiting to be unblocked
+                }
                 break;
             }
 
             // sensor courier: hey, give me the next claim!
             case sensorCourierRequest:
             {
+                // if there is no outstanding claim, then block
                 sensorCourierTid = tid;
+
+                // TODO
+                // else
+                // Reply(tid, &claim, sizeof(claim));
                 break;
             }
 
@@ -725,6 +737,9 @@ void engineerServer()
                 nextSensor = temp->reverse;
 
                 // TODO: invalidate sensor claim using sensor courier
+                // if there is an outstanding claim, change it
+                // else, unblock sensor courier with a new claim
+
                 break;
             }
 
