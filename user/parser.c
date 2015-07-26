@@ -24,11 +24,11 @@ static char *help_message =
 "sw train_num direction             | SWitch a turnout\r\n"
 "e train_num sensorIndex            | create Engineer for train and given initial sensor node\r\n"
 "h train_num group_char sensor_num  | Halts on sensor \r\n"
-"g                                  | Go again at last speed\r\n"
 "0                                  | set last train speed to 0\r\n"
 "c tr_num speed char num loops      | Calibration: at speed delay loop\r\n"
 "k track_A_or_B_char                | load tracK A or B\r\n"
 "x track_node_index distance        | x mark the track node\r\n"
+"go train_num track_node_index      | \r\n"
 "------------------ Misc. commands\r\n"
 "q                                  | Quit\r\n"
 "o                                  | redraw turnOuts\r\n"
@@ -129,13 +129,24 @@ void engineerSetReverse(int tid) {
 
 void engineerXMarksTheSpot(int tid, int index, int offset) {
     uassert(tid > 0);
-    uassert(0 <= index && index <= 139);
+    uassert(0 <= index && index <= 143);
 
     EngineerMessage message;
     message.type = xMark;
     message.data.xMark.index = index;
     message.data.xMark.offset = offset * 1000; // convert mm to um
     Send(tid, &message, sizeof(EngineerMessage), 0, 0);
+}
+
+void engineerGo(int tid, int index)
+{
+    uassert(tid > 0);
+    uassert(0 <= index && index <= 143);
+
+    EngineerMessage message;
+    message.type = go;
+    message.data.go.index = index;
+    Send(tid, &message, sizeof(message), 0, 0);
 }
 
 typedef struct Parser {
@@ -176,7 +187,6 @@ typedef struct Parser {
         E_space_2,
         E_sensor_index,
         HELP,       // ? for printing all available commands
-        G,          // g go again at last speed
         C,          // c tr_num speed grp_char snsr_num (calibration)
         C_space_1,
         C_train_number,
@@ -197,6 +207,12 @@ typedef struct Parser {
         X_node_number,
         X_space2,
         X_distance,
+        G,          // go train_num node_num
+        GO,
+        GO_,
+        GO_t,
+        GO_t_,
+        GO_t_n,
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -235,6 +251,10 @@ typedef struct Parser {
             int node_number;
             int distance;
         } x_marks_the_spot;
+        struct Go {
+            int train_number;
+            int node_number;
+        } go;
     } data;
 
 } Parser;
@@ -270,6 +290,7 @@ static bool parse(Parser *p, char c) {
         switch(p->state) {
             case Empty: {
                 switch(c) {
+                    case 'g': p->state = G; break;
                     case 't': p->state = TR_T; break;
                     case 'r': p->state = RV_R; break;
                     case 's': p->state = SW_S; break;
@@ -279,13 +300,45 @@ static bool parse(Parser *p, char c) {
                     case 'p': p->state = P; break;
                     case 'o': p->state = O; break;
                     case 'e': p->state = E; break;
-                    case 'g': p->state = G; break;
-                    case '0': p->state = Zero; break;
                     case 'c': p->state = C; break;
                     case 'k': p->state = K; break;
                     case 'x': p->state = X; break;
                     case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
+                }
+                break;
+            }
+            case G: {
+                REQUIRE('O', GO);
+                break;
+            }
+            case GO: {
+                REQUIRE(' ', GO_);
+                break;
+            }
+            case GO_: {
+                p->data.go.train_number = 0;
+                p->state =  append_number(c, &(p->data.go.train_number)) ?
+                            GO_t :
+                            Error;
+                break;
+            }
+            case GO_t: {
+                if(! append_number(c, &(p->data.go.train_number))) {
+                    REQUIRE(' ', GO_t_);
+                }
+                break;
+            }
+            case GO_t_: {
+                p->data.go.node_number = 0;
+                p->state =  append_number(c, &(p->data.go.node_number)) ?
+                            GO_t_n :
+                            Error;
+                break;
+            }
+            case GO_t_n: {
+                if(! append_number(c, &(p->data.go.node_number))) {
+                    p->state = Error;
                 }
                 break;
             }
@@ -408,16 +461,6 @@ static bool parse(Parser *p, char c) {
                 if(! append_number(c, &(p->data.calibration.num_loops))) {
                     p->state = Error;
                 }
-                break;
-            }
-            // ----------- 0 set last speed 0 ------//
-            case Zero: {
-                p->state = Error;
-                break;
-            }
-            // ----------- g go again at last speed ------//
-            case G: {
-                p->state = Error;
                 break;
             }
             // ----------- h train_number sensor_group sensor_number ------- //
@@ -628,6 +671,19 @@ static bool parse(Parser *p, char c) {
         sputstr(&disp_msg, "  | ");
         // should be on an end state
         switch(p->state) {
+            case GO_t_n: {
+                int node_number = p->data.go.node_number;
+                int train_number = p->data.go.train_number;
+                if (1 <= train_number && train_number <= 80 &&
+                    0 <= node_number && node_number <= 143 ) {
+                    engineerGo(train_number, node_number);
+                }
+                else {
+                    sputstr(&disp_msg,
+                        "GO: bad train number or node number\r\n");
+                }
+                break;
+            }
             case H_sensor_number: {
                 int train_number = p->data.sensor_halt.train_number;
                 int sensor_group = p->data.sensor_halt.sensor_group;
@@ -746,40 +802,14 @@ static bool parse(Parser *p, char c) {
                 }
                 break;
             }
-            case O: {
+            case O:
+            {
                 sputstr(&disp_msg, "Drawing turnouts!\r\n");
                 printResetTurnouts();
                 break;
             }
-            case Zero: {
-                sputstr(&disp_msg, "Setting last train speed 0!\r\n");
-                int train_number = p->data.speed.train_number;
-                int train_speed = p->data.speed.train_speed;
-                if(1 <= train_number && train_number <= 80) {
-                    // FIXME
-                    // trainSetSpeed(train_number, 0);
-                     if( ! (0 <= train_speed  && train_speed  <= 14) ) {
-                        sputstr(&disp_msg,"   Warning last train speed.\r\n");
-                     }
-                } else {
-                    sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
-                }
-                break;
-            }
-            case G: {
-                sputstr(&disp_msg, "Going again at last speed!\r\n");
-                int train_number = p->data.speed.train_number;
-                int train_speed = p->data.speed.train_speed;
-                if((1 <= train_number && train_number <= 80) &&
-                   (0 <= train_speed  && train_speed  <= 14)) {
-                    // FIXME
-                    // trainSetSpeed(train_number, train_speed);
-                } else {
-                    sputstr(&disp_msg,"   Error last speed was invalid.\r\n");
-                }
-                break;
-            }
-            case E_sensor_index: {
+            case E_sensor_index:
+            {
                 int trainNumber = p->data.engineer.trainNumber;
                 int sensorIndex = p->data.engineer.sensorIndex;
                 if (trainNumber < 1 || trainNumber > 80)
@@ -936,3 +966,4 @@ void initParser()
 
     Create(PRIORITY_PARSER, parserTask);
 }
+

@@ -8,11 +8,12 @@ typedef struct {
         /* engineer courier */
         updateSensor,
         timeoutSensor,
-        
+
         /* location worker */
         updateLocation,
 
         /* parser */
+        go,
         xMark,
         setSpeed,
         setReverse,
@@ -22,9 +23,9 @@ typedef struct {
         commandWorkerRequest,
         commandWorkerSpeedSet,
         commandWorkerReverseSet,
-        
+
         /* sensor courier */
-        sensorCourierRequest
+        sensorCourierRequest,
     } type;
     union {
         struct {
@@ -42,9 +43,14 @@ typedef struct {
         struct {
             int speed;
         } setSpeed;
+        struct {
+            int index;
+        } go;
     } data;
 } EngineerMessage;
 
+
 void engineerServer();
+void engineerGo(int train_num, int node_num);
 
 #endif

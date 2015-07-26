@@ -1,11 +1,30 @@
-#include <user/pathfinding.h>
-#include <debug.h>
-#include <user/sensor.h>
-#include <user/turnout.h>
-#include <utils.h>
-#include <heap.h>
-#include <user/syscall.h>
+#include "track_data.h"
+#include "heap.h"
+#include <string.h> // memset
+#include <stdio.h>
+#include <stdlib.h>
+////
+typedef enum {false = 0, true = 1} bool;
 
+struct Position {
+    track_node *node;
+    int offset;
+};
+
+#define MAX_PATH_LENGTH TRACK_MAX // very generous
+/**
+PathBuffer for passing around paths.
+Array of track_node indecies, ordered from destination (0) to source (length).
+*/
+typedef struct PathBuffer {
+    int train_num;
+    track_node *tracknodes[MAX_PATH_LENGTH];
+    int cost;
+    int length;
+    bool reverse[MAX_PATH_LENGTH];
+} PathBuffer;
+
+////
 typedef struct PathNode {
     struct PathNode *from;
     track_node *tn;
@@ -39,18 +58,19 @@ DECLARE_HEAP(PQHeap, PathNode*, nodeCost, 12, <);
 Returns the number of track_node pointers to from src to dst.
 */
 int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
-    uassert(src);
-    uassert(dst);
-    uassert(pb);
+    // uassert(src);
+    // uassert(dst);
+    // uassert(pb);
     memset(pb->tracknodes, 0, MAX_PATH_LENGTH);
     pb->length = 0;
     memset(g_nodes, 0, EXPLORE_SIZE);
     int num_nodes = 0;
+
     /**
     No path if src and dst are the same node, reverse.
     */
     if (src->reverse->idx == dst->idx) {
-        printf(COM2, "Source and destination node are same.\n");
+        printf("Source and destination node are same.\n");
         pb->cost = 0;
         pb->length = 0;
         return 0;
@@ -73,17 +93,23 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
 
     PQHeapPush(&pq, start);
     while (1) {
-        uassert(num_nodes < EXPLORE_SIZE);
+        // uassert(num_nodes < EXPLORE_SIZE);
 
         PathNode *popd = PQHeapPop(&pq);
         if (! popd) {
             /**
             Null pointer was popped, so no path.
             */
+            printf("No path\n");
             pb->cost = -1;
             pb->length = -1;
             return -1;
         }
+
+        // if (popd->from) {
+        //     printf("popd from %s, cur %s, cost %d, len %d\n",
+        //         popd->from->tn->name, popd->tn->name, popd->cost, popd->length);
+        // }
 
         if (dst == popd->tn) {
             end = popd;
@@ -105,9 +131,10 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             continue;
         }
 
+
         if (popd->tn->owner != -1 && popd->tn->owner != pb->train_num) {
             /**
-            Reached a node not owned by the current train.
+            Reached a node not owned by current train.
             */
             continue;
         }
@@ -174,178 +201,105 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     PathNode *at = end;
     int path_length = 0;
     while (at != start) {
-        uassert(path_length < MAX_PATH_LENGTH);
+        // uassert(path_length < MAX_PATH_LENGTH);
         pb->reverse[path_length] = at->reverse;
         pb->tracknodes[path_length++] = at->tn;
         at = at->from;
     };
+    pb->tracknodes[path_length++] = at->tn;
     pb->cost = end->cost;
     pb->length = path_length;
 
-    printf(COM2, "Searched %d nodes.\n", num_nodes);
+    /**
+    A path from start to end is easier to read, so we'll reverse in place.
+    */
+    for (int i = 0, j = path_length - 1; i < j; i++, j--) {
+        track_node *c = pb->tracknodes[i];
+        pb->tracknodes[i] = pb->tracknodes[j];
+        pb->tracknodes[j] = c;
+    }
+
+    printf("Searched %d nodes.\n", num_nodes);
 
     return path_length;
 }
 
 void printPath(PathBuffer *pb) {
-    String s;
-    sinit(&s);
-    sputstr(&s, "Path:\n\r");
+    printf("Path (%d):\n", pb->cost);
     for (int i = 0; i < pb->length; i++) {
-        sputstr(&s, "[");
-        sputstr(&s, pb->tracknodes[i]->name);
-        sputstr(&s, ",");
-        sputint(&s, pb->tracknodes[i]->idx, 10);
-        sputstr(&s, "] ");
-        sputstr(&s, pb->reverse[i] ? "<- " : "-> ");
+        printf("[%s,%d] ", pb->tracknodes[i]->name, pb->tracknodes[i]->idx);
+        printf("%s ", pb->reverse[i] ? "<- " : "-> ");
     }
-    sputstr(&s, "\n\r");
-    PutString(COM2, &s);
+    printf("\n");
 }
 
-track_edge *getNextEdge(const track_node *node)
-{
-    if(node->type == NODE_BRANCH)
-    {
-        return &node->edge[turnoutIsCurved(node->num)];
-    }
-    else if (node->type == NODE_EXIT)
-    {
-        return 0;
-    }
-    return &node->edge[DIR_AHEAD];
+track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
+
+bool valid_node(int n) {
+    return 0 <= n && n <= 144;
 }
 
-track_node *getNextNode(const track_node *currentNode)
-{
-    track_edge *next_edge = getNextEdge(currentNode);
-    return (next_edge == 0 ? 0 : next_edge->dest);
-}
-
-track_node *getNextSensor(const track_node *node)
-{
-    uassert(node != 0);
-    for (;;)
-    {
-        node = getNextNode(node);
-        if (node == 0 || node->type == NODE_SENSOR) return node;
+// compile with: gcc track_data.c pathfinding.c -o a.out
+int main(int argc, char const *argv[]) {
+    char track = 0;
+    int from = -1;
+    int to = -1;
+    int blocked = -1;
+    int blocked2 = -1;
+    switch(argc) {
+        case 6:
+            blocked2 = atoi(argv[5]);
+            if (! valid_node(from)) {
+                printf("Bad blocked 2 node %d", blocked2);
+                return -1;
+            }
+        case 5:
+            blocked = atoi(argv[4]);
+            if (! valid_node(from)) {
+                printf("Bad blocked node %d", blocked);
+                return -1;
+            }
+        case 4:
+            track = argv[1][0];
+            to = atoi(argv[3]);
+            from = atoi(argv[2]);
+            if (track == 'a') {
+                printf("Loaded track A\n");
+                init_tracka(g_track);
+            }
+            else if (track == 'b') {
+                printf("Loaded track B\n");
+                init_trackb(g_track);
+            }
+            else {
+                printf("Bad track %c", track);
+                return -1;
+            }
+            if (! valid_node(to)) {
+                printf("Bad to node %d", to);
+                return -1;
+            }
+            if (! valid_node(from)) {
+                printf("Bad from node %d", from);
+                return -1;
+            }
+            break;
+        default:
+            printf("Usage: %s track from to [blocked [blocked]]", argv[0]);
+            return -1;
     }
+    if (blocked != -1 && valid_node(blocked)) {
+        g_track[blocked].owner = 90; /* 90 is a non-existant train number */
+    }
+    if (blocked2 != -1 && valid_node(blocked2)) {
+        g_track[blocked2].owner = 90; /* 90 is a non-existant train number */
+    }
+    track_node *src = &g_track[from];
+    track_node *dst = &g_track[to];
+    PathBuffer pb;
+    pb.train_num = 66;
+    int ret = planRoute(src, dst, &pb);
+    printPath(&pb);
+    printf("%d\n", ret);
     return 0;
 }
-
-// returns positive distance between two nodes in micrometers
-// or -1 if the landmark is not found
-int distanceBetween(const track_node *from, const track_node *to)
-{
-    uassert(from != 0);
-    uassert(to != 0);
-
-    int totalDistance = 0;
-    track_node *nextNode = from;
-    for(int i = 0; i < TRACK_MAX / 2; i++) {
-        // get next edge & node
-        track_edge *nextEdge = getNextEdge(nextNode);
-        nextNode = getNextNode(nextNode);
-        if (nextEdge == 0 || nextNode == 0) break;
-
-        totalDistance += nextEdge->dist;
-
-        if (nextNode == to) return 1000 * totalDistance;
-    }
-    // unable to find the to node
-    return -1;
-}
-
-// if the next node is a sensor, then that node is the primary;
-// keep going on the "right" track until finding the next sensor
-
-// if the next node is a switch, walk two paths:
-// first one is the "right" direction, keep walking to find the next sensor,
-// and make that as primary. Then walk down the "wrong" direction, keep walking
-// to get the next sensor. that sensor is the secondary claim.
-
-int getNextClaims(const struct track_node *prevNode, struct SensorClaim *claim)
-{
-    uassert(prevNode && claim);
-
-    // given a track node, walk until encounter the next sensor/switch
-    const track_node *node = prevNode;
-    for (;;)
-    {
-        node = getNextNode(node);
-
-        if (node == 0)
-        {
-            uassert(0);
-            return -1;
-        }
-
-        switch (node->type)
-        {
-        case NODE_BRANCH:
-        {
-            // get the two nodes
-            track_node *primary = getNextNode(node);
-            uassert(primary);
-
-            track_node *secondary = 0;
-            int dir = turnoutIsCurved(node->num) ? DIR_STRAIGHT : DIR_CURVED;
-            track_edge *secondaryEdge = &(node->edge[dir]);
-            if (secondaryEdge)
-            {
-                secondary = secondaryEdge->dest;
-            }
-
-            // process primary
-            if (primary && primary->type != NODE_SENSOR)
-            {
-                primary = getNextSensor(primary);
-                uassert(primary);
-            }
-
-            claim->primary = primary->idx;
-
-            // process secondary
-            if (secondary)
-            {
-                if (secondary->type != NODE_SENSOR)
-                {
-                    secondary = getNextSensor(secondary);
-                    uassert(secondary);
-                }
-                claim->secondary = secondary->idx;
-            }
-            else
-            {
-                claim->secondary = -1;
-            }
-
-            return 0;
-        }
-        case NODE_SENSOR:
-        {
-            claim->primary = node->idx;
-
-            // get the next sensor as the secondary
-            track_node *secondary = getNextSensor(node);
-            if (secondary != 0) claim->secondary = secondary->idx;
-            else claim->secondary = -1;
-            return 0;
-        }
-        case NODE_EXIT:
-            claim->primary = -1;
-            claim->secondary = -1;
-            return 0;
-        case NODE_MERGE:
-            continue;
-        case NODE_ENTER:
-        default:
-            uassert(0);
-            return -1;
-        }
-    }
-
-    uassert(0);
-    return -1;
-}
-

@@ -729,6 +729,14 @@ void engineerServer(int numEngineer)
                 break;
             }
 
+            case go: {
+                Reply(tid, 0, 0);
+                int index = message.data.go.index;
+                track_node *node = &g_track[index];
+                printf(COM2, "Train %d received command to go to %s\n\r", trainNumber, node->name);
+                // TODO: implement this
+                break;
+            }
             default:
             {
                 uassert(0);

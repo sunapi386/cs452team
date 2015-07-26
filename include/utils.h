@@ -12,6 +12,7 @@ typedef unsigned int size_t;
 typedef enum { false, true } bool;
 
 void memcpy(void *dest, const void *src, size_t n);
+void * memset(void *ptr, int value, size_t num);
 int strcmp (const char * dst, const char * src);
 char * strncpy(char *dst, const char *src, size_t n);
 size_t strlen(const char *str); // does not count null terminator

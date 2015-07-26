@@ -1,6 +1,6 @@
 #ifndef __TRACKSERVER_H
 #define __TRACKSERVER_H
-
+#include <user/track_data.h>
 /**
 Collision Avoidance
 1.  Train stay on its own track.
@@ -10,27 +10,43 @@ Collision Avoidance
 4.  Giveback when trains finish with track.
 */
 
-// list of data formats that are accepted by the track controller
 typedef struct SensorData {
     char group;
     char offset;
 } SensorData;
+
 
 typedef struct {
     int turnout_number;
     enum {Curved, Straight} direction;
 } TurnoutData;
 
-typedef struct {
+/**
+Engineer requests a reservation by Send'ing a TrackServerMessage, and
+the TrackServer replies 0 or 1 whether it was successful.
+Engineer can have at most MAX_RESERVATION track reserved before trackserver
+complains about engineer not releasing track.
+On each reservation request, the number of track to reserve is indicated
+by num_requested.
+*/
+#define MAX_RESERVATION 10
+typedef struct TrackServerMessage {
     enum {
-        type_sensor,
-        type_turnout,
+        RESERVATION,
+        QUIT,
     } type;
     union {
-        SensorData sensor;
-        TurnoutData turnout;
-    } data;
-} TrackRequest;
+        struct Reservation {
+            enum {
+                RESERVE,
+                RELEASE,
+            } op;
+            int train_num;
+            int num_requested;
+            track_node *nodes[MAX_RESERVATION];
+        } reservation;
+    };
+} TrackServerMessage;
 
 
 void drawTrackLayoutGraph(char track);
