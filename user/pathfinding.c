@@ -292,7 +292,7 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
     int la = lookahead(first, pb->tracknodes[1]);
     Enstruction ens = {
         .id = en_idx++,
-        .togo = {first, 987},
+        .togo = {first, 0},
         .tracknodes[0] = pb->tracknodes[0],
         .turnops[0] = la,
         .length = 1,
