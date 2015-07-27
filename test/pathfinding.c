@@ -439,7 +439,7 @@ void printEnstruction(Enstruction *en) {
     for (int i = 0; i < en->length; i++) {
         printf("[%s op %d %d] ",
             en->tracknodes[i]->name,
-            en->turnops[i] & (-1 << 1),
+            (en->turnops[i] & (-1 << 1)) >> 1,
             en->turnops[i] & 1);
     }
     printf("\n");
