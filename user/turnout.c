@@ -108,7 +108,7 @@ void setTurnout(int turnout_number, char direction) {
     _updateTurnoutDisplay(turnout_number, direction);
 }
 
-void printResetTurnouts() {
+void initTurnouts() {
     String s;
     sinit(&s);
     sputstr(&s, VT_CURSOR_SAVE);
@@ -136,36 +136,8 @@ void printResetTurnouts() {
     }
 }
 
-// static int trackServerId;
-// static void turnoutTask() {
-    /* Commenting out turnout task because trackserver no longer supports this.
-    In the future the engineer would be communicating here and switching
-    his own turnouts.
-    printResetTurnouts();
-    trackServerId = WhoIs("trackServer");
-    assert(trackServerId >= 0);
-    TrackRequest trackServerReply;
-
-    while(1) {
-        Send(trackServerId, 0, 0, &trackServerReply, sizeof(trackServerReply));
-        int turnout_number = trackServerReply.data.turnout.turnout_number;
-        char direction = trackServerReply.data.turnout.direction;
-
-        assert((153 <= turnout_number && turnout_number <= 156) ||
-                 (1 <= turnout_number && turnout_number <= 18));
-        assert(direction == 'c' || direction == 's');
-
-        setTurnout(turnout_number, direction);
-    }
-    */
-// }
-
 bool turnoutIsCurved(int turnout_number) {
     // checking a bit: bit = (number >> x) & 1;
     int bit_address = _to_bit_address(turnout_number);
     return (track_bitmap >> bit_address) & 0x1;
-}
-
-void initTurnout() {
-    // Create(PRIORITY_TURNOUT_TASK, turnoutTask);
 }

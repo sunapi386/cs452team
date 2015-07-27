@@ -3,7 +3,7 @@
 #include <utils.h> // bool
 // handles turnout manipulation, and draws onto screen
 
-void initTurnout();
+void initTurnouts();
 // sets the turnout curved or straight
 
 bool turnoutIsCurved(int turnout_number);
