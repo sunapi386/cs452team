@@ -63,6 +63,9 @@ prod: clean check
 k5: prod
 	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sc/k5.elf
 
+tc2: prod
+	install -m 755 -g cs452_sf kernel.elf /u/cs452/tftp/ARM/sc/tc2.elf
+
 check:
 	git grep -n FIXME
 	git grep -n TODO

@@ -14,6 +14,24 @@ typedef struct PathNode {
     bool reverse;
 } PathNode;
 
+static void pbinit(PathBuffer *pb) {
+    memset(pb->tracknodes, 0, MAX_PATH_LENGTH);
+    memset(pb->reverse, false, MAX_PATH_LENGTH);
+    pb->length = 0;
+    pb->train_num = 0;
+}
+
+static int pbcopy(PathBuffer *dst, PathBuffer *src) {
+    if (! src || ! dst) {
+        return -1;
+    }
+    dst->train_num = src->train_num;
+    memcpy(dst->tracknodes, src->tracknodes, MAX_PATH_LENGTH);
+    dst->length = src->length;
+    memcpy(dst->reverse, src->reverse, MAX_PATH_LENGTH);
+    return dst->length;
+}
+
 /**
 Because there is no malloc, a large buffer is preallocated for PathNode.
 */
@@ -51,7 +69,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     */
     if (src->reverse->idx == dst->idx) {
         printf(COM2, "Source and destination node are same.\n");
-        pb->cost = 0;
         pb->length = 0;
         return 0;
     }
@@ -80,7 +97,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             /**
             Null pointer was popped, so no path.
             */
-            pb->cost = -1;
             pb->length = -1;
             return -1;
         }
@@ -179,12 +195,179 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         pb->tracknodes[path_length++] = at->tn;
         at = at->from;
     };
-    pb->cost = end->cost;
     pb->length = path_length;
 
     printf(COM2, "Searched %d nodes.\n", num_nodes);
 
     return path_length;
+}
+
+
+/**
+Returns an expanded version of the path, so the engineer can make reservations.
+Some reversing paths are too short and need more reservations.
+E.g. (path1) C12 -> MR14 <- MR11 -> C13 ->. The reversing at MR14 actually
+requires reservation of A3/A4 sensor track_node because the distance from
+MR14 to A3 is just 6 cm (shorter than a train's length).
+So path1 is expanded to (path2):
+[C12,43] ->  [MR14,107] ->  [A4,3] <-  [MR11,101] ->  [C13,44] ->.
+*/
+int expandPath(PathBuffer *pb) {
+    if (! pb) {
+        return -1;
+    }
+    PathBuffer clonedpb;
+    pbcopy(&clonedpb, pb);
+    pbinit(pb);
+    /**
+    By estimate, a train is approximately 20cm long. Factoring in that we are
+    not very accurate in estimating short move distances, we should reserve the
+    next two train-lengths from any track node we do a reverse on.
+    Then iterate through the train nodes (in the copied PathBuffer):
+        If there is a reverse on the tracknode,
+            make sure to keep reserving track_nodes until padding is used up.
+        Otherwise just copy back the original tracknode.
+    */
+    const int PADDING = 2 * 20 * 10; /* two train lengths, in mm */
+    for (int i = 0; i < clonedpb.length; i++) {
+        pb->tracknodes[pb->length++] = clonedpb.tracknodes[i];
+        if (clonedpb.reverse[i]) {
+            pb->reverse[pb->length] = true; // pbinit initalizes reverse false
+            int extra = 0;
+            while (extra < PADDING) {
+                /**
+                planRoute never reverses on branch nodes.
+                */
+                track_node *next = clonedpb.tracknodes[i]->edge[DIR_AHEAD].dest;
+                pb->tracknodes[pb->length++] = next;
+                extra += next->edge[DIR_AHEAD].dist;
+            }
+        }
+    }
+
+    return pb->length;
+}
+
+static void memsetEnstruction(Enstruction *dst, Enstruction *src) {
+    if (! dst || ! src) return;
+    dst->id = src->id;
+    dst->length = src->length;
+    dst->togo.node = src->togo.node;
+    dst->togo.offset = src->togo.offset;
+    memcpy(dst->tracknodes, src->tracknodes, MAX_PATH_LENGTH);
+    memcpy(dst->turnops, src->turnops, MAX_PATH_LENGTH);
+}
+
+/**
+Returns switch number and direction if tn is a branch, in a single int.
+Otherwise 0.
+*/
+static inline int lookahead(track_node *curn, track_node *next) {
+    if (! curn || ! next || curn->type != NODE_BRANCH)
+        return 0;
+    if (next == curn->edge[DIR_STRAIGHT].dest)
+        return (curn->idx << 1) | 0;
+    if (next == curn->edge[DIR_CURVED].dest)
+        return (curn->idx << 1) | 1;
+    return 0;
+}
+
+/**
+Takes a path buffer and converts it into a Ebook, which is a series
+of engineer instructions (enstructions).
+Returns the number of enstructions, 0 to MAX_EBOOK_LENGTH.
+Or -1 on error.
+E.g. path2 [C12,43] ->  [MR14,107] ->  [A4,3] <-  [MR11,101] ->  [C13,44] ->
+creates the following enstructions:
+1/ Togo MR14. Switch false.
+2/ Togo C13. Switch false.
+*/
+int makeEbook(PathBuffer *pb, Ebook *book) {
+    if (! pb || ! book || pb->length < 2) return -1;
+    memset(book->enstructs, 0, MAX_EBOOK_LENGTH);
+    book->length = 0;
+    int en_idx = 0;
+
+    {
+    track_node *first = pb->tracknodes[0];
+    int la = lookahead(first, pb->tracknodes[1]);
+    Enstruction ens = {
+        .id = en_idx++,
+        .togo = {first, 0},
+        .tracknodes[0] = pb->tracknodes[0],
+        .turnops[0] = la,
+        .length = 1,
+    };
+    Enstruction *newEnst = &book->enstructs[book->length++];
+    memsetEnstruction(newEnst, &ens);
+    }
+
+    /**
+    Follow the path from start to each reverse.
+    If there is a reverse, create a new enstruction.
+    Otherwise add the current tracknode to the current enstruction.
+    */
+    for (int i = 1; i < pb->length - 1; i++) {
+        int la = lookahead(pb->tracknodes[i], pb->tracknodes[i+1]);
+        if (pb->reverse[i]) {
+            /**
+            Reverse happens here. Make a new enstruction, set it in.
+            The last togo should go to here.
+            */
+            Enstruction *curEnst = &book->enstructs[book->length - 1];
+            curEnst->togo.node = pb->tracknodes[i];
+            curEnst->togo.offset = 0;
+            Enstruction ens = {
+                .id = en_idx++,
+                .togo = {0, 0},
+                .tracknodes[0] = pb->tracknodes[i],
+                .turnops[0] = la,
+                .length = 1
+            };
+            Enstruction *newEnst = &book->enstructs[book->length++];
+            memsetEnstruction(newEnst, &ens);
+        }
+        else {
+            /**
+            No reverse, add current node and branch to the current enstruction.
+            */
+            Enstruction *curEnst = &book->enstructs[book->length - 1];
+            curEnst->tracknodes[curEnst->length] = pb->tracknodes[i];
+            curEnst->turnops[curEnst->length++] = la;
+        }
+    }
+
+    {
+    track_node *lasttn = pb->tracknodes[pb->length - 1];
+    Enstruction *curEnst = &book->enstructs[book->length - 1];
+    curEnst->togo.node = lasttn;
+    curEnst->togo.offset = 0;
+    curEnst->tracknodes[curEnst->length] = lasttn;
+    curEnst->turnops[curEnst->length++] = 0;
+    }
+
+    return book->length;
+}
+
+void printEnstruction(Enstruction *en) {
+    printf(COM2, "Enstruction %d: ", en->id);
+    printf(COM2, "Togo %s offset %d length %d ",
+        en->togo.node->name, en->togo.offset, en->length);
+    for (int i = 0; i < en->length; i++) {
+        printf(COM2, "[%s op %d %d] ",
+            en->tracknodes[i]->name,
+            en->turnops[i] & (-1 << 1),
+            en->turnops[i] & 1);
+    }
+    printf(COM2, "\n");
+}
+
+void printEbook(Ebook *book) {
+    printf(COM2, "Ebook (%d):\n", book->length);
+    for (int i = 0; i < book->length; i++) {
+        printEnstruction(&book->enstructs[i]);
+    }
+    printf(COM2, "\n");
 }
 
 void printPath(PathBuffer *pb) {
@@ -203,30 +386,24 @@ void printPath(PathBuffer *pb) {
     PutString(COM2, &s);
 }
 
-track_edge *getNextEdge(const track_node *node)
-{
-    if(node->type == NODE_BRANCH)
-    {
+track_edge *getNextEdge(track_node *node) {
+    if(node->type == NODE_BRANCH) {
         return &node->edge[turnoutIsCurved(node->num)];
     }
-    else if (node->type == NODE_EXIT)
-    {
+    else if (node->type == NODE_EXIT) {
         return 0;
     }
     return &node->edge[DIR_AHEAD];
 }
 
-track_node *getNextNode(const track_node *currentNode)
-{
+track_node *getNextNode(track_node *currentNode) {
     track_edge *next_edge = getNextEdge(currentNode);
     return (next_edge == 0 ? 0 : next_edge->dest);
 }
 
-track_node *getNextSensor(const track_node *node)
-{
+track_node *getNextSensor(track_node *node) {
     uassert(node != 0);
-    for (;;)
-    {
+    for (;;) {
         node = getNextNode(node);
         if (node == 0 || node->type == NODE_SENSOR) return node;
     }
@@ -235,8 +412,7 @@ track_node *getNextSensor(const track_node *node)
 
 // returns positive distance between two nodes in micrometers
 // or -1 if the landmark is not found
-int distanceBetween(const track_node *from, const track_node *to)
-{
+int distanceBetween(track_node *from, track_node *to) {
     uassert(from != 0);
     uassert(to != 0);
 
@@ -264,12 +440,12 @@ int distanceBetween(const track_node *from, const track_node *to)
 // and make that as primary. Then walk down the "wrong" direction, keep walking
 // to get the next sensor. that sensor is the secondary claim.
 
-int getNextClaims(const struct track_node *prevNode, struct SensorClaim *claim)
+int getNextClaims(struct track_node *prevNode, struct SensorClaim *claim)
 {
     uassert(prevNode && claim);
 
     // given a track node, walk until encounter the next sensor/switch
-    const track_node *node = prevNode;
+    track_node *node = prevNode;
     for (;;)
     {
         node = getNextNode(node);

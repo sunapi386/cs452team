@@ -7,6 +7,7 @@
 
 #define debug(fmt, ...)     ((void)0)
 #define assert(ignore)      ((void)0)
+#define uassert(ignore)      ((void)0)
 
 #else // ! PRODUCTION
 
