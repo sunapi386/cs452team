@@ -10,6 +10,7 @@
 #include <user/turnout.h>
 #include <user/vt100.h>
 #include <user/engineer_ui.h>
+#include <user/reservation.h>
 
 #define ALPHA                85
 #define NUM_SENSORS          (5 * 16)

@@ -3,7 +3,6 @@
 #include <user/track_data.h>
 #include <utils.h> // bool
 
-struct SensorClaim;
 /**
 Position for XMarksTheSpot stopping.
 */
@@ -13,6 +12,7 @@ typedef struct position {
 } Position;
 
 #define MAX_PATH_LENGTH (TRACK_MAX)// very generous
+
 /**
 Turnout operation. The idea is that the engineer follows a series of these.
 */
@@ -40,8 +40,8 @@ typedef struct ebook {
 } Ebook;
 
 /**
-    PathBuffer for passing around paths.
-    Array of track_node indecies, ordered from destination (0) to source (length).
+PathBuffer for passing around paths.
+Array of track_node indecies, ordered from destination (0) to source (length).
 */
 typedef struct PathBuffer {
     int train_num;   /* Engineer: train_number for reservation planning */
@@ -51,19 +51,8 @@ typedef struct PathBuffer {
 } PathBuffer;
 
 
-struct track_edge *getNextEdge(struct track_node *node);
-
-struct track_node *getNextNode(struct track_node *currentNode);
-
-struct track_node *getNextSensor(struct track_node *node);
-
-int distanceBetween(struct track_node *from, struct track_node *to);
-
-int getNextClaims(struct track_node *currentNode, struct SensorClaim *claim);
-
 /**
-    planRoute
-    Returns -1 if no path exists, otherwise the length of the path.
+Returns -1 if no path exists, otherwise the length of the path.
 */
 int planRoute(track_node *start, track_node *end, PathBuffer *pb);
 
@@ -89,8 +78,14 @@ creates the following enstructions:
 2/ Togo C13. Switch false.
 */
 int makeEbook(PathBuffer *pb, Ebook *book);
+
 void printEnstruction(Enstruction *en);
 void printEbook(Ebook *book);
 void printPath(PathBuffer *pb);
+
+struct track_edge *getNextEdge(struct track_node *node);
+struct track_node *getNextNode(struct track_node *currentNode);
+struct track_node *getNextSensor(struct track_node *node);
+int distanceBetween(struct track_node *from, struct track_node *to);
 
 #endif

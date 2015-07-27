@@ -1,7 +1,7 @@
 #ifndef __SENSOR_H
 #define __SENSOR_H
 
-typedef struct SensorClaim {
+typedef struct sensorclaim {
     int primary;
     int secondary;
 } SensorClaim;
