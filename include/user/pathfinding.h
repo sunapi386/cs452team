@@ -58,12 +58,27 @@ int planRoute(track_node *start, track_node *end, PathBuffer *pb);
 /**
 Returns an expanded version of the path, so the engineer can make reservations.
 Some reversing paths are too short and need more reservations.
-E.g. C12 -> MR14 <- MR11 -> C13. In this case reversing at MR14 actually
+E.g. (path1) C12 -> MR14 <- MR11 -> C13 ->. The reversing at MR14 actually
 requires reservation of A3/A4 sensor track_node because the distance from
 MR14 to A3 is just 6 cm (shorter than a train's length).
+So path1 is expanded to (path2):
+[C12,43] ->  [MR14,107] ->  [A4,3] <-  [MR11,101] ->  [C13,44] ->.
 */
 int expandPath(PathBuffer *pb);
 
+/**
+Takes a path buffer and converts it into a Ebook, which is a series
+of engineer instructions (enstructions).
+Returns the number of enstructions, 0 to MAX_EBOOK_LENGTH.
+Or -1 on error.
+E.g. path2 [C12,43] ->  [MR14,107] ->  [A4,3] <-  [MR11,101] ->  [C13,44] ->
+creates the following enstructions:
+1/ Togo MR14. Switch false.
+2/ Togo C13. Switch false.
+*/
+int makeEbook(PathBuffer *pb, Ebook *book);
+void printEnstruction(Enstruction *en);
+void printEbook(Ebook *book);
 void printPath(PathBuffer *pb);
 int distanceBetween(track_node *from, track_node *to);
 track_edge *getNextEdge(track_node *node);

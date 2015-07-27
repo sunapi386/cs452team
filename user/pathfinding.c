@@ -247,7 +247,7 @@ int expandPath(PathBuffer *pb) {
     return pb->length;
 }
 
-void memsetEnstruction(Enstruction *dst, Enstruction *src) {
+static void memsetEnstruction(Enstruction *dst, Enstruction *src) {
     if (! dst || ! src) return;
     dst->id = src->id;
     dst->length = src->length;
@@ -260,7 +260,6 @@ void memsetEnstruction(Enstruction *dst, Enstruction *src) {
 /**
 Returns switch number and direction if tn is a branch, in a single int.
 Otherwise 0.
-
 */
 static inline int lookahead(track_node *curn, track_node *next) {
     if (! curn || ! next || curn->type != NODE_BRANCH)
