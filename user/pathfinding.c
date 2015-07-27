@@ -13,6 +13,24 @@ typedef struct PathNode {
     bool reverse;
 } PathNode;
 
+static void pbinit(PathBuffer *pb) {
+    memset(pb->tracknodes, 0, MAX_PATH_LENGTH);
+    memset(pb->reverse, false, MAX_PATH_LENGTH);
+    pb->length = 0;
+    pb->train_num = 0;
+}
+
+static int pbcopy(PathBuffer *dst, PathBuffer *src) {
+    if (! src || ! dst) {
+        return -1;
+    }
+    dst->train_num = src->train_num;
+    memcpy(dst->tracknodes, src->tracknodes, MAX_PATH_LENGTH);
+    dst->length = src->length;
+    memcpy(dst->reverse, src->reverse, MAX_PATH_LENGTH);
+    return dst->length;
+}
+
 /**
 Because there is no malloc, a large buffer is preallocated for PathNode.
 */
@@ -50,7 +68,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     */
     if (src->reverse->idx == dst->idx) {
         printf(COM2, "Source and destination node are same.\n");
-        pb->cost = 0;
         pb->length = 0;
         return 0;
     }
@@ -79,7 +96,6 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             /**
             Null pointer was popped, so no path.
             */
-            pb->cost = -1;
             pb->length = -1;
             return -1;
         }
@@ -178,12 +194,55 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         pb->tracknodes[path_length++] = at->tn;
         at = at->from;
     };
-    pb->cost = end->cost;
     pb->length = path_length;
 
     printf(COM2, "Searched %d nodes.\n", num_nodes);
 
     return path_length;
+}
+
+
+/**
+Returns an expanded version of the path, so the engineer can make reservations.
+Some reversing paths are too short and need more reservations.
+E.g. C12 -> MR14 <- MR11 -> C13. In this case reversing at MR14 actually
+requires reservation of A3/A4 sensor track_node because the distance from
+MR14 to A3 is just 6 cm (shorter than a train's length).
+*/
+int expandPath(PathBuffer *pb) {
+    if (! pb) {
+        return -1;
+    }
+    PathBuffer clonedpb;
+    pbcopy(&clonedpb, pb);
+    pbinit(pb);
+    /**
+    By estimate, a train is approximately 20cm long. Factoring in that we are
+    not very accurate in estimating short move distances, we should reserve the
+    next two train-lengths from any track node we do a reverse on.
+    Then iterate through the train nodes (in the copied PathBuffer):
+        If there is a reverse on the tracknode,
+            make sure to keep reserving track_nodes until padding is used up.
+        Otherwise just copy back the original tracknode.
+    */
+    const int PADDING = 2 * 20 * 10; /* two train lengths, in mm */
+    for (int i = 0; i < clonedpb.length; i++) {
+        pb->tracknodes[pb->length++] = clonedpb.tracknodes[i];
+        if (clonedpb.reverse[i]) {
+            pb->reverse[pb->length] = true; // pbinit initalizes reverse false
+            int extra = 0;
+            while (extra < PADDING) {
+                /**
+                planRoute never reverses on branch nodes.
+                */
+                track_node *next = clonedpb.tracknodes[i]->edge[DIR_AHEAD].dest;
+                pb->tracknodes[pb->length++] = next;
+                extra += next->edge[DIR_AHEAD].dist;
+            }
+        }
+    }
+
+    return pb->length;
 }
 
 void printPath(PathBuffer *pb) {
