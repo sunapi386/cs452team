@@ -392,8 +392,6 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
     */
     for (int i = 1; i < pb->length - 1; i++) {
         int la = lookahead(pb->tracknodes[i], pb->tracknodes[i+1]);
-        track_node *curtrack = pb->tracknodes[i];
-        printf("%s la %d \n", curtrack->name, la);
         if (pb->reverse[i]) {
             /**
             Reverse happens here. Make a new enstruction, set it in.
@@ -402,7 +400,6 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
             Enstruction *curEnst = &book->enstructs[book->length - 1];
             curEnst->togo.node = pb->tracknodes[i];
             curEnst->togo.offset = 0;
-            printf("reverse curEnst length %d\n", curEnst->length);
             Enstruction ens = {
                 .id = en_idx++,
                 .togo = {0, 0},
@@ -428,7 +425,6 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
     Enstruction *curEnst = &book->enstructs[book->length - 1];
     curEnst->togo.node = lasttn;
     curEnst->togo.offset = 0;
-    printf("last %s curEnst length %d\n", lasttn->name, curEnst->length);
     curEnst->tracknodes[curEnst->length] = lasttn;
     curEnst->turnops[curEnst->length++] = 0;
     }
