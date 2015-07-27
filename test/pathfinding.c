@@ -14,7 +14,8 @@ typedef struct position {
     int offset;
 } Position;
 
-#define MAX_PATH_LENGTH (TRACK_MAX / 3) // very generous
+#define MAX_PATH_LENGTH (TRACK_MAX) // very generous
+
 /**
 PathBuffer for passing around paths.
 Array of track_node indecies, ordered from destination (0) to source (length).
@@ -38,14 +39,14 @@ where he should goto and what track nodes he should reserve.
 typedef struct {
     int id;
     int length;
-    bool reverse;
     Position togo;      /* because goto is a reserved keyword */
     Turnop turnops[MAX_PATH_LENGTH];
     track_node *tracknodes[MAX_PATH_LENGTH];
 } Enstruction;
 
 /**
-Ebook is a list of enstructions. Size
+Ebook is a list of enstructions.
+Removed reverse bool in Enstruction because it's implied at the end of the goto.
 */
 #define MAX_EBOOK_LENGTH  (MAX_PATH_LENGTH / 10)
 typedef struct ebook {
@@ -353,6 +354,7 @@ static inline int lookahead(track_node *curn, track_node *next) {
         return (curn->idx << 1) | 1;
     return 0;
 }
+
 /**
 Takes a path buffer and converts it into a Ebook, which is a series
 of engineer instructions (enstructions).
@@ -360,8 +362,8 @@ Returns the number of enstructions, 0 to MAX_EBOOK_LENGTH.
 Or -1 on error.
 E.g. path2 [C12,43] ->  [MR14,107] ->  [A4,3] <-  [MR11,101] ->  [C13,44] ->
 creates the following enstructions:
-1/ Reverse false. Togo MR14. Switch false.
-2/ Reverse true. Togo C13. Switch false.
+1/ Togo MR14. Switch false.
+2/ Togo C13. Switch false.
 */
 int makeEbook(PathBuffer *pb, Ebook *book) {
     if (! pb || ! book || pb->length < 2) return -1;
@@ -377,7 +379,6 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
         .togo = {first, 987},
         .tracknodes[0] = pb->tracknodes[0],
         .turnops[0] = la,
-        .reverse = 0,
         .length = 1,
     };
     Enstruction *newEnst = &book->enstructs[book->length++];
@@ -404,10 +405,9 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
             printf("reverse curEnst length %d\n", curEnst->length);
             Enstruction ens = {
                 .id = en_idx++,
-                .togo = {123, 1},
+                .togo = {0, 0},
                 .tracknodes[0] = pb->tracknodes[i],
                 .turnops[0] = la,
-                .reverse = 1,
                 .length = 1
             };
             Enstruction *newEnst = &book->enstructs[book->length++];
@@ -418,7 +418,6 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
             No reverse, add current node and branch to the current enstruction.
             */
             Enstruction *curEnst = &book->enstructs[book->length - 1];
-            printf("continue curEnst length %d\n", curEnst->length);
             curEnst->tracknodes[curEnst->length] = pb->tracknodes[i];
             curEnst->turnops[curEnst->length++] = la;
         }
@@ -429,7 +428,6 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
     Enstruction *curEnst = &book->enstructs[book->length - 1];
     curEnst->togo.node = lasttn;
     curEnst->togo.offset = 0;
-    curEnst->reverse = 0;
     printf("last %s curEnst length %d\n", lasttn->name, curEnst->length);
     curEnst->tracknodes[curEnst->length] = lasttn;
     curEnst->turnops[curEnst->length++] = 0;
@@ -440,8 +438,8 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
 
 void printEnstruction(Enstruction *en) {
     printf("Enstruction %d: ", en->id);
-    printf("Togo %s offset %d reverse %d length %d ",
-        en->togo.node->name, en->togo.offset, en->reverse, en->length);
+    printf("Togo %s offset %d length %d ",
+        en->togo.node->name, en->togo.offset, en->length);
     for (int i = 0; i < en->length; i++) {
         printf("[%s op %d %d] ",
             en->tracknodes[i]->name,
