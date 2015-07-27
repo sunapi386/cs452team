@@ -6,20 +6,46 @@
 /**
 Position for XMarksTheSpot stopping.
 */
-struct Position {
+typedef struct position {
     track_node *node;
     int offset;
-};
+} Position;
 
-#define MAX_PATH_LENGTH TRACK_MAX // very generous
+#define MAX_PATH_LENGTH (TRACK_MAX)// very generous
+/**
+Turnout operation. The idea is that the engineer follows a series of these.
+*/
+typedef int Turnop; // (switch_number << 1) | (1 bit curved)
+
+/**
+Enstruction to pass to the engineer, in a sequential manner of exactly
+where he should goto and what track nodes he should reserve.
+*/
+typedef struct {
+    int id;
+    int length;
+    Position togo;      /* because goto is a reserved keyword */
+    Turnop turnops[MAX_PATH_LENGTH];
+    track_node *tracknodes[MAX_PATH_LENGTH];
+} Enstruction;
+
+/**
+Ebook is a list of enstructions. Size
+*/
+#define MAX_EBOOK_LENGTH  (MAX_PATH_LENGTH / 10)
+typedef struct ebook {
+    Enstruction enstructs[MAX_EBOOK_LENGTH];
+    int length;
+} Ebook;
+
 /**
 PathBuffer for passing around paths.
 Array of track_node indecies, ordered from destination (0) to source (length).
 */
 typedef struct PathBuffer {
     int train_num;   /* Engineer: train_number for reservation planning */
-    track_node *tracknodes[MAX_PATH_LENGTH];
     int length;
+    track_node *tracknodes[MAX_PATH_LENGTH];
     bool reverse[MAX_PATH_LENGTH];
 } PathBuffer;
 

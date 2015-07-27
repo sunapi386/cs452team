@@ -205,9 +205,11 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
 /**
 Returns an expanded version of the path, so the engineer can make reservations.
 Some reversing paths are too short and need more reservations.
-E.g. C12 -> MR14 <- MR11 -> C13. In this case reversing at MR14 actually
+E.g. (path1) C12 -> MR14 <- MR11 -> C13 ->. The reversing at MR14 actually
 requires reservation of A3/A4 sensor track_node because the distance from
 MR14 to A3 is just 6 cm (shorter than a train's length).
+So path1 is expanded to (path2):
+[C12,43] ->  [MR14,107] ->  [A4,3] <-  [MR11,101] ->  [C13,44] ->.
 */
 int expandPath(PathBuffer *pb) {
     if (! pb) {
@@ -243,6 +245,129 @@ int expandPath(PathBuffer *pb) {
     }
 
     return pb->length;
+}
+
+void memsetEnstruction(Enstruction *dst, Enstruction *src) {
+    if (! dst || ! src) return;
+    dst->id = src->id;
+    dst->length = src->length;
+    dst->togo.node = src->togo.node;
+    dst->togo.offset = src->togo.offset;
+    memcpy(dst->tracknodes, src->tracknodes, MAX_PATH_LENGTH);
+    memcpy(dst->turnops, src->turnops, MAX_PATH_LENGTH);
+}
+
+/**
+Returns switch number and direction if tn is a branch, in a single int.
+Otherwise 0.
+
+*/
+static inline int lookahead(track_node *curn, track_node *next) {
+    if (! curn || ! next || curn->type != NODE_BRANCH)
+        return 0;
+    if (next == curn->edge[DIR_STRAIGHT].dest)
+        return (curn->idx << 1) | 0;
+    if (next == curn->edge[DIR_CURVED].dest)
+        return (curn->idx << 1) | 1;
+    return 0;
+}
+
+/**
+Takes a path buffer and converts it into a Ebook, which is a series
+of engineer instructions (enstructions).
+Returns the number of enstructions, 0 to MAX_EBOOK_LENGTH.
+Or -1 on error.
+E.g. path2 [C12,43] ->  [MR14,107] ->  [A4,3] <-  [MR11,101] ->  [C13,44] ->
+creates the following enstructions:
+1/ Togo MR14. Switch false.
+2/ Togo C13. Switch false.
+*/
+int makeEbook(PathBuffer *pb, Ebook *book) {
+    if (! pb || ! book || pb->length < 2) return -1;
+    memset(book->enstructs, 0, MAX_EBOOK_LENGTH);
+    book->length = 0;
+    int en_idx = 0;
+
+    {
+    track_node *first = pb->tracknodes[0];
+    int la = lookahead(first, pb->tracknodes[1]);
+    Enstruction ens = {
+        .id = en_idx++,
+        .togo = {first, 987},
+        .tracknodes[0] = pb->tracknodes[0],
+        .turnops[0] = la,
+        .length = 1,
+    };
+    Enstruction *newEnst = &book->enstructs[book->length++];
+    memsetEnstruction(newEnst, &ens);
+    }
+
+    /**
+    Follow the path from start to each reverse.
+    If there is a reverse, create a new enstruction.
+    Otherwise add the current tracknode to the current enstruction.
+    */
+    for (int i = 1; i < pb->length - 1; i++) {
+        int la = lookahead(pb->tracknodes[i], pb->tracknodes[i+1]);
+        if (pb->reverse[i]) {
+            /**
+            Reverse happens here. Make a new enstruction, set it in.
+            The last togo should go to here.
+            */
+            Enstruction *curEnst = &book->enstructs[book->length - 1];
+            curEnst->togo.node = pb->tracknodes[i];
+            curEnst->togo.offset = 0;
+            Enstruction ens = {
+                .id = en_idx++,
+                .togo = {0, 0},
+                .tracknodes[0] = pb->tracknodes[i],
+                .turnops[0] = la,
+                .length = 1
+            };
+            Enstruction *newEnst = &book->enstructs[book->length++];
+            memsetEnstruction(newEnst, &ens);
+        }
+        else {
+            /**
+            No reverse, add current node and branch to the current enstruction.
+            */
+            Enstruction *curEnst = &book->enstructs[book->length - 1];
+            curEnst->tracknodes[curEnst->length] = pb->tracknodes[i];
+            curEnst->turnops[curEnst->length++] = la;
+        }
+    }
+
+    {
+    track_node *lasttn = pb->tracknodes[pb->length - 1];
+    Enstruction *curEnst = &book->enstructs[book->length - 1];
+    curEnst->togo.node = lasttn;
+    curEnst->togo.offset = 0;
+    curEnst->tracknodes[curEnst->length] = lasttn;
+    curEnst->turnops[curEnst->length++] = 0;
+    }
+
+    return book->length;
+}
+
+void printEnstruction(Enstruction *en) {
+    printf(COM2, "Enstruction %d: ", en->id);
+    printf(COM2, "Togo %s offset %d length %d ",
+        en->togo.node->name, en->togo.offset, en->length);
+    for (int i = 0; i < en->length; i++) {
+        printf(COM2, "[%s op %d %d] ",
+            en->tracknodes[i]->name,
+            en->turnops[i] & (-1 << 1),
+            en->turnops[i] & 1);
+    }
+    printf(COM2, "\n");
+}
+
+void printEbook(Ebook *book) {
+    printf(COM2, "Ebook (%d):\n", book->length);
+    for (int i = 0; i < book->length; i++) {
+        printEnstruction(&book->enstructs[i]);
+    }
+    printf(COM2, "\n");
 }
 
 void printPath(PathBuffer *pb) {
