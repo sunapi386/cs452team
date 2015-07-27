@@ -29,7 +29,6 @@ void bootstrapTask() {
     Create(PRIORITY_CLOCK_DRAWER, clockDrawer);
     initTrackServer();
     initTrain();
-    initTurnout();
     initParser();
     initSensor();
 

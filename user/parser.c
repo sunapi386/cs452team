@@ -24,7 +24,6 @@ static char *help_message =
 "sw train_num direction             | SWitch a turnout\r\n"
 "e train_num sensorIndex            | create Engineer for train and given initial sensor node\r\n"
 "h train_num group_char sensor_num  | Halts on sensor \r\n"
-"0                                  | set last train speed to 0\r\n"
 "c tr_num speed char num loops      | Calibration: at speed delay loop\r\n"
 "k track_A_or_B_char                | load tracK A or B\r\n"
 "x track_node_index distance        | x mark the track node\r\n"
@@ -179,7 +178,6 @@ typedef struct Parser {
         H_sensor_number,
         Q_Q,        // q
         P,          // p for printing the graph
-        O,          // o for printing the turnouts
         DB_TASK,    // db
         E,          // e train_number train_speed an engineer to drive at speed
         E_space_1,
@@ -298,7 +296,6 @@ static bool parse(Parser *p, char c) {
                     case 'd': p->state = DB_TASK; break;
                     case 'h': p->state = H_H; break;
                     case 'p': p->state = P; break;
-                    case 'o': p->state = O; break;
                     case 'e': p->state = E; break;
                     case 'c': p->state = C; break;
                     case 'k': p->state = K; break;
@@ -800,12 +797,6 @@ static bool parse(Parser *p, char c) {
                     Delay(500); // 500 ticks * 10 ms per tick = 5 seconds
 
                 }
-                break;
-            }
-            case O:
-            {
-                sputstr(&disp_msg, "Drawing turnouts!\r\n");
-                printResetTurnouts();
                 break;
             }
             case E_sensor_index:

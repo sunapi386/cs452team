@@ -6,6 +6,7 @@
 #include <user/track_data.h>
 #include <user/nameserver.h>
 #include <user/pathfinding.h> // getNextEdge
+#include <user/turnout.h>
 
 track_node g_track[TRACK_MAX];
 
@@ -46,6 +47,7 @@ to be reserved. On a reservation request, the edge and its reverse direction
 is checked that it is free.
 */
 void trackServer() {
+    initTurnouts();
     RegisterAs("trackServer");
     TrackServerMessage req;
     int tid;
