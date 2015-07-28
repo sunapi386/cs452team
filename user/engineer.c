@@ -785,6 +785,10 @@ void engineerServer(int numEngineer)
                 break;
             }
             printPath(&pb);
+            /**
+            expandPath is designed to be useful when used to do reservations
+            with reverse moves (short moves)
+            */
             // expandPath(&pb);
             // printPath(&pb);
             makeEbook(&pb, &ebook);
@@ -820,18 +824,9 @@ void engineerServer(int numEngineer)
                     int branch_idx = turnopGetTracknodeIndex(first->turnops[i]);
                     int turnout_number = g_track[branch_idx].num;
                     bool curve = turnopGetCurve(first->turnops[i]);
-                    // printf(COM2, "Set");
-                    // printf(COM2, ".%d", turnout_number);
-                    // printf(COM2, ".%d", curve);
-                    // printf(COM2, ".%c", curve ? 'c' : 's');
-                    // // calling turnoutIsCurved hangs
-                    // printf(COM2, ".turnoutIsCurved%d", turnoutIsCurved(turnout_number));
-
-                    if (! turnoutIsCurved(turnout_number)) {
-                        printf(COM2, "Set %d to %c\r\n",
-                            turnout_number, curve ? 'c' : 's');
-                        setTurnout(turnout_number, curve ? 'c' : 's');
-                    }
+                    printf(COM2, "Set %d to %c\r\n",
+                        turnout_number, curve ? 'c' : 's');
+                    setTurnout(turnout_number, curve ? 'c' : 's');
                 }
             }
 
