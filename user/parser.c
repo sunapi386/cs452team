@@ -328,26 +328,27 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case VE_: {
-                p->data.reserve.train_number = 0;
-                p->state =  append_number(c, &(p->data.reserve.train_number)) ?
+                p->data.reserve.node_number = 0;
+                p->state =  append_number(c, &(p->data.reserve.node_number)) ?
                             VE_N :
                             Error;
                 break;
             }
             case VE_N: {
-                if(! append_number(c, &(p->data.reserve.train_number))) {
+                if(! append_number(c, &(p->data.reserve.node_number))) {
                     REQUIRE(' ', VE_N_);
                 }
+                break;
             }
             case VE_N_: {
-                p->data.reserve.node_number = 0;
-                p->state =  append_number(c, &(p->data.reserve.node_number)) ?
+                p->data.reserve.train_number = 0;
+                p->state =  append_number(c, &(p->data.reserve.train_number)) ?
                             VE_N_O :
                             Error;
                 break;
             }
             case VE_N_O: {
-                if(! append_number(c, &(p->data.reserve.node_number))) {
+                if(! append_number(c, &(p->data.reserve.train_number))) {
                     p->state = Error;
                 }
                 break;
@@ -731,7 +732,7 @@ static bool parse(Parser *p, char c) {
                     req.reservation.train_num = train_number;
                     req.reservation.num_requested = 1;
                     req.reservation.nodes[0] = node_number;
-                    printf(COM2, "Reserving node %d for train %d\r\n",
+                    printf(COM2, " Reserving node %d for train %d\r\n",
                         node_number, train_number);
                     Send(trackserver, &req, sizeof(req), 0, 0);
                     sputstr(&disp_msg, "reserve complete\r\n");
