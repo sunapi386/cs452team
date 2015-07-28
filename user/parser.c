@@ -676,6 +676,7 @@ static bool parse(Parser *p, char c) {
                     int index = indexFromTrainNumber(train_number);
                     if (index >= 0) {
                         engineerGo(engineers[index].tid, node_number);
+                        sputstr(&disp_msg, "go command\r\n");
                     }
                     else {
                         sputstr(&disp_msg,

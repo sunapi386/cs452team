@@ -35,7 +35,7 @@ static int pbcopy(PathBuffer *dst, PathBuffer *src) {
 /**
 Because there is no malloc, a large buffer is preallocated for PathNode.
 */
-#define EXPLORE_SIZE 4096
+#define EXPLORE_SIZE (4096 * 2)
 static PathNode g_nodes[EXPLORE_SIZE];
 
 static inline
@@ -60,10 +60,12 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
     uassert(src);
     uassert(dst);
     uassert(pb);
+    printf(COM2, "planRoute %s to %s\n", src->name, dst->name);
     memset(pb->tracknodes, 0, MAX_PATH_LENGTH);
     pb->length = 0;
     memset(g_nodes, 0, EXPLORE_SIZE);
     int num_nodes = 0;
+
     /**
     No path if src and dst are the same node, reverse.
     */
@@ -90,51 +92,60 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
 
     PQHeapPush(&pq, start);
     while (1) {
-        uassert(num_nodes < EXPLORE_SIZE);
+        // uassert(num_nodes < EXPLORE_SIZE);
 
         PathNode *popd = PQHeapPop(&pq);
         if (! popd) {
             /**
             Null pointer was popped, so no path.
             */
+            printf(COM2, "No path\n");
             pb->length = -1;
             return -1;
         }
+
+        // if (popd->from) {
+        //     printf(COM2, "popd from %s, cur %s, cost %d, len %d\n",
+        //         popd->from->tn->name, popd->tn->name, popd->cost, popd->length);
+        // }
 
         if (dst == popd->tn) {
             end = popd;
             break;
         }
 
-        if (popd->tn->type == NODE_EXIT || popd->tn->type == NODE_ENTER) {
+        if (popd->tn->type == NODE_EXIT) {
             /**
             Exit nodes do not lead anywhere.
+            If below is commented out then we will not
+            consider the reverse direction from an exit node.
             */
-            PathNode *reverse = &g_nodes[num_nodes++];
-            setPathNode(reverse,
-                        popd,
-                        popd->tn->reverse->edge[DIR_STRAIGHT].dest,
-                        popd->cost + popd->tn->reverse->edge[DIR_STRAIGHT].dist,
-                        popd->length + 1,
-                        true);
-            PQHeapPush(&pq, reverse);
+            // PathNode *reverse = &g_nodes[num_nodes++];
+            // setPathNode(reverse,
+            //             popd,
+            //             popd->tn->reverse->edge[DIR_STRAIGHT].dest,
+            //             popd->cost + popd->tn->reverse->edge[DIR_STRAIGHT].dist,
+            //             popd->length + 1,
+            //             true);
+            // PQHeapPush(&pq, reverse);
             continue;
         }
+
 
         if (popd->tn->owner != -1 && popd->tn->owner != pb->train_num) {
             /**
-            Reached a node not owned by the current train.
+            Reached a node not owned by current train.
             */
             continue;
         }
 
-        if (popd->length > 22) {
-            /**
-            Stop checking this path early, longest path is
-            18 for track A and 22 for track B.
-            */
-            continue;
-        }
+        /**
+        Stop checking this path early, longest path is
+        18 for track A and 22 for track B.
+        */
+        // if (popd->length > 22) {
+        //     continue;
+        // }
 
         if (popd->tn->type == NODE_BRANCH) {
             /**
@@ -161,7 +172,7 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         }
         else {
             /**
-            Consider both going ahead and reverse.
+            Consider both going ahead and reverse, only on non-branch nodes.
             */
             PathNode *ahead = &g_nodes[num_nodes++];
             setPathNode(ahead,
@@ -172,14 +183,18 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
                         false);
             PQHeapPush(&pq, ahead);
 
-            PathNode *reverse = &g_nodes[num_nodes++];
-            setPathNode(reverse,
-                        popd,
-                        popd->tn->reverse->edge[DIR_AHEAD].dest,
-                        popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
-                        popd->length + 1,
-                        true);
-            PQHeapPush(&pq, reverse);
+            /**
+            Reverse direction (short moves) is not considered
+            if the code below is commented out.
+            */
+            // PathNode *reverse = &g_nodes[num_nodes++];
+            // setPathNode(reverse,
+            //             popd,
+            //             popd->tn->reverse->edge[DIR_AHEAD].dest,
+            //             popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
+            //             popd->length + 1,
+            //             true);
+            // PQHeapPush(&pq, reverse);
         }
     }
 
@@ -195,13 +210,22 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         pb->tracknodes[path_length++] = at->tn;
         at = at->from;
     };
+    pb->tracknodes[path_length++] = at->tn;
     pb->length = path_length;
+
+    /**
+    A path from start to end is easier to read, so we'll reverse in place.
+    */
+    for (int i = 0, j = path_length - 1; i < j; i++, j--) {
+        track_node *c = pb->tracknodes[i];
+        pb->tracknodes[i] = pb->tracknodes[j];
+        pb->tracknodes[j] = c;
+    }
 
     printf(COM2, "Searched %d nodes.\n", num_nodes);
 
     return path_length;
 }
-
 
 /**
 Returns an expanded version of the path, so the engineer can make reservations.
@@ -354,6 +378,14 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
     return book->length;
 }
 
+int turnopGetNumber(Turnop top) {
+    return (top & (-1 << 1)) >> 1;
+}
+
+bool turnopGetCurve(Turnop top) {
+    return top & 1;
+}
+
 void printEnstruction(Enstruction *en) {
     printf(COM2, "Enstruction %d: ", en->id);
     printf(COM2, "Togo %s offset %d length %d ",
@@ -361,34 +393,27 @@ void printEnstruction(Enstruction *en) {
     for (int i = 0; i < en->length; i++) {
         printf(COM2, "[%s op %d %d] ",
             en->tracknodes[i]->name,
-            en->turnops[i] & (-1 << 1),
-            en->turnops[i] & 1);
+            turnopGetNumber(en->turnops[i]),
+            turnopGetCurve(en->turnops[i]));
     }
-    printf(COM2, "\n");
+    printf(COM2, "\n\r");
 }
 
 void printEbook(Ebook *book) {
-    printf(COM2, "Ebook (%d):\n", book->length);
+    printf(COM2, "Ebook (%d):\n\r", book->length);
     for (int i = 0; i < book->length; i++) {
         printEnstruction(&book->enstructs[i]);
     }
-    printf(COM2, "\n");
+    printf(COM2, "\n\r");
 }
 
 void printPath(PathBuffer *pb) {
-    String s;
-    sinit(&s);
-    sputstr(&s, "Path:\n\r");
+    printf(COM2, "Path (%d):\n\r", pb->length);
     for (int i = 0; i < pb->length; i++) {
-        sputstr(&s, "[");
-        sputstr(&s, pb->tracknodes[i]->name);
-        sputstr(&s, ",");
-        sputint(&s, pb->tracknodes[i]->idx, 10);
-        sputstr(&s, "] ");
-        sputstr(&s, pb->reverse[i] ? "<- " : "-> ");
+        printf(COM2, "[%s,%d] ", pb->tracknodes[i]->name, pb->tracknodes[i]->idx);
+        printf(COM2, "%s ", pb->reverse[i] ? "<- " : "-> ");
     }
-    sputstr(&s, "\n\r");
-    PutString(COM2, &s);
+    printf(COM2, "\n\r");
 }
 
 track_edge *getNextEdge(track_node *node) {
