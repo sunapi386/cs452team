@@ -22,41 +22,11 @@ static inline bool isReservable(track_node *node, int tid)
     return (node->owner == -1 || node->owner == tid) && (reverse->owner == -1);
 }
 
-// static bool is_reservable(struct Reservation *r) {
-//     int num_requested = r->num_requested;
-//     for (int i = 0; i < num_requested; i++) {
-//         // ensure they're not already reserved, even by itself
-//         if (r->nodes[i]->owner != -1 ||
-//             r->nodes[i]->reverse->owner != -1) {
-//             return false;
-//         }
-//         // should not give out reservations too close to branch or merge
-//         if (r->nodes[i]->type == NODE_MERGE ||
-//             r->nodes[i]->type == NODE_BRANCH) {
-//             if (getNextNode(r->nodes[i])->owner != -1 ||
-//                 getNextNode(r->nodes[i]->reverse)->owner != -1) {
-//                 return false;
-//             }
-//         }
-//     }
-//     // engineer should ensure track requests are continguous
-//     return true;
-// }
-
-// static bool is_owner(struct Reservation *r) {
-//     for (int i = 0; i < r->num_requested; i++) {
-//         if (r->nodes[i]->owner != r->train_num) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
 /**
-Reservation system:
-A track_node an edge, which contains the track distance and represents the track
-to be reserved. On a reservation request, the edge and its reverse direction
-is checked that it is free.
+    Reservation system:
+        A track_node an edge, which contains the track distance and represents the track
+        to be reserved. On a reservation request, the edge and its reverse direction
+        is checked that it is free.
 */
 void trackServer() {
     RegisterAs("trackServer");
