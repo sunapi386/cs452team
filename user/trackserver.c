@@ -28,6 +28,7 @@ static inline bool isReservable(track_node *node, int tid)
         to be reserved. On a reservation request, the edge and its reverse direction
         is checked that it is free.
 */
+
 void trackServer() {
     RegisterAs("trackServer");
     int tid = 0;
@@ -43,16 +44,7 @@ void trackServer() {
         int numRelease = message.numRelease;
         uassert(numReserve > 0 && numRelease > 0);
 
-        // try to reserve each node in the reserve array,
-        // if fails, then reply ReservationFailure
-        // else, reply ReservationSuccess
-        for (int i = 0; i < numReserve; i++)
-        {
-            track_node *reserveNode = message.reserveNodes[i];
-            uassert(reserveNode != 0);
-
-
-        }
+        reply = Success;
 
         // renounce ownership of each node in this array
         // if the caller does not own this track, then warn and do nothing
@@ -61,8 +53,34 @@ void trackServer() {
         {
             track_node *releaseNode = message.releaseNodes[i];
             uassert(releaseNode != 0);
+            if (releaseNode->owner != -1 && releaseNode->owner != tid)
+            {
+                printf(COM2, "Tid %d trying to release node %s that doesn't belong to it", tid, releaseNode->name);
+            }
+            releaseNode->owner = -1;
+        }
 
+        // try to reserve each node in the reserve array,
+        // if fails, then reply ReservationFailure
+        // else, reply ReservationSuccess
+        for (int i = 0; i < numReserve; i++)
+        {
+            track_node *reserveNode = message.reserveNodes[i];
+            uassert(reserveNode != 0);
 
+            if (!isReservable(reserveNode, tid))
+            {
+                if (reserveNode->owner != -1 && reserveNode->owner != tid)
+                {
+                    reply = ReserveFailSameDir;
+                }
+                else
+                {
+                    // head on collision
+                    reply = ReserveFailOppositeDir;
+                }
+                break;
+            }
         }
 
         Reply(tid, &reply, sizeof(reply));
