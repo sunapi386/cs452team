@@ -10,6 +10,7 @@
 #include <user/turnout.h>
 #include <user/vt100.h>
 #include <user/engineer_ui.h>
+#include <user/trackserver.h>
 
 #define ALPHA                85
 #define NUM_SENSORS          (5 * 16)
@@ -284,8 +285,6 @@ void issueSpeedCommand(int trainNumber,
     }
 }
 
-#define MAX_RESERVE_SIZE 16
-#define MAX_RELEASE_SIZE 8
 
 /*
     Given a node and a distance, adding all the nodes within that distance, from the

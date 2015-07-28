@@ -29,14 +29,21 @@ complains about engineer not releasing track.
 On each reservation request, the number of track to reserve is indicated
 by num_requested.
 */
-#define MAX_RESERVATION 10
+#define MAX_RESERVE_SIZE 16
+#define MAX_RELEASE_SIZE 8
+
 typedef struct TrackServerMessage {
-    enum {
-        Reserve,
-        Release,
-    } type;
-    track_node *node;
+    int numReserve;
+    int numRelease;
+    track_node *reserveNodes[MAX_RESERVE_SIZE];
+    track_node *releaseNodes[MAX_RELEASE_SIZE];
 } TrackServerMessage;
+
+typedef enum TrackServerReply {
+    Success = 0,
+    ReserveFailSameDir,
+    ReserveFailOppositeDir
+} TrackServerReply;
 
 void drawTrackLayoutGraph(char track);
 void loadTrackStructure(char which_track);
