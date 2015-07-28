@@ -58,7 +58,7 @@ int getNextClaims(struct track_node *prevNode, struct sensorclaim *claim)
                 if (secondary->type != NODE_SENSOR)
                 {
                     secondary = getNextSensor(secondary);
-                    uassert(secondary);
+                    // uassert(secondary);
                 }
                 claim->secondary = secondary->idx;
             }

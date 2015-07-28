@@ -147,6 +147,7 @@ void loadTrackStructure(char track) {
     drawTrackLayoutGraph(track);
     if(track == 'a') {
         init_tracka(g_track);
+        setTurnout(5, 'c');
     }
     else {
         init_trackb(g_track);
