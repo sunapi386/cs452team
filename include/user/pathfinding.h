@@ -81,6 +81,7 @@ int makeEbook(PathBuffer *pb, Ebook *book);
 
 void printEnstruction(Enstruction *en);
 void printEbook(Ebook *book);
+void initEbook(Ebook *book);
 void printPath(PathBuffer *pb);
 
 struct track_edge *getNextEdge(struct track_node *node);

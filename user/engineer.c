@@ -779,6 +779,7 @@ void engineerServer(int numEngineer)
             int ret = planRoute(src, dst, &pb);
             if (ret < 0) {
                 printf(COM2, "GO: planRoute bad %d\n\r", ret);
+                initEbook(&ebook);
                 break;
             }
             printPath(&pb);
@@ -787,7 +788,10 @@ void engineerServer(int numEngineer)
             printPath(&pb);
             makeEbook(&pb, &ebook);
             printEbook(&ebook);
-
+            /**
+            When the ebook's length > 0, it contains valid enstructions.
+            Engineer follows ebook on each landmark update case.
+            */
             break;
         }
         default:
