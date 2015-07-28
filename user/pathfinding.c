@@ -187,14 +187,14 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             Reverse direction (short moves) is not considered
             if the code below is commented out.
             */
-            // PathNode *reverse = &g_nodes[num_nodes++];
-            // setPathNode(reverse,
-            //             popd,
-            //             popd->tn->reverse->edge[DIR_AHEAD].dest,
-            //             popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
-            //             popd->length + 1,
-            //             true);
-            // PQHeapPush(&pq, reverse);
+            PathNode *reverse = &g_nodes[num_nodes++];
+            setPathNode(reverse,
+                        popd,
+                        popd->tn->reverse->edge[DIR_AHEAD].dest,
+                        popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
+                        popd->length + 1,
+                        true);
+            PQHeapPush(&pq, reverse);
         }
     }
 

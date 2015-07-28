@@ -261,6 +261,36 @@ void initializeEngineer(int numEngineer, int *trainNumber,
     uassert(*locationWorkerTid > 0);
 }
 
+static void
+setTargetFromEnstruction(Enstruction *ent, track_node **target, int *offset) {
+    printf(COM2, "setTargetFromEnstruction\n\r");
+    /**
+    Assume he owns the path to the destination, and no reverseing.
+    Correctly switch any turnouts to the desired curvature.
+    */
+    for (int i = 0; i < ent->length; i++) {
+        printf(COM2, "%s %d\n\r",
+            ent->tracknodes[i]->name, ent->turnops[i]);
+        if (ent->turnops[i]) {
+            int branch_idx = turnopGetTracknodeIndex(ent->turnops[i]);
+            int turnout_number = g_track[branch_idx].num;
+            bool curve = turnopGetCurve(ent->turnops[i]);
+            printf(COM2, "Set %d to %c\r\n",
+                turnout_number, curve ? 'c' : 's');
+            setTurnout(turnout_number, curve ? 'c' : 's');
+        }
+    }
+
+    /**
+    Leverage the use of X-marks-the-spot.
+    */
+    track_node *destination = ent->togo.node;
+    *target = destination;
+    *offset = 0;
+    printf(COM2, "X-marks-the-spot %s\r\n", destination->name);
+
+}
+
 void engineerServer(int numEngineer)
 {
     int tid = 0;
@@ -323,6 +353,7 @@ void engineerServer(int numEngineer)
     Ebook for the go command
     */
     Ebook ebook;
+    int eat = 0;
 
     for(;;)
     {
@@ -424,6 +455,32 @@ void engineerServer(int numEngineer)
                     // reset target
                     targetNode = 0;
                     targetOffset = 0;
+
+                    /**
+                    Abuse X-marks-the-spot.
+                    Also reverse here.
+                    */
+                    if (eat < ebook.length) {
+                        Enstruction *ent = &(ebook.enstructs[eat++]);
+                        setTargetFromEnstruction(ent, &targetNode, &targetOffset);
+                        /**
+                        Do the reverse-pasta.
+                        */
+                        Command command = {
+                            .type = COMMAND_REVERSE,
+                            .trainNumber = trainNumber,
+                            .trainSpeed = speed
+                        };
+
+                        if (commandWorkerTid > 0) {
+                            Reply(commandWorkerTid, &command, sizeof(command));
+                            commandWorkerTid = 0;
+                        }
+                        else if (enqueueCommand(&commandQueue, &command) != 0) {
+                            printf(COM2, "[engineerServer] Command buffer overflow!\n\r");
+                            uassert(0);
+                        }
+                    }
                 }
             }
 
@@ -769,6 +826,7 @@ void engineerServer(int numEngineer)
             int node_number = message.data.go.index;
             track_node *dst = &g_track[node_number];
             // track_node *src = &g_track[37]; // 37=C6
+            // track_node *src = &g_track[43]; // 43=C12
             track_node *src = prevNode;
             printf(COM2, "Train %d goto %s from %s\n\r",
                 trainNumber, dst->name, src->name);
@@ -811,33 +869,14 @@ void engineerServer(int numEngineer)
             it is sufficient to only look at the first enstruction.
             */
 
-
             /**
-            Assume he owns the path to the destination, and no reverseing.
-            Correctly switch any turnouts to the desired curvature.
+            Abuse X-marks-the-spot.
             */
-            Enstruction *first = &(ebook.enstructs[0]);
-            for (int i = 0; i < first->length; i++) {
-                printf(COM2, "%s %d\n\r",
-                    first->tracknodes[i]->name, first->turnops[i]);
-                if (first->turnops[i]) {
-                    int branch_idx = turnopGetTracknodeIndex(first->turnops[i]);
-                    int turnout_number = g_track[branch_idx].num;
-                    bool curve = turnopGetCurve(first->turnops[i]);
-                    printf(COM2, "Set %d to %c\r\n",
-                        turnout_number, curve ? 'c' : 's');
-                    setTurnout(turnout_number, curve ? 'c' : 's');
-                }
+            eat = 0;
+            if (eat < ebook.length) {
+                Enstruction *ent = &(ebook.enstructs[eat++]);
+                setTargetFromEnstruction(ent, &targetNode, &targetOffset);
             }
-
-            /**
-            Leverage the use of X-marks-the-spot.
-            */
-            track_node *destination = first->togo.node;
-            targetNode = destination;
-            printf(COM2, "X-marks-the-spot %s\r\n", destination->name);
-            targetOffset = 0;
-
 
             break;
         }

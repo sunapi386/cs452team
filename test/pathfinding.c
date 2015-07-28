@@ -230,14 +230,14 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             Reverse direction (short moves) is not considered
             if the code below is commented out.
             */
-            // PathNode *reverse = &g_nodes[num_nodes++];
-            // setPathNode(reverse,
-            //             popd,
-            //             popd->tn->reverse->edge[DIR_AHEAD].dest,
-            //             popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
-            //             popd->length + 1,
-            //             true);
-            // PQHeapPush(&pq, reverse);
+            PathNode *reverse = &g_nodes[num_nodes++];
+            setPathNode(reverse,
+                        popd,
+                        popd->tn->reverse->edge[DIR_AHEAD].dest,
+                        popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
+                        popd->length + 1,
+                        true);
+            PQHeapPush(&pq, reverse);
         }
     }
 
@@ -454,7 +454,7 @@ void printEnstruction(Enstruction *en) {
     for (int i = 0; i < en->length; i++) {
         printf("[%s op %d %d] ",
             en->tracknodes[i]->name,
-            turnopGetNumber(en->turnops[i]),
+            turnopGetTracknodeIndex(en->turnops[i]),
             turnopGetCurve(en->turnops[i]));
     }
     printf("\n");
@@ -531,9 +531,9 @@ int main(int argc, char const *argv[]) {
     printPath(&pb);
 
     /* Expanded path */
-    // printf("expandedPath:\n");
-    // expandPath(&pb);
-    // printPath(&pb);
+    printf("expandedPath:\n");
+    expandPath(&pb);
+    printPath(&pb);
 
     /* Convert PathBuffer to enstruction */
     Ebook book;
