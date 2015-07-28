@@ -53,6 +53,7 @@ track_node *getPrevOwnedNode(track_node *node, int tid)
 
 }
 
+track_node g_track[TRACK_MAX]; // This is guaranteed to be big enough.
 
 
 // compile with: gcc track_data.c test_reservation.c -o a.out
