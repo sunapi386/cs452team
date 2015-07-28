@@ -228,8 +228,7 @@ executeCommand:
     Engineer
 */
 
-void initializeEngineer(int numEngineer, int *trainNumber,
-    int *locationWorkerTid)
+void initializeEngineer(int numEngineer, int *trainNumber, int *locationWorkerTid)
 {
     int tid = 0;
     EngineerMessage message;
@@ -258,6 +257,64 @@ void initializeEngineer(int numEngineer, int *trainNumber,
     *locationWorkerTid = Spawn(PRIORITY_LOCATION_WORKER,
                                 locationWorker, (void *)numEngineer);
     uassert(*locationWorkerTid > 0);
+}
+
+void issueSpeedCommand(int trainNumber,
+                       int speed,
+                       int *commandWorkerTid,
+                       CommandQueue *commandQueue)
+{
+    // issue stop command
+    Command cmd = {
+        .type = COMMAND_SET_SPEED,
+        .trainNumber = trainNumber,
+        .trainSpeed = speed,
+    };
+
+    // if worker is available, reply a command
+    if (*commandWorkerTid > 0)
+    {
+        Reply(*commandWorkerTid, &cmd, sizeof(cmd));
+        *commandWorkerTid = 0;
+    }
+    // else enqueue command
+    else
+    {
+        enqueueCommand(commandQueue, &cmd);
+    }
+}
+
+#define MAX_RESERVE_SIZE 16
+#define MAX_RELEASE_SIZE 8
+
+/*
+    Given a node and a distance, adding all the nodes within that distance, from the
+    initial node, into reserveNodes array
+*/
+int getReserveNodes(track_node *from, int reserveDist, track_node *reserveNodes[])
+{
+    uassert(from != 0);
+
+    int dist = 0;
+    track_node *nextNode = from;
+    reserveNodes[0] = nextNode;
+    for (int i = 1; i < MAX_RESERVE_SIZE; i++)
+    {
+        // return when we are above/at reserveDist
+        if (dist >= reserveDist || nextNode->type == NODE_EXIT) return i;
+
+        // get the next node and next edge
+        track_edge *nextEdge = getNextEdge(nextNode);
+        nextNode = getNextNode(nextNode);
+
+        // add the next
+        reserveNodes[i] = nextNode;
+
+        // increment the distance
+        dist += nextEdge->dist;
+    }
+    uassert(0);
+    return -1;
 }
 
 void engineerServer(int numEngineer)
@@ -424,6 +481,28 @@ void engineerServer(int numEngineer)
                     targetNode = 0;
                     targetOffset = 0;
                 }
+            }
+
+            // from nextNode, to stoppingDist, try to reserve all the nodes in between,
+            // starting from the closest node
+
+            // if success, keep going
+            track_node *reserveNodes[MAX_RESERVE_SIZE];
+            track_node *releaseNodes[MAX_RELEASE_SIZE];
+            int numReserve = getReserveNodes(nextNode, stoppingDistance[(int)speed], reserveNodes);
+            if (numReserve > 0)
+            {
+                // reserve these mother fuckers
+                int success ;//= reserve(node, numReserve);
+                if (!success)
+                {
+                    // reservation failed. stop the train
+                    issueSpeedCommand(trainNumber, 0, &commandWorkerTid, &commandQueue);
+                }
+            }
+            else
+            {
+                // exit seen. issue stop command now
             }
 
             if (distToNextNode <= 0 && nextNode->type != NODE_SENSOR)
