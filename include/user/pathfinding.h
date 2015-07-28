@@ -15,8 +15,11 @@ typedef struct position {
 
 /**
 Turnout operation. The idea is that the engineer follows a series of these.
+Set to 0 if we should disregard this.
+Otherwise it is the logical OR of: (switch_number << 1) | (1 bit curved)
+Note: use the getter.
 */
-typedef int Turnop; // (switch_number << 1) | (1 bit curved)
+typedef int Turnop;
 
 /**
 Enstruction to pass to the engineer, in a sequential manner of exactly
@@ -78,15 +81,16 @@ creates the following enstructions:
 2/ Togo C13. Switch false.
 */
 int makeEbook(PathBuffer *pb, Ebook *book);
-
+int turnopGetNumber(Turnop top);
+bool turnopGetCurve(Turnop top);
 void printEnstruction(Enstruction *en);
 void printEbook(Ebook *book);
 void initEbook(Ebook *book);
 void printPath(PathBuffer *pb);
 
-struct track_edge *getNextEdge(struct track_node *node);
-struct track_node *getNextNode(struct track_node *currentNode);
-struct track_node *getNextSensor(struct track_node *node);
-int distanceBetween(struct track_node *from, struct track_node *to);
+track_edge *getNextEdge(track_node *node);
+track_node *getNextNode(track_node *currentNode);
+track_node *getNextSensor(track_node *node);
+int distanceBetween(track_node *from, track_node *to);
 
 #endif
