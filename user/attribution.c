@@ -44,7 +44,7 @@ int getNextClaims(struct track_node *prevNode, struct Sensorclaim *claim)
             }
 
             // process primary
-            if (primary && primary->type != NODE_SENSOR)
+            if (primary->type != NODE_SENSOR)
             {
                 primary = getNextSensor(primary);
                 uassert(primary);
@@ -53,7 +53,7 @@ int getNextClaims(struct track_node *prevNode, struct Sensorclaim *claim)
             claim->primary = primary->idx;
 
             // process secondary
-            if (secondary)
+            if (secondary && secondary->type != NODE_EXIT)
             {
                 if (secondary->type != NODE_SENSOR)
                 {

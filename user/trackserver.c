@@ -42,7 +42,7 @@ void trackServer() {
 
         int numReserve = message.numReserve;
         int numRelease = message.numRelease;
-        uassert(numReserve > 0 && numRelease > 0);
+        uassert(numReserve >= 0 && numRelease >= 0);
 
         reply = Success;
 
@@ -80,6 +80,10 @@ void trackServer() {
                     reply = ReserveFailOppositeDir;
                 }
                 break;
+            }
+            else
+            {
+                reserveNode->owner = tid;
             }
         }
 
