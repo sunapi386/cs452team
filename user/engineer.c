@@ -228,8 +228,19 @@ executeCommand:
 /*
     Engineer
 */
+#define NUM_STOPPING_DIST 15
+static int stoppingDist66[NUM_STOPPING_DIST] =
+    { 0, 100, 300, 600, 900, 1100, 2500, 4000, 5000,
+      6000, 6000, 1450000, 1250000, 948200,  948200 };
 
-void initializeEngineer(int numEngineer, int *trainNumber, int *locationWorkerTid)
+static int stoppingDist62[NUM_STOPPING_DIST] =
+    { 0, 100, 1000, 10000, 50000, 100000, 330000, 389000,
+      487000, 500000, 558000, 635000, 700000, 816000, 812000 };
+
+void initializeEngineer(int numEngineer,
+                        int *trainNumber,
+                        int *locationWorkerTid,
+                        int** stoppingDistance)
 {
     int tid = 0;
     EngineerMessage message;
@@ -246,10 +257,22 @@ void initializeEngineer(int numEngineer, int *trainNumber, int *locationWorkerTi
     *trainNumber = message.data.initialize.trainNumber;
     int initialSensorIndex = message.data.initialize.sensorIndex;
 
+    if (*trainNumber == 62)
+    {
+        *stoppingDistance = stoppingDist62;
+    }
+    else
+    {
+        *stoppingDistance = stoppingDist66;
+    }
+
     /*
         Stage 2: Create child tasks
     */
-    ret = Spawn(PRIORITY_SENSOR_COURIER, sensorCourier, (void *)initialSensorIndex);
+    ret = Spawn(PRIORITY_SENSOR_COURIER,
+                sensorCourier,
+                (void *)initialSensorIndex);
+
     uassert(ret > 0);
 
     ret = Create(PRIORITY_COMMAND_WORKER, commandWorker);
@@ -287,10 +310,12 @@ void issueSpeedCommand(int trainNumber,
 
 
 /*
-    Given a node and a distance, adding all the nodes within that distance, from the
-    initial node, into reserveNodes array
+    Given a node and a distance, adding all the nodes within that distance,
+    from the initial node, into reserveNodes array
 */
-int getReserveNodes(track_node *from, int reserveDist, track_node *reserveNodes[])
+int getReserveNodes(track_node *from,
+                    int reserveDist,
+                    track_node *reserveNodes[])
 {
     uassert(from != 0);
 
@@ -364,7 +389,8 @@ int getReleaseNodes(track_node *from, int tid, track_node *releaseNodes[])
         releaseNodes[i] = prevNode;
     }
 
-    printf(COM2, "[getReleaseNodes] consider increasing MAX_RELEASE_SIZE. Some nodes are probably not released.\n\r");
+    printf(COM2, "[getReleaseNodes] consider increasing MAX_RELEASE_SIZE."
+                 "Some nodes are probably not released.\n\r");
     return MAX_RELEASE_SIZE;
 }
 
@@ -401,9 +427,7 @@ void engineerServer(int numEngineer)
     SensorUpdate last_update = {0,0};
     int targetOffset = 0;
     track_node *targetNode = 0;
-    int stoppingDistance[15] =
-        {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000,
-            1450000, 1250000, 948200,  948200};
+    int *stoppingDistance = 0;
 
     Command cmdBuf[32];
     CommandQueue commandQueue;
@@ -423,7 +447,11 @@ void engineerServer(int numEngineer)
         }
     }
 
-    initializeEngineer(numEngineer, &trainNumber, &locationWorkerTid);
+    initializeEngineer(numEngineer,
+                       &trainNumber,
+                       &locationWorkerTid,
+                       &stoppingDistance);
+    uassert(stoppingDistance);
     state = Ready;
 
     // All sensor reports with timestamp before this time are invalid
@@ -563,16 +591,28 @@ void engineerServer(int numEngineer)
 
                 TrackServerMessage trackMessage;
                 TrackServerReply trackReply;
-                trackMessage.numReserve = getReserveNodes(nextNode, stoppingDistance[(int)speed], trackMessage.reserveNodes);
-                trackMessage.numRelease = getReleaseNodes(prevNode, myTid, trackMessage.releaseNodes);
-                // printf(COM2, "numReserve: %d numRelease: %d\n\r", trackMessage.numReserve, trackMessage.numRelease);
-                int len = Send(trackServerTid, &trackMessage, sizeof(trackMessage), &trackReply, sizeof(trackReply));
+                trackMessage.numReserve =
+                    getReserveNodes(nextNode,
+                                    stoppingDistance[(int)speed],
+                                    trackMessage.reserveNodes);
+                trackMessage.numRelease =
+                    getReleaseNodes(prevNode,
+                                    myTid,
+                                    trackMessage.releaseNodes);
+
+                int len = Send(trackServerTid,
+                               &trackMessage,
+                               sizeof(trackMessage),
+                               &trackReply,
+                               sizeof(trackReply));
                 uassert(len == sizeof(trackReply));
-                // printf(COM2, "trackServer returned reservation result: %d\n\r", trackReply);
 
                 if (trackReply != 0)
                 {
-                    issueSpeedCommand(trainNumber, 0, &commandWorkerTid, &commandQueue);
+                    issueSpeedCommand(trainNumber,
+                                      0,
+                                      &commandWorkerTid,
+                                      &commandQueue);
                 }
 
             }
@@ -605,9 +645,14 @@ void engineerServer(int numEngineer)
 
                 TrackServerMessage trackMessage;
                 TrackServerReply trackReply;
-                trackMessage.numReserve = getReserveNodes(nextNode, stoppingDistance[(int)speed], trackMessage.reserveNodes);
-                trackMessage.numRelease = getReleaseNodes(prevNode, myTid, trackMessage.releaseNodes);
-                // printf(COM2, "numReserve: %d numRelease: %d\n\r", trackMessage.numReserve, trackMessage.numRelease);
+                trackMessage.numReserve =
+                    getReserveNodes(nextNode,
+                                    stoppingDistance[(int)speed],
+                                    trackMessage.reserveNodes);
+                trackMessage.numRelease =
+                    getReleaseNodes(prevNode,
+                                    myTid,
+                                    trackMessage.releaseNodes);
 
                 int len = Send(trackServerTid, &trackMessage, sizeof(trackMessage), &trackReply, sizeof(trackReply));
                 uassert(len == sizeof(trackReply));
