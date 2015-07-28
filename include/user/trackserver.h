@@ -30,7 +30,7 @@ On each reservation request, the number of track to reserve is indicated
 by num_requested.
 */
 #define MAX_RESERVE_SIZE 16
-#define MAX_RELEASE_SIZE 8
+#define MAX_RELEASE_SIZE 16
 
 typedef struct TrackServerMessage {
     int numReserve;
