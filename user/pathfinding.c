@@ -272,6 +272,11 @@ static inline int lookahead(track_node *curn, track_node *next) {
     return 0;
 }
 
+void initEbook(Ebook *book) {
+    memset(book->enstructs, 0, MAX_EBOOK_LENGTH);
+    book->length = 0;
+}
+
 /**
 Takes a path buffer and converts it into a Ebook, which is a series
 of engineer instructions (enstructions).
