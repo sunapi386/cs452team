@@ -14,17 +14,9 @@ static bool is_reservable(struct Reservation *r) {
     int num_requested = r->num_requested;
     for (int i = 0; i < num_requested; i++) {
         // ensure they're not already reserved, even by itself
-        if (r->nodes[i]->owner != -1 ||
-            r->nodes[i]->reverse->owner != -1) {
+        if (g_track[r->nodes[i]].owner != -1 ||
+            g_track[r->nodes[i]].reverse->owner != -1) {
             return false;
-        }
-        // should not give out reservations too close to branch or merge
-        if (r->nodes[i]->type == NODE_MERGE ||
-            r->nodes[i]->type == NODE_BRANCH) {
-            if (getNextNode(r->nodes[i])->owner != -1 ||
-                getNextNode(r->nodes[i]->reverse)->owner != -1) {
-                return false;
-            }
         }
     }
     // engineer should ensure track requests are continguous
@@ -33,7 +25,7 @@ static bool is_reservable(struct Reservation *r) {
 
 static bool is_owner(struct Reservation *r) {
     for (int i = 0; i < r->num_requested; i++) {
-        if (r->nodes[i]->owner != r->train_num) {
+        if (g_track[r->nodes[i]].owner != r->train_num) {
             return false;
         }
     }
@@ -66,8 +58,8 @@ void trackServer() {
                     // mark them as reserved
                     int train_num = req.reservation.train_num;
                     for(int i = 0; i < num_requested; i++) {
-                        req.reservation.nodes[i]->owner = train_num;
-                        req.reservation.nodes[i]->reverse->owner = train_num;
+                        g_track[req.reservation.nodes[i]].owner = train_num;
+                        g_track[req.reservation.nodes[i]].reverse->owner = train_num;
                     }
                     success = 1;
                     Reply(tid, &success, sizeof(int));
@@ -79,8 +71,8 @@ void trackServer() {
                     */
                     uassert(is_owner(&req.reservation));
                     for(int i = 0; i < req.reservation.num_requested; i++) {
-                        req.reservation.nodes[i]->owner = -1;
-                        req.reservation.nodes[i]->reverse->owner = -1;
+                        g_track[req.reservation.nodes[i]].owner = -1;
+                        g_track[req.reservation.nodes[i]].reverse->owner = -1;
                     }
                 }
                 break;

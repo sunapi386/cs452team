@@ -43,7 +43,7 @@ typedef struct TrackServerMessage {
             } op;
             int train_num;
             int num_requested;
-            track_node *nodes[MAX_RESERVATION];
+            int nodes[MAX_RESERVATION];
         } reservation;
     };
 } TrackServerMessage;

@@ -28,6 +28,7 @@ static char *help_message =
 "k track_A_or_B_char                | load tracK A or B\r\n"
 "x track_node_index distance        | x mark the track node\r\n"
 "go train_num track_node_index      | \r\n"
+"ve track_node owner                | reserVE \r\n"
 "------------------ Misc. commands\r\n"
 "q                                  | Quit\r\n"
 "o                                  | redraw turnOuts\r\n"
@@ -212,6 +213,12 @@ typedef struct Parser {
         GO_t,
         GO_t_,
         GO_t_n,
+        V,          // reserve this node
+        VE,
+        VE_,
+        VE_N,
+        VE_N_,
+        VE_N_O,
     } state;
 
     // store input data (train number and speed) until ready to use
@@ -254,6 +261,10 @@ typedef struct Parser {
             int train_number;
             int node_number;
         } go;
+        struct {
+            int train_number;
+            int node_number;
+        } reserve;
     } data;
 
 } Parser;
@@ -301,8 +312,43 @@ static bool parse(Parser *p, char c) {
                     case 'c': p->state = C; break;
                     case 'k': p->state = K; break;
                     case 'x': p->state = X; break;
+                    case 'v': p->state = V; break;
                     case '?': p->state = HELP; break;
                     default:  p->state = Error; break;
+                }
+                break;
+            }
+
+            case V: {
+                REQUIRE('e', VE);
+                break;
+            }
+            case VE: {
+                REQUIRE(' ', VE_);
+                break;
+            }
+            case VE_: {
+                p->data.reserve.train_number = 0;
+                p->state =  append_number(c, &(p->data.reserve.train_number)) ?
+                            VE_N :
+                            Error;
+                break;
+            }
+            case VE_N: {
+                if(! append_number(c, &(p->data.reserve.train_number))) {
+                    REQUIRE(' ', VE_N_);
+                }
+            }
+            case VE_N_: {
+                p->data.reserve.node_number = 0;
+                p->state =  append_number(c, &(p->data.reserve.node_number)) ?
+                            VE_N_O :
+                            Error;
+                break;
+            }
+            case VE_N_O: {
+                if(! append_number(c, &(p->data.reserve.node_number))) {
+                    p->state = Error;
                 }
                 break;
             }
@@ -669,6 +715,33 @@ static bool parse(Parser *p, char c) {
         sputstr(&disp_msg, "  | ");
         // should be on an end state
         switch(p->state) {
+            case VE_N_O: {
+                int train_number = p->data.reserve.train_number;
+                int node_number = p->data.reserve.node_number;
+                if (1 <= train_number && train_number <= 80 &&
+                    0 <= node_number && node_number <= 143 ) {
+                    int trackserver = WhoIs("trackServer");
+                    if (trackserver < 0) {
+                        sputstr(&disp_msg, "reserve failed\r\n");
+                        break;
+                    }
+                    TrackServerMessage req;
+                    req.type = RESERVATION;
+                    req.reservation.op = RESERVE;
+                    req.reservation.train_num = train_number;
+                    req.reservation.num_requested = 1;
+                    req.reservation.nodes[0] = node_number;
+                    printf(COM2, "Reserving node %d for train %d\r\n",
+                        node_number, train_number);
+                    Send(trackserver, &req, sizeof(req), 0, 0);
+                    sputstr(&disp_msg, "reserve complete\r\n");
+                }
+                else {
+                    sputstr(&disp_msg,
+                        "GO: bad train number or node number\r\n");
+                }
+                break;
+            }
             case GO_t_n: {
                 int node_number = p->data.go.node_number;
                 int train_number = p->data.go.train_number;

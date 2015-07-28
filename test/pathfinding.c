@@ -175,7 +175,8 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
         }
 
 
-        if (popd->tn->owner != -1 && popd->tn->owner != pb->train_num) {
+        if ((popd->tn->owner != -1 && popd->tn->owner != pb->train_num) ||
+            (popd->tn->reverse->owner != -1 && popd->tn->reverse->owner != pb->train_num)){
             /**
             Reached a node not owned by current train.
             */
@@ -230,14 +231,14 @@ int planRoute(track_node *src, track_node *dst, PathBuffer *pb) {
             Reverse direction (short moves) is not considered
             if the code below is commented out.
             */
-            PathNode *reverse = &g_nodes[num_nodes++];
-            setPathNode(reverse,
-                        popd,
-                        popd->tn->reverse->edge[DIR_AHEAD].dest,
-                        popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
-                        popd->length + 1,
-                        true);
-            PQHeapPush(&pq, reverse);
+            // PathNode *reverse = &g_nodes[num_nodes++];
+            // setPathNode(reverse,
+            //             popd,
+            //             popd->tn->reverse->edge[DIR_AHEAD].dest,
+            //             popd->cost + popd->tn->reverse->edge[DIR_AHEAD].dist,
+            //             popd->length + 1,
+            //             true);
+            // PQHeapPush(&pq, reverse);
         }
     }
 
@@ -478,13 +479,13 @@ int main(int argc, char const *argv[]) {
     switch(argc) {
     case 6:
         blocked2 = atoi(argv[5]);
-        if (! valid_node(from)) {
+        if (! valid_node(blocked2)) {
             printf("Bad blocked 2 node %d", blocked2);
             return -1;
         }
     case 5:
         blocked = atoi(argv[4]);
-        if (! valid_node(from)) {
+        if (! valid_node(blocked)) {
             printf("Bad blocked node %d", blocked);
             return -1;
         }
@@ -518,15 +519,17 @@ int main(int argc, char const *argv[]) {
         return -1;
     }
     if (blocked != -1 && valid_node(blocked)) {
+        printf("Setting %s blocked\n", g_track[blocked].name);
         g_track[blocked].owner = 90; /* 90 is a non-existant train number */
     }
     if (blocked2 != -1 && valid_node(blocked2)) {
+        printf("Setting %s blocked\n", g_track[blocked2].name);
         g_track[blocked2].owner = 90; /* 90 is a non-existant train number */
     }
     track_node *src = &g_track[from];
     track_node *dst = &g_track[to];
     PathBuffer pb;
-    pb.train_num = 66;
+    pb.train_num = 66; /* Our train number */
     int ret = planRoute(src, dst, &pb);
     printPath(&pb);
 
