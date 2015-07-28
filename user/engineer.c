@@ -347,7 +347,6 @@ track_node *getPrevOwnedNode(track_node *node, int tid)
         }
     }
     return 0;
-
 }
 
 int getReleaseNodes(track_node *from, int tid, track_node *releaseNodes[])
@@ -372,6 +371,7 @@ int getReleaseNodes(track_node *from, int tid, track_node *releaseNodes[])
 void engineerServer(int numEngineer)
 {
     int tid = 0;
+    int myTid = MyTid();
     int locationWorkerTid = 0;
     int commandWorkerTid = 0;
     int sensorCourierTid = 0;
@@ -564,11 +564,17 @@ void engineerServer(int numEngineer)
                 TrackServerMessage trackMessage;
                 TrackServerReply trackReply;
                 trackMessage.numReserve = getReserveNodes(nextNode, stoppingDistance[(int)speed], trackMessage.reserveNodes);
-                trackMessage.numRelease = getReleaseNodes(prevNode, numEngineer, trackMessage.releaseNodes);
-                printf(COM2, "numReserve: %d numRelease: %d\n\r", trackMessage.numReserve, trackMessage.numRelease);
+                trackMessage.numRelease = getReleaseNodes(prevNode, myTid, trackMessage.releaseNodes);
+                // printf(COM2, "numReserve: %d numRelease: %d\n\r", trackMessage.numReserve, trackMessage.numRelease);
                 int len = Send(trackServerTid, &trackMessage, sizeof(trackMessage), &trackReply, sizeof(trackReply));
                 uassert(len == sizeof(trackReply));
-                printf(COM2, "trackServer returned reservation result: %d\n\r", trackReply);
+                // printf(COM2, "trackServer returned reservation result: %d\n\r", trackReply);
+
+                if (trackReply != 0)
+                {
+                    issueSpeedCommand(trainNumber, 0, &commandWorkerTid, &commandQueue);
+                }
+
             }
             else if (state == Reversing)
             {
@@ -600,12 +606,17 @@ void engineerServer(int numEngineer)
                 TrackServerMessage trackMessage;
                 TrackServerReply trackReply;
                 trackMessage.numReserve = getReserveNodes(nextNode, stoppingDistance[(int)speed], trackMessage.reserveNodes);
-                trackMessage.numRelease = getReleaseNodes(prevNode, numEngineer, trackMessage.releaseNodes);
-                printf(COM2, "numReserve: %d numRelease: %d\n\r", trackMessage.numReserve, trackMessage.numRelease);
+                trackMessage.numRelease = getReleaseNodes(prevNode, myTid, trackMessage.releaseNodes);
+                // printf(COM2, "numReserve: %d numRelease: %d\n\r", trackMessage.numReserve, trackMessage.numRelease);
 
                 int len = Send(trackServerTid, &trackMessage, sizeof(trackMessage), &trackReply, sizeof(trackReply));
                 uassert(len == sizeof(trackReply));
-                printf(COM2, "trackServer returned reservation result: %d\n\r", trackReply);
+                //printf(COM2, "trackServer returned reservation result: %d\n\r", trackReply);
+
+                if (trackReply != 0)
+                {
+                    issueSpeedCommand(trainNumber, 0, &commandWorkerTid, &commandQueue);
+                }
             }
             break;
         }
