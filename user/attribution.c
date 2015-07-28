@@ -1,7 +1,7 @@
-#include <user/reservation.h>
-#include <user/pathfinding.h>
-#include <user/turnout.h>
 #include <debug.h>
+#include <user/turnout.h>
+#include <user/pathfinding.h>
+#include <user/attribution.h>
 
 // if the next node is a sensor, then that node is the primary;
 // keep going on the "right" track until finding the next sensor
@@ -11,7 +11,7 @@
 // and make that as primary. Then walk down the "wrong" direction, keep walking
 // to get the next sensor. that sensor is the secondary claim.
 
-int getNextClaims(struct track_node *prevNode, struct sensorclaim *claim)
+int getNextClaims(struct track_node *prevNode, struct Sensorclaim *claim)
 {
     uassert(prevNode && claim);
 

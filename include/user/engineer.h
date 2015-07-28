@@ -51,6 +51,5 @@ typedef struct {
 
 
 void engineerServer();
-void engineerGo(int train_num, int node_num);
 
 #endif

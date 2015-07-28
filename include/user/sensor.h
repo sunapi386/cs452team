@@ -1,10 +1,7 @@
 #ifndef __SENSOR_H
 #define __SENSOR_H
 
-typedef struct sensorclaim {
-    int primary;
-    int secondary;
-} SensorClaim;
+#include <user/attribution.h>
 
 typedef struct SensorRequest {
     enum {
