@@ -22,7 +22,7 @@ static char *help_message =
 "tr train_num speed                 | set TRain speed\r\n"
 "rv train_num                       | ReVerse train\r\n"
 "sw train_num direction             | SWitch a turnout\r\n"
-"e train_num sensorIndex            | create Engineer for train and given initial sensor node\r\n"
+"e train_num sensorIndex            | Engineer for train, given his node\r\n"
 "h train_num group_char sensor_num  | Halts on sensor \r\n"
 "c tr_num speed char num loops      | Calibration: at speed delay loop\r\n"
 "k track_A_or_B_char                | load tracK A or B\r\n"
@@ -74,14 +74,16 @@ int engineerCreate(int trainNumber, int sensorIndex)
     // check if we reached max number of engineers allowed
     if (numEngineer == MAX_NUM_ENGINEER)
     {
-        printf(COM2, "Unable to create engineer; max number reached: %d\n\r", MAX_NUM_ENGINEER);
+        printf(COM2, "Unable to create engineer; max number reached: %d\n\r",
+            MAX_NUM_ENGINEER);
         return -1;
     }
 
     // check to see if train is already assigned
     if (indexFromTrainNumber(trainNumber) >= 0)
     {
-        printf(COM2, "Unable to create engineer; train %d is already assigned\n\r", trainNumber);
+        printf(COM2, "Unable to create engineer; train %d is already assigned\n\r",
+            trainNumber);
         return -1;
     }
 
@@ -137,11 +139,9 @@ void engineerXMarksTheSpot(int tid, int index, int offset) {
     Send(tid, &message, sizeof(EngineerMessage), 0, 0);
 }
 
-void engineerGo(int tid, int index)
-{
+void engineerGo(int tid, int index) {
+    printf(COM2, "engineerGo %d %d\n", tid, index);
     uassert(tid > 0);
-    uassert(0 <= index && index <= 143);
-
     EngineerMessage message;
     message.type = go;
     message.data.go.index = index;
@@ -249,7 +249,7 @@ typedef struct Parser {
             int node_number;
             int distance;
         } x_marks_the_spot;
-        struct Go {
+        struct {
             int train_number;
             int node_number;
         } go;
@@ -306,7 +306,7 @@ static bool parse(Parser *p, char c) {
                 break;
             }
             case G: {
-                REQUIRE('O', GO);
+                REQUIRE('o', GO);
                 break;
             }
             case GO: {
@@ -673,7 +673,14 @@ static bool parse(Parser *p, char c) {
                 int train_number = p->data.go.train_number;
                 if (1 <= train_number && train_number <= 80 &&
                     0 <= node_number && node_number <= 143 ) {
-                    engineerGo(train_number, node_number);
+                    int index = indexFromTrainNumber(train_number);
+                    if (index >= 0) {
+                        engineerGo(engineers[index].tid, node_number);
+                    }
+                    else {
+                        sputstr(&disp_msg,
+                        "GO: that engineer is not found\r\n");
+                    }
                 }
                 else {
                     sputstr(&disp_msg,
