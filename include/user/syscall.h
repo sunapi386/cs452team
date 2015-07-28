@@ -128,7 +128,6 @@ caller.
 int AwaitEvent(int eventType);
 
 /**
-<<<<<<< HEAD
 Returns:
 0   Success
 -1  Name table full

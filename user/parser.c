@@ -80,6 +80,7 @@ int engineerCreate(int trainNumber, int sensorIndex)
     }
 
     // check to see if train is already assigned
+    // TODO: reassign him
     if (indexFromTrainNumber(trainNumber) >= 0)
     {
         printf(COM2, "Unable to create engineer; train %d is already assigned\n\r",
