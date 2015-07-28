@@ -839,7 +839,8 @@ void engineerServer(int numEngineer)
         case go: {
             int node_number = message.data.go.index;
             track_node *dst = &g_track[node_number];
-            track_node *src = getNextNode(prevNode);
+            // track_node *src = &g_track[37]; // 37=C6
+            track_node *src = prevNode;
             printf(COM2, "Train %d goto %s from %s\n\r",
                 trainNumber, dst->name, src->name);
             Reply(tid, 0, 0);
@@ -855,15 +856,60 @@ void engineerServer(int numEngineer)
                 break;
             }
             printPath(&pb);
-            expandPath(&pb);
-            printf(COM2, "Expanded path: planRoute bad %d\r\n", ret);
-            printPath(&pb);
+            /**
+            expandPath is designed to be useful when used to do reservations
+            with reverse moves (short moves)
+            */
+            // expandPath(&pb);
+            // printPath(&pb);
             makeEbook(&pb, &ebook);
             printEbook(&ebook);
             /**
-            When the ebook's length > 0, it contains valid enstructions.
-            Engineer follows ebook on each landmark update case.
+            When the ebook's length > 0, it is considered valid.
+            Engineer always keeps his finger on which landmark he travel past.
+
+            He leverages the existing X-marks-the-spot command and uses that
+            to stop on his landmark.
+            His only new responsibility is to correctly switch any turnouts
+            that is on his path.
+
+            -- Reservations --
+            Before reservation is added, he presumes all the track belongs
+            to him. Later, when reservation is added, he is a bit more reserved.
+
+            -- Reverse pathing --
+            For now he assumes there is no reverse pathing. Consequently,
+            it is sufficient to only look at the first enstruction.
             */
+
+
+            /**
+            Assume he owns the path to the destination, and no reverseing.
+            Correctly switch any turnouts to the desired curvature.
+            */
+            Enstruction *first = &(ebook.enstructs[0]);
+            for (int i = 0; i < first->length; i++) {
+                printf(COM2, "%s %d\n\r",
+                    first->tracknodes[i]->name, first->turnops[i]);
+                if (first->turnops[i]) {
+                    int branch_idx = turnopGetTracknodeIndex(first->turnops[i]);
+                    int turnout_number = g_track[branch_idx].num;
+                    bool curve = turnopGetCurve(first->turnops[i]);
+                    printf(COM2, "Set %d to %c\r\n",
+                        turnout_number, curve ? 'c' : 's');
+                    setTurnout(turnout_number, curve ? 'c' : 's');
+                }
+            }
+
+            /**
+            Leverage the use of X-marks-the-spot.
+            */
+            track_node *destination = first->togo.node;
+            targetNode = destination;
+            printf(COM2, "X-marks-the-spot %s\r\n", destination->name);
+            targetOffset = 0;
+
+
             break;
         }
         default:

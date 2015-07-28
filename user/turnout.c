@@ -131,7 +131,8 @@ void initTurnouts() {
         setTurnout(i, 's');
     }
 
-    for (int i = 153; i <= 156; ++i) {
+    setTurnout(153, 'c');
+    for (int i = 154; i <= 156; ++i) {
         setTurnout(i, 's');
     }
 }
