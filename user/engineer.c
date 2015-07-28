@@ -768,7 +768,8 @@ void engineerServer(int numEngineer)
         case go: {
             int node_number = message.data.go.index;
             track_node *dst = &g_track[node_number];
-            track_node *src = getNextNode(prevNode);
+            // track_node *src = &g_track[37]; // 37=C6
+            track_node *src = prevNode;
             printf(COM2, "Train %d goto %s from %s\n\r",
                 trainNumber, dst->name, src->name);
             Reply(tid, 0, 0);
@@ -784,8 +785,8 @@ void engineerServer(int numEngineer)
                 break;
             }
             printPath(&pb);
-            expandPath(&pb);
-            printPath(&pb);
+            // expandPath(&pb);
+            // printPath(&pb);
             makeEbook(&pb, &ebook);
             printEbook(&ebook);
             /**
@@ -814,16 +815,22 @@ void engineerServer(int numEngineer)
             Enstruction *first = &(ebook.enstructs[0]);
             for (int i = 0; i < first->length; i++) {
                 printf(COM2, "%s %d\n\r",
-                    first->tracknodes[i]->name,
-                    first->turnops[i]
-                    );
+                    first->tracknodes[i]->name, first->turnops[i]);
                 if (first->turnops[i]) {
-                    int turnout_number = turnopGetNumber(first->turnops[i]);
+                    int branch_idx = turnopGetTracknodeIndex(first->turnops[i]);
+                    int turnout_number = g_track[branch_idx].num;
                     bool curve = turnopGetCurve(first->turnops[i]);
+                    // printf(COM2, "Set");
+                    // printf(COM2, ".%d", turnout_number);
+                    // printf(COM2, ".%d", curve);
+                    // printf(COM2, ".%c", curve ? 'c' : 's');
+                    // // calling turnoutIsCurved hangs
+                    // printf(COM2, ".turnoutIsCurved%d", turnoutIsCurved(turnout_number));
+
                     if (! turnoutIsCurved(turnout_number)) {
                         printf(COM2, "Set %d to %c\r\n",
                             turnout_number, curve ? 'c' : 's');
-                        // setTurnout(turnout_number, curve ? 'c' : 's');
+                        setTurnout(turnout_number, curve ? 'c' : 's');
                     }
                 }
             }

@@ -439,7 +439,7 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
     return book->length;
 }
 
-int turnopGetNumber(Turnop top) {
+int turnopGetTracknodeIndex(Turnop top) {
     return (top & (-1 << 1)) >> 1;
 }
 

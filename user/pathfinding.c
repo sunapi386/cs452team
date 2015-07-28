@@ -378,7 +378,7 @@ int makeEbook(PathBuffer *pb, Ebook *book) {
     return book->length;
 }
 
-int turnopGetNumber(Turnop top) {
+int turnopGetTracknodeIndex(Turnop top) {
     return (top & (-1 << 1)) >> 1;
 }
 
@@ -393,7 +393,7 @@ void printEnstruction(Enstruction *en) {
     for (int i = 0; i < en->length; i++) {
         printf(COM2, "[%s op %d %d] ",
             en->tracknodes[i]->name,
-            turnopGetNumber(en->turnops[i]),
+            turnopGetTracknodeIndex(en->turnops[i]),
             turnopGetCurve(en->turnops[i]));
     }
     printf(COM2, "\n\r");

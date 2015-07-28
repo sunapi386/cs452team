@@ -81,7 +81,7 @@ creates the following enstructions:
 2/ Togo C13. Switch false.
 */
 int makeEbook(PathBuffer *pb, Ebook *book);
-int turnopGetNumber(Turnop top);
+int turnopGetTracknodeIndex(Turnop top);
 bool turnopGetCurve(Turnop top);
 void printEnstruction(Enstruction *en);
 void printEbook(Ebook *book);
