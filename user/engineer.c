@@ -633,13 +633,10 @@ void engineerServer(int numEngineer)
                 Reply(commandWorkerTid, &command, sizeof(command));
                 commandWorkerTid = 0;
             }
-            else
+            else if (enqueueCommand(&commandQueue, &command) != 0)
             {
-                if (enqueueCommand(&commandQueue, &command) != 0)
-                {
-                    printf(COM2, "[engineerTaskengineerServer] Command buffer overflow!\n\r");
-                    uassert(0);
-                }
+                printf(COM2, "[engineerTaskengineerServer] Command buffer overflow!\n\r");
+                uassert(0);
             }
             break;
         }
@@ -660,13 +657,10 @@ void engineerServer(int numEngineer)
                 Reply(commandWorkerTid, &command, sizeof(command));
                 commandWorkerTid = 0;
             }
-            else
+            else if (enqueueCommand(&commandQueue, &command) != 0)
             {
-                if (enqueueCommand(&commandQueue, &command) != 0)
-                {
-                    printf(COM2, "[engineerServer] Command buffer overflow!\n\r");
-                    uassert(0);
-                }
+                printf(COM2, "[engineerServer] Command buffer overflow!\n\r");
+                uassert(0);
             }
             break;
         }

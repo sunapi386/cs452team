@@ -32,22 +32,11 @@ by num_requested.
 #define MAX_RESERVATION 10
 typedef struct TrackServerMessage {
     enum {
-        RESERVATION,
-        QUIT,
+        Reserve,
+        Release,
     } type;
-    union {
-        struct Reservation {
-            enum {
-                RESERVE,
-                RELEASE,
-            } op;
-            int train_num;
-            int num_requested;
-            track_node *nodes[MAX_RESERVATION];
-        } reservation;
-    };
+    track_node *node;
 } TrackServerMessage;
-
 
 void drawTrackLayoutGraph(char track);
 void loadTrackStructure(char which_track);
