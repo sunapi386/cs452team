@@ -22,7 +22,7 @@
 #define LOC_MESSAGE_LANDMARK 22
 #define LOC_MESSAGE_SENSOR   23
 
-#define PICK_UP_OFFSET 105 * 1000
+#define PICK_UP_OFFSET (105 * 1000)
 
 typedef struct LocationMessage {
     int type;
@@ -51,28 +51,34 @@ static inline int abs(int num) {
     return (num < 0 ? -1 * num : num);
 }
 
-/*
+/**
     Sensor Courier
 
-    First submit the inital claim to the sensor server, gets unblocked immedietly.
-    Then block on the engineer. Whenever there is a new claim, or the existing claim
-    needs to be invalidated, the engineer unblocks the sensor courier by replying to
-    it with the message that it needs to send to sensor server.
+    First submit the inital claim to the sensor server, gets unblocked
+    immedately.
+    Then block on the engineer. Whenever there is a new claim, or the existing
+    claim needs to be invalidated, the engineer unblocks the sensor courier by
+    replying to it with the message that it needs to send to sensor server.
 
     The sensor server always immedietly unblocks the sensor courier.
 
-    The data carried from sensor courier to the sensor server must include the tid of
-    the engieer, which is basically the parent tid of the sensor courier.
+    The data carried from sensor courier to the sensor server must include the
+    tid of the engieer, which is basically the parent tid of the sensor courier.
 
 
-    TODO: can a sensor claim fail? What happens if same engineers claim the same sensor?
-            Do we panic in this scenario?
+    Q: Can a sensor claim fail?
+
+    A: Sensor claim won't fail as the track server (from whom the engineer asks
+    for reservations) runs at a higher priority. So it will never be the case
+    that another engineer is in mid-call to getting reservations and you
+    interrupt them. So it is atomic.
 */
 
 static void sensorCourier(int initialSensorIndex)
 {
     uassert(initialSensorIndex >= 0 && initialSensorIndex < 80);
-    printf(COM2, "Sensor courier started; inital sensor index: %d\n\r", initialSensorIndex);
+    printf(COM2, "Sensor courier started; inital sensor index: %d\n\r",
+        initialSensorIndex);
 
     int engineerTid = MyParentTid();
     int sensorTid = WhoIs("sensorServer");
@@ -119,7 +125,8 @@ void locationWorker(int numEngineer)
     for (;;)
     {
         // receive data to display
-        int len = Send(pid, &engMessage, sizeof(engMessage), &locationMessage, sizeof(locationMessage));
+        int len = Send(pid, &engMessage, sizeof(engMessage),
+                            &locationMessage, sizeof(locationMessage));
         assert(len == sizeof(locationMessage));
 
         // update display
@@ -173,7 +180,8 @@ void commandWorker()
     {
         // Send to engineer to get new command
         message.type = commandWorkerRequest;
-        int len = Send(pid, &message, sizeof(message), &command, sizeof(command));
+        int len = Send(pid, &message, sizeof(message),
+                            &command, sizeof(command));
         uassert(len == sizeof(Command));
 
 executeCommand:
@@ -220,7 +228,8 @@ executeCommand:
     Engineer
 */
 
-void initializeEngineer(int numEngineer, int *trainNumber, int *locationWorkerTid)
+void initializeEngineer(int numEngineer, int *trainNumber,
+    int *locationWorkerTid)
 {
     int tid = 0;
     EngineerMessage message;
@@ -246,7 +255,8 @@ void initializeEngineer(int numEngineer, int *trainNumber, int *locationWorkerTi
     ret = Create(PRIORITY_COMMAND_WORKER, commandWorker);
     uassert(ret > 0);
 
-    *locationWorkerTid = Spawn(PRIORITY_LOCATION_WORKER, locationWorker, (void *)numEngineer);
+    *locationWorkerTid = Spawn(PRIORITY_LOCATION_WORKER,
+                                locationWorker, (void *)numEngineer);
     uassert(*locationWorkerTid > 0);
 }
 
@@ -282,7 +292,8 @@ void engineerServer(int numEngineer)
     int targetOffset = 0;
     track_node *targetNode = 0;
     int stoppingDistance[15] =
-        {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000, 1450000, 1250000, 948200,  948200};
+        {0, 100, 300, 600, 900, 1100, 2500, 4000, 5000, 6000, 6000,
+            1450000, 1250000, 948200,  948200};
 
     Command cmdBuf[32];
     CommandQueue commandQueue;
@@ -307,6 +318,10 @@ void engineerServer(int numEngineer)
 
     // All sensor reports with timestamp before this time are invalid
     int creationTime = Time();
+    /**
+    Ebook for the go command
+    */
+    Ebook ebook;
 
     for(;;)
     {
@@ -315,433 +330,471 @@ void engineerServer(int numEngineer)
 
         switch(message.type)
         {
-            case updateLocation:
+        case updateLocation:
+        {
+            if (state == Ready)
             {
-                if (state == Ready)
-                {
-                    // If we are just starting, block until we reach the first sensor
-                    break;
-                }
-
-                if (triggeredSensor)
-                {
-                    // If sensor was just hit, reply directly to update last sensor
-                    Reply(tid, &locationMessage, sizeof(locationMessage));
-                    triggeredSensor = 0;
-                    break;
-                }
-
-                uassert(prevNode != 0 && prevSensor != 0 && nextSensor != 0);
-
-                // If we have a prevNode, compute the values needed
-                // and update train display
-                track_node *nextNode = getNextNode(prevNode);
-                track_edge *nextEdge = getNextEdge(prevNode);
-                uassert(nextNode && nextEdge);
-
-                /* distance calculations */
-                int currentTime = Time();
-
-                if (state == Decelerating)
-                {
-                    if (deceleration == 0)
-                    {
-                        // calculate deceleration for the current speed:
-                        // a = (vf * vf - vi * vi) / 2 * s
-                        deceleration = velocity * velocity / (2 * stoppingDistance[(int)prevSpeed]);
-                    }
-
-                    velocity -= deceleration * (currentTime - lastLocationUpdateTime);
-                    if (velocity <= 0)
-                    {
-                        velocity = 0;
-                        deceleration = 0;
-                        state = Stopped;
-                    }
-                    distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
-                }
-                else if (state != Stopped)
-                {
-                    velocity = sensorDist / timeDeltas[(int)speed][nextSensor->idx];
-                    distSoFar = (currentTime - prevNodeTime) * velocity;
-                }
-
-                // velocity: the estimated velocity in the current track segment
-                // lasttime: the last time distSoFar is incremented
-                //distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
-                lastLocationUpdateTime = currentTime;
-                int distToNextNode = nextEdge->dist * 1000 - distSoFar;
-
-                // check for stopping at landmark
-                if (targetNode != 0)
-                {
-                    int pickUpOffset = isForward ? 0 : PICK_UP_OFFSET;
-                    //int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
-                    int dist = distanceBetween(prevNode, targetNode) - pickUpOffset - targetOffset - distSoFar;
-
-                    int stoppingDist = stoppingDistance[(int)speed];
-                    if (dist >= 0 && stoppingDist > 0 && dist <= stoppingDist)
-                    {
-                        // issue stop command
-                        Command cmd = {
-                            .type = COMMAND_SET_SPEED,
-                            .trainNumber = trainNumber,
-                            .trainSpeed = 0,
-                        };
-
-                        // if worker is available, reply a command
-                        if (commandWorkerTid > 0)
-                        {
-                            Reply(commandWorkerTid, &cmd, sizeof(cmd));
-                            commandWorkerTid = 0;
-                        }
-                        // else enqueue command
-                        else
-                        {
-                            enqueueCommand(&commandQueue, &cmd);
-                        }
-
-                        // reset target
-                        targetNode = 0;
-                        targetOffset = 0;
-                    }
-                }
-
-                if (distToNextNode <= 0 && nextNode->type != NODE_SENSOR)
-                {
-                    // We've "reached" the next non-sensor landmark
-                    // Update previous landmark
-                    prevNode = nextNode;
-                    prevNodeTime = currentTime;
-
-                    // get the next landmark
-                    nextNode = getNextNode(prevNode);
-                    track_edge *nextEdge = getNextEdge(prevNode);
-                    uassert(nextNode != 0 && nextEdge != 0);
-
-                    // resetting distSoFar: non-sensor node reached
-                    distSoFar = 0;
-
-                    // update the distance to next landmark
-                    distToNextNode = nextEdge->dist * 1000;
-
-                    // Output: next landmark, prev landmark, dist to next
-                    locationMessage.type = LOC_MESSAGE_LANDMARK;
-                    locationMessage.nextNode = nextNode->name;
-                    locationMessage.prevNode = prevNode->name;
-                    locationMessage.distToNext = distToNextNode;
-                    Reply(tid, &locationMessage, sizeof(locationMessage));
-                }
-                else if (state == Reversing)
-                {
-                    // swapping distToNextNode with distSoFar
-                    int temp = distSoFar;
-                    distSoFar = distToNextNode;
-                    distToNextNode = temp;
-
-                    // get the next landmark
-                    nextNode = getNextNode(prevNode);
-
-                    // output
-                    locationMessage.type = LOC_MESSAGE_LANDMARK;
-                    locationMessage.nextNode = nextNode->name;
-                    locationMessage.prevNode = prevNode->name;
-                    locationMessage.distToNext = distToNextNode;
-                    Reply(tid, &locationMessage, sizeof(locationMessage));
-
-                    state = (speed == 0) ? Stopped : Accelerating;
-                }
-                else // distToNextNode > 0
-                {
-                    // We haven't reached the next landmark;
-                    // Output: distance to next (already computed)
-                    locationMessage.type = LOC_MESSAGE_DIST;
-                    locationMessage.distToNext = distToNextNode;
-                    Reply(tid, &locationMessage, sizeof(locationMessage));
-                }
+                // Just starting, block until we reach the first sensor
                 break;
             }
 
-            case updateSensor: {
-                uassert(state != Init);
+            if (triggeredSensor)
+            {
+                // Sensor was just hit, reply directly to update last sensor
+                Reply(tid, &locationMessage, sizeof(locationMessage));
+                triggeredSensor = 0;
+                break;
+            }
 
-                // unblock engineer courier
-                Reply(tid, 0, 0);
+            uassert(prevNode != 0 && prevSensor != 0 && nextSensor != 0);
 
-                // Get sensor update data
-                SensorUpdate sensor_update = {
-                    message.data.updateSensor.sensor,
-                    message.data.updateSensor.time
-                };
+            // If we have a prevNode, compute the values needed
+            // and update train display
+            track_node *nextNode = getNextNode(prevNode);
+            track_edge *nextEdge = getNextEdge(prevNode);
+            uassert(nextNode && nextEdge);
 
-                // Reject sensor updates with timestamp before creationTime
-                if (sensor_update.time <= creationTime) continue;
+            /* distance calculations */
+            int currentTime = Time();
 
-                // Update some stuff
-                prevNode = &g_track[sensor_update.sensor];
-                prevNodeTime = sensor_update.time;
-                prevSensor = prevNode;
+            if (state == Decelerating)
+            {
+                if (deceleration == 0)
+                {
+                    // calculate deceleration for the current speed:
+                    // a = (vf * vf - vi * vi) / 2 * s
+                    deceleration = velocity *
+                    velocity / (2 * stoppingDistance[(int)prevSpeed]);
+                }
 
-                nextSensor = getNextSensor(prevSensor);
-                sensorDist = distanceBetween(prevSensor, nextSensor);
-                uassert(sensorDist >= 0);
+                velocity -= deceleration *
+                            (currentTime - lastLocationUpdateTime);
+                if (velocity <= 0)
+                {
+                    velocity = 0;
+                    deceleration = 0;
+                    state = Stopped;
+                }
+                distSoFar += (currentTime - lastLocationUpdateTime) *
+                            velocity;
+            }
+            else if (state != Stopped)
+            {
+                velocity = sensorDist /
+                            timeDeltas[(int)speed][nextSensor->idx];
+                distSoFar = (currentTime - prevNodeTime) * velocity;
+            }
 
-                track_node *nextNode = getNextNode(prevNode);
+            // velocity: the estimated velocity in the current track segment
+            // lasttime: the last time distSoFar is incremented
+            //distSoFar += (currentTime - lastLocationUpdateTime) * velocity;
+            lastLocationUpdateTime = currentTime;
+            int distToNextNode = nextEdge->dist * 1000 - distSoFar;
+
+            // check for stopping at landmark
+            if (targetNode != 0)
+            {
+                int pickUpOffset = isForward ? 0 : PICK_UP_OFFSET;
+                int dist = distanceBetween(prevNode, targetNode) -
+                            pickUpOffset - targetOffset - distSoFar;
+
+                int stoppingDist = stoppingDistance[(int)speed];
+                if (dist >= 0 && stoppingDist > 0 && dist <= stoppingDist)
+                {
+                    // issue stop command
+                    Command cmd = {
+                        .type = COMMAND_SET_SPEED,
+                        .trainNumber = trainNumber,
+                        .trainSpeed = 0,
+                    };
+
+                    // if worker is available, reply a command
+                    if (commandWorkerTid > 0)
+                    {
+                        Reply(commandWorkerTid, &cmd, sizeof(cmd));
+                        commandWorkerTid = 0;
+                    }
+                    // else enqueue command
+                    else
+                    {
+                        enqueueCommand(&commandQueue, &cmd);
+                    }
+
+                    // reset target
+                    targetNode = 0;
+                    targetOffset = 0;
+                }
+            }
+
+            if (distToNextNode <= 0 && nextNode->type != NODE_SENSOR)
+            {
+                // We've "reached" the next non-sensor landmark
+                // Update previous landmark
+                prevNode = nextNode;
+                prevNodeTime = currentTime;
+
+                // get the next landmark
+                nextNode = getNextNode(prevNode);
                 track_edge *nextEdge = getNextEdge(prevNode);
-                uassert(nextNode && nextEdge);
+                uassert(nextNode != 0 && nextEdge != 0);
 
                 // resetting distSoFar: non-sensor node reached
-                distSoFar = isForward ? 0 : PICK_UP_OFFSET;
+                distSoFar = 0;
 
-                // update constant velocity calibration data
-                int last_index = last_update.sensor;
-                int index = sensor_update.sensor;
+                // update the distance to next landmark
+                distToNextNode = nextEdge->dist * 1000;
 
-                int expectedTime = timeDeltas[(int)speed][index];
-                int actualTime = sensor_update.time - last_update.time;
-                int error = abs(expectedTime - actualTime);
-
-                if(last_index >= 0)
-                {
-                    // apply learning
-                    if (state == Running)
-                    {
-                        int past_difference = timeDeltas[(int)speed][index];
-                        int new_difference = sensor_update.time - last_update.time;
-                        timeDeltas[(int)speed][index] =  (new_difference * ALPHA
-                            + past_difference * (100 - ALPHA)) / 100;
-                    }
-
-                    // prepare output
-                    int distanceToNextNode = nextEdge->dist * 1000;
-
-                    locationMessage.type = LOC_MESSAGE_SENSOR;
-                    locationMessage.nextNode = nextNode->name;
-                    locationMessage.prevNode = prevNode->name;
-                    locationMessage.distToNext = distanceToNextNode;
-                    locationMessage.prevSensor = prevNode->name;
-                    locationMessage.expectedTime = expectedTime;
-                    locationMessage.actualTime = actualTime;
-                    locationMessage.error = error;
-                    triggeredSensor = 1;
-                }
-
-                creationTime = sensor_update.time;
-                last_update.time = sensor_update.time;
-                last_update.sensor = sensor_update.sensor;
-
-                if (state == Ready)
-                {
-                    state = speed ? Accelerating : Stopped;
-
-                    // kick start UI refresh
-                    locationMessage.type = LOC_MESSAGE_INIT;
-                    Reply(locationWorkerTid, &locationMessage, sizeof(locationMessage));
-                    locationWorkerTid = 0;
-                }
-                else if (state == Accelerating)
-                {
-                    // Assume that after hitting a sensor, the train has reached constant velocity.
-                    // therefore transition to Running
-                    state = Running;
-                }
-
-                if (sensorCourierTid)
-                {
-                    // compute the next claims
-                    SensorClaim claim;
-                    int ret = getNextClaims(prevSensor, &claim);
-                    uassert(ret == 0);
-
-                    Reply(sensorCourierTid, &claim, sizeof(claim));
-
-                    sensorCourierTid = 0;
-                }
-                else
-                {
-                    uassert(hasOutstandingClaim == 0);
-
-                    // sensor courier is not back; we would need to store it in some variable,
-                    // and when the sensor courier request comes in, it will simply take that
-                    // claim instead of waiting to be unblocked
-                    int ret = getNextClaims(prevSensor, &outstandingClaim);
-                    uassert(ret == 0);
-                    hasOutstandingClaim = 1;
-                }
-                break;
+                // Output: next landmark, prev landmark, dist to next
+                locationMessage.type = LOC_MESSAGE_LANDMARK;
+                locationMessage.nextNode = nextNode->name;
+                locationMessage.prevNode = prevNode->name;
+                locationMessage.distToNext = distToNextNode;
+                Reply(tid, &locationMessage, sizeof(locationMessage));
             }
-
-            // sensor courier: hey, give me the next claim!
-            case sensorCourierRequest:
+            else if (state == Reversing)
             {
-                if (hasOutstandingClaim)
-                {
-                    Reply(tid, &outstandingClaim, sizeof(outstandingClaim));
+                // swapping distToNextNode with distSoFar
+                int temp = distSoFar;
+                distSoFar = distToNextNode;
+                distToNextNode = temp;
 
-                    hasOutstandingClaim = 0;
+                // get the next landmark
+                nextNode = getNextNode(prevNode);
 
-                }
-                else
-                {
-                    // if there is no outstanding claim, then block
-                    sensorCourierTid = tid;
-                }
-                break;
+                // output
+                locationMessage.type = LOC_MESSAGE_LANDMARK;
+                locationMessage.nextNode = nextNode->name;
+                locationMessage.prevNode = prevNode->name;
+                locationMessage.distToNext = distToNextNode;
+                Reply(tid, &locationMessage, sizeof(locationMessage));
+
+                state = (speed == 0) ? Stopped : Accelerating;
             }
-
-            case xMark:
+            else // distToNextNode > 0
             {
-                uassert(state != Init);
-                Reply(tid, 0, 0);
-                targetNode = &g_track[message.data.xMark.index];
-                targetOffset = message.data.xMark.offset;
-                break;
+                // We haven't reached the next landmark;
+                // Output: distance to next (already computed)
+                locationMessage.type = LOC_MESSAGE_DIST;
+                locationMessage.distToNext = distToNextNode;
+                Reply(tid, &locationMessage, sizeof(locationMessage));
             }
+            break;
+        }
 
-            case setSpeed:
+        case updateSensor: {
+            uassert(state != Init);
+
+            // unblock engineer courier
+            Reply(tid, 0, 0);
+
+            // Get sensor update data
+            SensorUpdate sensor_update = {
+                message.data.updateSensor.sensor,
+                message.data.updateSensor.time
+            };
+
+            // Reject sensor updates with timestamp before creationTime
+            if (sensor_update.time <= creationTime) continue;
+
+            // Update some stuff
+            prevNode = &g_track[sensor_update.sensor];
+            prevNodeTime = sensor_update.time;
+            prevSensor = prevNode;
+
+            nextSensor = getNextSensor(prevSensor);
+            sensorDist = distanceBetween(prevSensor, nextSensor);
+            uassert(sensorDist >= 0);
+
+            track_node *nextNode = getNextNode(prevNode);
+            track_edge *nextEdge = getNextEdge(prevNode);
+            uassert(nextNode && nextEdge);
+
+            // resetting distSoFar: non-sensor node reached
+            distSoFar = isForward ? 0 : PICK_UP_OFFSET;
+
+            // update constant velocity calibration data
+            int last_index = last_update.sensor;
+            int index = sensor_update.sensor;
+
+            int expectedTime = timeDeltas[(int)speed][index];
+            int actualTime = sensor_update.time - last_update.time;
+            int error = abs(expectedTime - actualTime);
+
+            if(last_index >= 0)
             {
-                uassert(state != Init);
-                Reply(tid, 0, 0);
-
-                Command command = {
-                    .type = COMMAND_SET_SPEED,
-                    .trainNumber = (char)(trainNumber),
-                    .trainSpeed = (char)(message.data.setSpeed.speed)
-                };
-
-                if (commandWorkerTid > 0)
+                // apply learning
+                if (state == Running)
                 {
-                    Reply(commandWorkerTid, &command, sizeof(command));
-                    commandWorkerTid = 0;
+                    int past_difference = timeDeltas[(int)speed][index];
+                    int new_difference = sensor_update.time - last_update.time;
+                    timeDeltas[(int)speed][index] =  (new_difference * ALPHA
+                        + past_difference * (100 - ALPHA)) / 100;
                 }
-                else
-                {
-                    if (enqueueCommand(&commandQueue, &command) != 0)
-                    {
-                        printf(COM2, "[engineerTaskengineerServer] Command buffer overflow!\n\r");
-                        uassert(0);
-                    }
-                }
-                break;
+
+                // prepare output
+                int distanceToNextNode = nextEdge->dist * 1000;
+
+                locationMessage.type = LOC_MESSAGE_SENSOR;
+                locationMessage.nextNode = nextNode->name;
+                locationMessage.prevNode = prevNode->name;
+                locationMessage.distToNext = distanceToNextNode;
+                locationMessage.prevSensor = prevNode->name;
+                locationMessage.expectedTime = expectedTime;
+                locationMessage.actualTime = actualTime;
+                locationMessage.error = error;
+                triggeredSensor = 1;
             }
 
-            case setReverse:
+            creationTime = sensor_update.time;
+            last_update.time = sensor_update.time;
+            last_update.sensor = sensor_update.sensor;
+
+            if (state == Ready)
             {
-                uassert(state != Init);
-                Reply(tid, 0, 0);
+                state = speed ? Accelerating : Stopped;
 
-                Command command = {
-                    .type = COMMAND_REVERSE,
-                    .trainNumber = trainNumber,
-                    .trainSpeed = speed
-                };
-
-                if (commandWorkerTid > 0)
-                {
-                    Reply(commandWorkerTid, &command, sizeof(command));
-                    commandWorkerTid = 0;
-                }
-                else
-                {
-                    if (enqueueCommand(&commandQueue, &command) != 0)
-                    {
-                        printf(COM2, "[engineerServer] Command buffer overflow!\n\r");
-                        uassert(0);
-                    }
-                }
-                break;
+                // kick start UI refresh
+                locationMessage.type = LOC_MESSAGE_INIT;
+                Reply(locationWorkerTid, &locationMessage, sizeof(locationMessage));
+                locationWorkerTid = 0;
             }
-
-            // Command worker looking for work
-            case commandWorkerRequest:
+            else if (state == Accelerating)
             {
-                uassert(state != Init);
-                if (isCommandQueueEmpty(&commandQueue))
-                {
-                    // case 1: no work; block it
-                    commandWorkerTid = tid;
-                }
-                else
-                {
-                    // case 2: dequeue a job and reply the worker
-                    Command command;
-                    int ret = dequeueCommand(&commandQueue, &command);
-                    uassert(ret == 0);
-                    Reply(tid, &command, sizeof(command));
-                }
-                break;
+                // Assume after hitting sensor, train reaches constant velocity.
+                // therefore transition to Running
+                state = Running;
             }
 
-            // Command worker: I've just issued reverse command!
-            case commandWorkerReverseSet:
+            if (sensorCourierTid)
             {
-                Reply(tid, 0, 0);
+                // compute the next claims
+                SensorClaim claim;
+                int ret = getNextClaims(prevSensor, &claim);
+                uassert(ret == 0);
 
-                isForward = !isForward;
-                state = (state == Init) ? Init : Reversing;
+                Reply(sensorCourierTid, &claim, sizeof(claim));
 
-                // reverse prevNode
-                uassert(prevNode != 0);
-                track_node *temp = getNextNode(prevNode);
-                uassert(temp != 0);
-                prevNode = temp->reverse;
-                uassert(prevNode != 0);
-
-                // swap prev & next sensor
-                temp = prevSensor;
-                prevSensor = nextSensor->reverse;
-                nextSensor = temp->reverse;
-
-                // update the claimed sensor to the new ones
-                if (hasOutstandingClaim)
-                {
-                    // if there is an outstanding claim, change it
-                    int ret = getNextClaims(prevSensor, &outstandingClaim);
-                    uassert(ret == 0);
-                }
-                else if (sensorCourierTid)
-                {
-                    // unblock sensor courier with a new claim
-                    SensorClaim claim;
-                    int ret = getNextClaims(prevSensor, &claim);
-                    uassert(ret == 0);
-
-                    Reply(sensorCourierTid, &claim, sizeof(claim));
-                    sensorCourierTid = 0;
-                }
-
-                break;
+                sensorCourierTid = 0;
             }
-
-            // Command worker: I've just issued a set speed command!
-            case commandWorkerSpeedSet:
+            else
             {
-                Reply(tid, 0, 0);
-                prevSpeed = speed;
-                speed = (char)(message.data.setSpeed.speed);
-                printf(COM2, "Speed set: %d, currentState: %d\n\r", speed, state);
+                uassert(hasOutstandingClaim == 0);
 
-                if (state == Ready || state == Reversing) break;
-                else if (state == Stopped && speed > 0) state = Accelerating;
-                else if (state == Running && speed == 0) state = Decelerating;
-                else if (state == Decelerating && speed > 0) state = Accelerating;
-                else if (state == Accelerating && speed == 0) state = Decelerating;
-                break;
+                // sensor courier is not back; we would need to store it in some variable,
+                // and when the sensor courier request comes in, it will simply take that
+                // claim instead of waiting to be unblocked
+                int ret = getNextClaims(prevSensor, &outstandingClaim);
+                uassert(ret == 0);
+                hasOutstandingClaim = 1;
             }
+            break;
+        }
 
-            case go: {
-                Reply(tid, 0, 0);
-                int index = message.data.go.index;
-                track_node *node = &g_track[index];
-                printf(COM2, "Train %d received command to go to %s\n\r", trainNumber, node->name);
-                // TODO: implement this
-                break;
-            }
-            default:
+        // sensor courier: hey, give me the next claim!
+        case sensorCourierRequest:
+        {
+            if (hasOutstandingClaim)
             {
-                uassert(0);
+                Reply(tid, &outstandingClaim, sizeof(outstandingClaim));
+
+                hasOutstandingClaim = 0;
+
+            }
+            else
+            {
+                // if there is no outstanding claim, then block
+                sensorCourierTid = tid;
+            }
+            break;
+        }
+
+        case xMark:
+        {
+            uassert(state != Init);
+            Reply(tid, 0, 0);
+            targetNode = &g_track[message.data.xMark.index];
+            targetOffset = message.data.xMark.offset;
+            break;
+        }
+
+        case setSpeed:
+        {
+            uassert(state != Init);
+            Reply(tid, 0, 0);
+
+            Command command = {
+                .type = COMMAND_SET_SPEED,
+                .trainNumber = (char)(trainNumber),
+                .trainSpeed = (char)(message.data.setSpeed.speed)
+            };
+
+            if (commandWorkerTid > 0)
+            {
+                Reply(commandWorkerTid, &command, sizeof(command));
+                commandWorkerTid = 0;
+            }
+            else
+            {
+                if (enqueueCommand(&commandQueue, &command) != 0)
+                {
+                    printf(COM2, "[engineerTaskengineerServer] Command buffer overflow!\n\r");
+                    uassert(0);
+                }
+            }
+            break;
+        }
+
+        case setReverse:
+        {
+            uassert(state != Init);
+            Reply(tid, 0, 0);
+
+            Command command = {
+                .type = COMMAND_REVERSE,
+                .trainNumber = trainNumber,
+                .trainSpeed = speed
+            };
+
+            if (commandWorkerTid > 0)
+            {
+                Reply(commandWorkerTid, &command, sizeof(command));
+                commandWorkerTid = 0;
+            }
+            else
+            {
+                if (enqueueCommand(&commandQueue, &command) != 0)
+                {
+                    printf(COM2, "[engineerServer] Command buffer overflow!\n\r");
+                    uassert(0);
+                }
+            }
+            break;
+        }
+
+        // Command worker looking for work
+        case commandWorkerRequest:
+        {
+            uassert(state != Init);
+            if (isCommandQueueEmpty(&commandQueue))
+            {
+                // case 1: no work; block it
+                commandWorkerTid = tid;
+            }
+            else
+            {
+                // case 2: dequeue a job and reply the worker
+                Command command;
+                int ret = dequeueCommand(&commandQueue, &command);
+                uassert(ret == 0);
+                Reply(tid, &command, sizeof(command));
+            }
+            break;
+        }
+
+        // Command worker: I've just issued reverse command!
+        case commandWorkerReverseSet:
+        {
+            Reply(tid, 0, 0);
+
+            isForward = !isForward;
+            state = (state == Init) ? Init : Reversing;
+
+            // reverse prevNode
+            uassert(prevNode != 0);
+            track_node *temp = getNextNode(prevNode);
+            uassert(temp != 0);
+            prevNode = temp->reverse;
+            uassert(prevNode != 0);
+
+            // swap prev & next sensor
+            temp = prevSensor;
+            prevSensor = nextSensor->reverse;
+            nextSensor = temp->reverse;
+
+            // update the claimed sensor to the new ones
+            if (hasOutstandingClaim)
+            {
+                // if there is an outstanding claim, change it
+                int ret = getNextClaims(prevSensor, &outstandingClaim);
+                uassert(ret == 0);
+            }
+            else if (sensorCourierTid)
+            {
+                // unblock sensor courier with a new claim
+                SensorClaim claim;
+                int ret = getNextClaims(prevSensor, &claim);
+                uassert(ret == 0);
+
+                Reply(sensorCourierTid, &claim, sizeof(claim));
+                sensorCourierTid = 0;
+            }
+
+            break;
+        }
+
+        // Command worker: I've just issued a set speed command!
+        case commandWorkerSpeedSet:
+        {
+            Reply(tid, 0, 0);
+            prevSpeed = speed;
+            speed = (char)(message.data.setSpeed.speed);
+            printf(COM2, "Speed set: %d, currentState: %d\n\r", speed, state);
+
+            if (state == Ready || state == Reversing) break;
+            else if (state == Stopped && speed > 0) state = Accelerating;
+            else if (state == Running && speed == 0) state = Decelerating;
+            else if (state == Decelerating && speed > 0) state = Accelerating;
+            else if (state == Accelerating && speed == 0) state = Decelerating;
+            break;
+        }
+        /**
+        The go command tells the engineer to navigate to a certain
+        location. To accomplish this, the engineer needs a path.
+        Engineer asks for a path from where the engineer is currently
+        at, to the go node.
+        The engineer handles a sequence of instructions. An enstruction
+        represents a single destination target, containing a list of
+        track nodes that the engineer may need to reserve while enroute
+        to the destination. And if the track node is a branch, there
+        is information on which direction the branch should be switched
+        to.
+        Ebook contains a few enstructions.
+        A sequence of short moves may consist of a series of
+        enstructions, which at the end of each enstruction, two cases
+        may exist: either (1) we reached the destination, or (2) if
+        this isn't the case, then reverse command is required.
+        */
+        case go: {
+            int node_number = message.data.go.index;
+            track_node *dst = &g_track[node_number];
+            track_node *src = getNextNode(prevNode);
+            printf(COM2, "Train %d goto %s from %s\n\r",
+                trainNumber, dst->name, src->name);
+            Reply(tid, 0, 0);
+
+            /**
+            Engineer should convert the destination to a Ebook.
+            */
+            PathBuffer pb;
+            int ret = planRoute(src, dst, &pb);
+            if (ret < 0) {
+                printf(COM2, "GO: planRoute bad %d\n\r", ret);
                 break;
             }
+            printPath(&pb);
+            expandPath(&pb);
+            printf(COM2, "Expanded path: planRoute bad %d\r\n", ret);
+            printPath(&pb);
+            makeEbook(&pb, &ebook);
+            printEbook(&ebook);
+
+            break;
+        }
+        default:
+        {
+            uassert(0);
+            break;
+        }
         }
     }
 }
