@@ -10,7 +10,7 @@
 #include <user/turnout.h>
 #include <user/vt100.h>
 #include <user/engineer_ui.h>
-#include <user/reservation.h>
+#include <user/trackserver.h>
 
 #define ALPHA                85
 #define NUM_SENSORS          (5 * 16)
@@ -229,8 +229,7 @@ executeCommand:
     Engineer
 */
 
-void initializeEngineer(int numEngineer, int *trainNumber,
-    int *locationWorkerTid)
+void initializeEngineer(int numEngineer, int *trainNumber, int *locationWorkerTid)
 {
     int tid = 0;
     EngineerMessage message;
@@ -291,12 +290,123 @@ setTargetFromEnstruction(Enstruction *ent, track_node **target, int *offset) {
 
 }
 
+void issueSpeedCommand(int trainNumber,
+                       int speed,
+                       int *commandWorkerTid,
+                       CommandQueue *commandQueue)
+{
+    // issue stop command
+    Command cmd = {
+        .type = COMMAND_SET_SPEED,
+        .trainNumber = trainNumber,
+        .trainSpeed = speed,
+    };
+
+    // if worker is available, reply a command
+    if (*commandWorkerTid > 0)
+    {
+        Reply(*commandWorkerTid, &cmd, sizeof(cmd));
+        *commandWorkerTid = 0;
+    }
+    // else enqueue command
+    else
+    {
+        enqueueCommand(commandQueue, &cmd);
+    }
+}
+
+
+/*
+    Given a node and a distance, adding all the nodes within that distance, from the
+    initial node, into reserveNodes array
+*/
+int getReserveNodes(track_node *from, int reserveDist, track_node *reserveNodes[])
+{
+    uassert(from != 0);
+
+    int dist = 0;
+    reserveDist = reserveDist / 1000;
+    track_node *nextNode = from;
+    reserveNodes[0] = nextNode;
+    for (int i = 1; i < MAX_RESERVE_SIZE; i++)
+    {
+        // return when we are above/at reserveDist
+        if (dist >= reserveDist || nextNode->type == NODE_EXIT) return i;
+
+        // get the next node and next edge
+        track_edge *nextEdge = getNextEdge(nextNode);
+        nextNode = getNextNode(nextNode);
+
+        // add the next
+        reserveNodes[i] = nextNode;
+
+        // increment the distance
+        dist += nextEdge->dist;
+    }
+    uassert(0);
+    return -1;
+}
+
+track_node *getPrevOwnedNode(track_node *node, int tid)
+{
+    uassert(node);
+
+    if (node->type == NODE_EXIT) return 0;
+
+    track_node* reverseNode = node->reverse;
+
+    if (reverseNode->type == NODE_SENSOR ||
+        reverseNode->type == NODE_MERGE)
+    {
+        track_node* reverseNext = getNextNode(reverseNode);
+        return reverseNext->reverse;
+
+    }
+    else if (reverseNode->type == NODE_BRANCH)
+    {
+        track_edge *straightEdge = &reverseNode->edge[DIR_STRAIGHT];
+        track_edge *curvedEdge = &reverseNode->edge[DIR_CURVED];
+
+        if (straightEdge->dest->owner == tid)
+        {
+            return straightEdge->dest->reverse;
+        }
+        else if (curvedEdge->dest->owner == tid)
+        {
+            return curvedEdge->dest->reverse;
+        }
+    }
+    return 0;
+
+}
+
+int getReleaseNodes(track_node *from, int tid, track_node *releaseNodes[])
+{
+    uassert(from != 0);
+    track_node *prevNode = from;
+    if (prevNode->owner != tid) return 0;
+
+    releaseNodes[0] = prevNode;
+
+    for (int i = 1; i < MAX_RELEASE_SIZE; i++)
+    {
+        prevNode = getPrevOwnedNode(prevNode, tid);
+        if (prevNode == 0) return i;
+        releaseNodes[i] = prevNode;
+    }
+
+    printf(COM2, "[getReleaseNodes] consider increasing MAX_RELEASE_SIZE. \
+        Some nodes are probably not released.\n\r");
+    return MAX_RELEASE_SIZE;
+}
+
 void engineerServer(int numEngineer)
 {
     int tid = 0;
     int locationWorkerTid = 0;
     int commandWorkerTid = 0;
     int sensorCourierTid = 0;
+    int trackServerTid = WhoIs("trackServer");
 
     int trainNumber = 0;
     TrainState state = Init;
@@ -508,6 +618,24 @@ void engineerServer(int numEngineer)
                 locationMessage.prevNode = prevNode->name;
                 locationMessage.distToNext = distToNextNode;
                 Reply(tid, &locationMessage, sizeof(locationMessage));
+
+                TrackServerMessage trackMessage;
+                TrackServerReply trackReply;
+                trackMessage.numReserve =
+                    getReserveNodes(nextNode,
+                                    stoppingDistance[(int)speed],
+                                    trackMessage.reserveNodes);
+                trackMessage.numRelease =
+                    getReleaseNodes(prevNode,
+                                    numEngineer,
+                                    trackMessage.releaseNodes);
+                printf(COM2, "numReserve: %d numRelease: %d\n\r",
+                    trackMessage.numReserve, trackMessage.numRelease);
+                int len = Send(trackServerTid, &trackMessage,
+                    sizeof(trackMessage), &trackReply, sizeof(trackReply));
+                uassert(len == sizeof(trackReply));
+                printf(COM2, "trackServer returned reservation result: %d\n\r",
+                    trackReply);
             }
             else if (state == Reversing)
             {
@@ -535,6 +663,23 @@ void engineerServer(int numEngineer)
                 locationMessage.type = LOC_MESSAGE_DIST;
                 locationMessage.distToNext = distToNextNode;
                 Reply(tid, &locationMessage, sizeof(locationMessage));
+
+                TrackServerMessage trackMessage;
+                TrackServerReply trackReply;
+                trackMessage.numReserve = getReserveNodes(nextNode,
+                                                stoppingDistance[(int)speed],
+                                                trackMessage.reserveNodes);
+                trackMessage.numRelease = getReleaseNodes(prevNode,
+                                                numEngineer,
+                                                trackMessage.releaseNodes);
+                printf(COM2, "numReserve: %d numRelease: %d\n\r",
+                    trackMessage.numReserve, trackMessage.numRelease);
+
+                int len = Send(trackServerTid, &trackMessage,
+                        sizeof(trackMessage), &trackReply, sizeof(trackReply));
+                uassert(len == sizeof(trackReply));
+                printf(COM2, "trackServer returned reservation result: %d\n\r",
+                    trackReply);
             }
             break;
         }
@@ -691,13 +836,10 @@ void engineerServer(int numEngineer)
                 Reply(commandWorkerTid, &command, sizeof(command));
                 commandWorkerTid = 0;
             }
-            else
+            else if (enqueueCommand(&commandQueue, &command) != 0)
             {
-                if (enqueueCommand(&commandQueue, &command) != 0)
-                {
-                    printf(COM2, "[engineerTaskengineerServer] Command buffer overflow!\n\r");
-                    uassert(0);
-                }
+                printf(COM2, "[engineerTaskengineerServer] Command buffer overflow!\n\r");
+                uassert(0);
             }
             break;
         }
@@ -718,13 +860,10 @@ void engineerServer(int numEngineer)
                 Reply(commandWorkerTid, &command, sizeof(command));
                 commandWorkerTid = 0;
             }
-            else
+            else if (enqueueCommand(&commandQueue, &command) != 0)
             {
-                if (enqueueCommand(&commandQueue, &command) != 0)
-                {
-                    printf(COM2, "[engineerServer] Command buffer overflow!\n\r");
-                    uassert(0);
-                }
+                printf(COM2, "[engineerServer] Command buffer overflow!\n\r");
+                uassert(0);
             }
             break;
         }
@@ -888,4 +1027,3 @@ void engineerServer(int numEngineer)
         }
     }
 }
-

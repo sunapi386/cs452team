@@ -461,4 +461,3 @@ int distanceBetween(track_node *from, track_node *to) {
     // unable to find the to node
     return -1;
 }
-

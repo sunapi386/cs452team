@@ -10,90 +10,81 @@
 
 track_node g_track[TRACK_MAX];
 
-static bool is_reservable(struct Reservation *r) {
-    int num_requested = r->num_requested;
-    for (int i = 0; i < num_requested; i++) {
-        // ensure they're not already reserved, even by itself
-        if (r->nodes[i]->owner != -1 ||
-            r->nodes[i]->reverse->owner != -1) {
-            return false;
-        }
-        // should not give out reservations too close to branch or merge
-        if (r->nodes[i]->type == NODE_MERGE ||
-            r->nodes[i]->type == NODE_BRANCH) {
-            if (getNextNode(r->nodes[i])->owner != -1 ||
-                getNextNode(r->nodes[i]->reverse)->owner != -1) {
-                return false;
-            }
-        }
-    }
-    // engineer should ensure track requests are continguous
-    return true;
-}
+// A track node is reservable when
+// 1. owner == -1 || owner == tid
+// 2. node->reverse->owner == -1
+static inline bool isReservable(track_node *node, int tid)
+{
+    uassert(node != 0);
+    track_node *reverse = node->reverse;
+    uassert(reverse != 0);
 
-static bool is_owner(struct Reservation *r) {
-    for (int i = 0; i < r->num_requested; i++) {
-        if (r->nodes[i]->owner != r->train_num) {
-            return false;
-        }
-    }
-    return true;
+    return (node->owner == -1 || node->owner == tid) && (reverse->owner == -1);
 }
 
 /**
-Reservation system:
-A track_node an edge, which contains the track distance and represents the track
-to be reserved. On a reservation request, the edge and its reverse direction
-is checked that it is free.
+    Reservation system:
+        A track_node an edge, which contains the track distance and represents the track
+        to be reserved. On a reservation request, the edge and its reverse direction
+        is checked that it is free.
 */
+
 void trackServer() {
-    initTurnouts();
     RegisterAs("trackServer");
-    TrackServerMessage req;
-    int tid;
+    int tid = 0;
+    TrackServerReply reply;
+    TrackServerMessage message;
+    initTurnouts();
+
     for (;;) {
-        Receive(&tid, &req, sizeof(req));
-        switch (req.type) {
-            case RESERVATION: {
-                int num_requested = req.reservation.num_requested;
-                int success;
-                if (req.reservation.op == RESERVE) {
-                    if (! is_reservable(&req.reservation)) {
-                        success = 0;
-                        Reply(tid, &success, sizeof(int));
-                        break;
-                    }
-                    // mark them as reserved
-                    int train_num = req.reservation.train_num;
-                    for(int i = 0; i < num_requested; i++) {
-                        req.reservation.nodes[i]->owner = train_num;
-                        req.reservation.nodes[i]->reverse->owner = train_num;
-                    }
-                    success = 1;
-                    Reply(tid, &success, sizeof(int));
+        int len = Receive(&tid, &message, sizeof(message));
+        uassert(len == sizeof(TrackServerMessage));
+
+        int numReserve = message.numReserve;
+        int numRelease = message.numRelease;
+        uassert(numReserve > 0 && numRelease > 0);
+
+        reply = Success;
+
+        // renounce ownership of each node in this array
+        // if the caller does not own this track, then warn and do nothing
+        // else return ReleaseSuccess
+        for (int i = 0; i < numRelease; i++)
+        {
+            track_node *releaseNode = message.releaseNodes[i];
+            uassert(releaseNode != 0);
+            if (releaseNode->owner != -1 && releaseNode->owner != tid)
+            {
+                printf(COM2, "Tid %d trying to release node %s that doesn't belong to it", tid, releaseNode->name);
+            }
+            releaseNode->owner = -1;
+        }
+
+        // try to reserve each node in the reserve array,
+        // if fails, then reply ReservationFailure
+        // else, reply ReservationSuccess
+        for (int i = 0; i < numReserve; i++)
+        {
+            track_node *reserveNode = message.reserveNodes[i];
+            uassert(reserveNode != 0);
+
+            if (!isReservable(reserveNode, tid))
+            {
+                if (reserveNode->owner != -1 && reserveNode->owner != tid)
+                {
+                    reply = ReserveFailSameDir;
                 }
-                else if (req.reservation.op == RELEASE) {
-                    /**
-                    Check engineer releasing was actually given that track.
-                    What does it mean to fail to release tracks?
-                    */
-                    uassert(is_owner(&req.reservation));
-                    for(int i = 0; i < req.reservation.num_requested; i++) {
-                        req.reservation.nodes[i]->owner = -1;
-                        req.reservation.nodes[i]->reverse->owner = -1;
-                    }
+                else
+                {
+                    // head on collision
+                    reply = ReserveFailOppositeDir;
                 }
                 break;
             }
-            case QUIT:
-                Reply(tid, 0, 0);
-                goto cleanup;
-
-            default:
-                break;
         }
+
+        Reply(tid, &reply, sizeof(reply));
     }
-cleanup:
     Exit();
 }
 
@@ -154,14 +145,6 @@ void loadTrackStructure(char track) {
     }
 }
 
-static int trackserverid;
-
 void initTrackServer() {
-    trackserverid = Create(PRIORITY_TRACKSERVER, trackServer);
+    Create(PRIORITY_TRACKSERVER, trackServer);
 }
-
-void exitTrackServer() {
-    TrackServerMessage msg = {.type = QUIT};
-    Send(trackserverid, &msg, sizeof(msg), 0, 0);
-}
-
