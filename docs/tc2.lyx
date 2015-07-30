@@ -2782,80 +2782,7 @@ x [node index] [offset]
  speed, the stop command is issued.
 \end_layout
 
-\begin_layout Section
-Calibration
-\end_layout
-
-\begin_layout Standard
-Two kinds of data are needed in order to achieve the goal of stopping at
- a given landmark on the track: the constant velocity and the stopping distance.
- 
-\end_layout
-
 \begin_layout Subsection
-Constant Velocity
-\end_layout
-
-\begin_layout Standard
-A two dimensional array is declared in the engineer task to store time differenc
-es between any two sensors: int timeDeltas[NUM_SENSORS][NUM_SENSOR];
-\end_layout
-
-\begin_layout Standard
-Constant velocity is calibrated by populating the timeDeltas table described
- above.
- The actual data recorded in the two-dimensional table, with the two indices
- being sensor node indices, are time difference between the two sensors.
- The table is updated upon hitting a new sensor in a feedback loop fashion
- for accurate train velocity estimation 
-\begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
-\end_inset
-
- where 
-\begin_inset Formula $\alpha$
-\end_inset
-
- is the learning rate.
- We have 
-\begin_inset Formula $\alpha=85\%$
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Subsection
-Stopping Distance
-\end_layout
-
-\begin_layout Standard
-The stopping distance of of the train is manually measured, with the help
- of our calibration command, which issues stopping command when a particular
- sensor is measured.
- The stopping distance is then measured by measuring the distance between
- the head of the train and the sensor.
- There is one stopping distance for each train speed of a particular calibrated
- train.
-\end_layout
-
-\begin_layout Standard
-Currently the data for stopping distances, which is an arrays of size 15,
- is stored within the engineer task.
- This set of stopping distances, mapped to speed 0 to 14, is measured with
- the pick-up of the train in the front (defined as forward direction of
- the train).
- In the case that the train is running in the 
-\begin_inset Quotes eld
-\end_inset
-
-backward
-\begin_inset Quotes erd
-\end_inset
-
- direction, which means that the pick up is at the end of the train, an
- additional offset of 105mm is added to the stopping distance.
-\end_layout
-
-\begin_layout Section
 Path Finding
 \end_layout
 
@@ -2876,7 +2803,7 @@ Second, the engineer follows this and makes reservation as needed.
  The second part is in Path Following section.
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Subsubsection
 Plan Route
 \end_layout
 
@@ -3028,11 +2955,7 @@ Upon reaching a node that is not owned by current train, it means another
  fails to find a route, returning error (-1).
 \end_layout
 
-\begin_layout LyX-Code
-
-\end_layout
-
-\begin_layout Subsection
+\begin_layout Paragraph
 Expanded Path
 \end_layout
 
@@ -3099,7 +3022,7 @@ By estimate, a train is approximately 20cm long.
  Otherwise just copy back the original tracknode.
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Subsubsection
 Make Book
 \end_layout
 
@@ -3156,7 +3079,7 @@ creates the following enstructions:
 int makeEbook(PathBuffer *pb, Ebook *book);
 \end_layout
 
-\begin_layout Section
+\begin_layout Subsection
 Path Following
 \end_layout
 
@@ -3400,25 +3323,80 @@ His only new responsibility is to correctly switch any turnouts that is
 \end_layout
 
 \begin_layout Subsection
-Dealing with Reservations
-\end_layout
-
-\begin_layout Standard
-Before reservation is added, he presumes all the track belongs to him.
- Later, when reservation is added, he is a bit more reserved.
-\end_layout
-
-\begin_layout Subsection
-Reverse pathing
-\end_layout
-
-\begin_layout Standard
-For now he assumes there is no reverse pathing.
- Consequently, it is sufficient to only look at the first enstruction.
+Reservation
 \end_layout
 
 \begin_layout Section
-Reservation
+Calibration
+\end_layout
+
+\begin_layout Standard
+Two kinds of data are needed in order to achieve the goal of stopping at
+ a given landmark on the track: the constant velocity and the stopping distance.
+ 
+\end_layout
+
+\begin_layout Subsection
+Constant Velocity
+\end_layout
+
+\begin_layout Standard
+A two dimensional array is declared in the engineer task to store time differenc
+es between any two sensors: int timeDeltas[NUM_SENSORS][NUM_SENSOR];
+\end_layout
+
+\begin_layout Standard
+Constant velocity is calibrated by populating the timeDeltas table described
+ above.
+ The actual data recorded in the two-dimensional table, with the two indices
+ being sensor node indices, are time difference between the two sensors.
+ The table is updated upon hitting a new sensor in a feedback loop fashion
+ for accurate train velocity estimation 
+\begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
+\end_inset
+
+ where 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ is the learning rate.
+ We have 
+\begin_inset Formula $\alpha=85\%$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Stopping Distance
+\end_layout
+
+\begin_layout Standard
+The stopping distance of of the train is manually measured, with the help
+ of our calibration command, which issues stopping command when a particular
+ sensor is measured.
+ The stopping distance is then measured by measuring the distance between
+ the head of the train and the sensor.
+ There is one stopping distance for each train speed of a particular calibrated
+ train.
+\end_layout
+
+\begin_layout Standard
+Currently the data for stopping distances, which is an arrays of size 15,
+ is stored within the engineer task.
+ This set of stopping distances, mapped to speed 0 to 14, is measured with
+ the pick-up of the train in the front (defined as forward direction of
+ the train).
+ In the case that the train is running in the 
+\begin_inset Quotes eld
+\end_inset
+
+backward
+\begin_inset Quotes erd
+\end_inset
+
+ direction, which means that the pick up is at the end of the train, an
+ additional offset of 105mm is added to the stopping distance.
 \end_layout
 
 \end_body
