@@ -2355,22 +2355,45 @@ Train Control and Related Tasks
 \end_layout
 
 \begin_layout Section
-Sensor Update
+Sensor Updates
 \end_layout
 
 \begin_layout Standard
 The sensor updates from the track is received by the trainOutServer.
  It is polled by the sensorWorker task by calling Getc(COM1), time-stamped
  by calling Time(), displayed onto the screen, then delivered to the sensor
- server.
- The sensor server then stores them into a buffer; the sensorCourier then
- calls Send() to the sensor server, which is replied with data from the
- buffer.
+ server using a Send() call.
 \end_layout
 
 \begin_layout Standard
-All sensor updates are attributed to the same engineer task as we only support
- one train at this moment.
+The engineer servers, AKA as the 
+\begin_inset Quotes eld
+\end_inset
+
+train drivers
+\begin_inset Quotes erd
+\end_inset
+
+, claims the sensors that they expect to hit, and the sensor server then
+ stores them into a buffer.
+ When the sensor worker reports a sensor trigger that matches one of the
+ claims, then that particular engineer is notified by the sensor server
+ via the engineer courier.
+ The following diagrams provide an overview of interactions amongs the tasks
+ involved:
+\end_layout
+
+\begin_layout Subsection
+Sensor Server
+\end_layout
+
+\begin_layout Standard
+The sensor server creates an engineer courier and a sensor worker on creation;
+ it receives from both the sensor courier (created by each engineer server)
+ and and the sensor worker.
+ The sensor worker sends sensor updates from the COM1 output server to the
+ sensor server, and the engineer courier replies different engineer when
+ their claimed sensors (which are delivered by sensor couriers) are triggered.
 \end_layout
 
 \begin_layout Subsection
@@ -2399,15 +2422,41 @@ To prevent stuck sensor from repeatedly being triggered, the courier saves
 \end_layout
 
 \begin_layout Subsection
-Sensor Server
+Sensor Attribution and Error Handling
 \end_layout
 
 \begin_layout Standard
-The sensor server receives from both the sensor courier and and the sensor
- worker.
- The sensor worker moves sensor updates from the COM1 output server to the
- sensor server; the sensor courier moves sensor updates from the buffer
- of sensor server to the engineer task.
+Since we require two or more trains running simultaneously on the track,
+ our program would need to separate out the sensor hits between trains,
+ as well as sensors that are triggered 
+\begin_inset Quotes eld
+\end_inset
+
+spuriorsly
+\begin_inset Quotes erd
+\end_inset
+
+.
+ In order to do this, when engineer servers are initialized, they 
+\begin_inset Quotes eld
+\end_inset
+
+claim
+\begin_inset Quotes erd
+\end_inset
+
+ the initial sensor that it is expected to hit by sending an 
+\begin_inset Quotes eld
+\end_inset
+
+initial sensor
+\begin_inset Quotes erd
+\end_inset
+
+ message to the sensor server via the sensor courier.
+ The initial sensor comes from the input of the operator of the program
+ entering the correct inital node for the engineer create command (e trainNumber
+ initialNodeIndex).
 \end_layout
 
 \begin_layout Section
@@ -2428,15 +2477,6 @@ Track Data Structure
 The provided track data structure is used.
  On start of the kernel, the user could load either track A or track B using
  the k {a|b} command.
-\end_layout
-
-\begin_layout Subsection
-Track Controller
-\end_layout
-
-\begin_layout Standard
-Not implemented in TC1.
- The train controller will manage track reservation.
 \end_layout
 
 \begin_layout Subsection
