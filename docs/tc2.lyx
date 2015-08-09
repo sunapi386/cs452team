@@ -2383,6 +2383,15 @@ train drivers
  involved:
 \end_layout
 
+\begin_layout Standard
+\begin_inset Graphics
+	filename tc2.png
+
+\end_inset
+
+
+\end_layout
+
 \begin_layout Subsection
 Sensor Server
 \end_layout
