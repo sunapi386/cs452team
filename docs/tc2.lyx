@@ -2375,7 +2375,7 @@ train drivers
 \end_inset
 
 , claims the sensors that they expect to hit, and the sensor server then
- stores them into a buffer.
+ stores them into a buffer of attributions, one for each engineer.
  When the sensor worker reports a sensor trigger that matches one of the
  claims, then that particular engineer is notified by the sensor server
  via the engineer courier.
@@ -2385,7 +2385,7 @@ train drivers
 
 \begin_layout Standard
 \begin_inset Graphics
-	filename tc2.png
+	filename sensor_update.png
 
 \end_inset
 
@@ -2431,41 +2431,52 @@ To prevent stuck sensor from repeatedly being triggered, the courier saves
 \end_layout
 
 \begin_layout Subsection
-Sensor Attribution and Error Handling
+Sensor Attribution
 \end_layout
 
 \begin_layout Standard
-Since we require two or more trains running simultaneously on the track,
- our program would need to separate out the sensor hits between trains,
- as well as sensors that are triggered 
-\begin_inset Quotes eld
-\end_inset
+The sensor server maintains a list of attribution informations, one for
+ each engineer.
+ An attribution info cotains:
+\end_layout
 
-spuriorsly
-\begin_inset Quotes erd
-\end_inset
+\begin_layout Itemize
+ID of the sensor courier (created by the engineer)
+\end_layout
 
-.
- In order to do this, when engineer servers are initialized, they 
-\begin_inset Quotes eld
-\end_inset
+\begin_layout Itemize
+ID of the engineer
+\end_layout
 
-claim
-\begin_inset Quotes erd
-\end_inset
+\begin_layout Itemize
+time when the previous sensor is triggered
+\end_layout
 
- the initial sensor that it is expected to hit by sending an 
-\begin_inset Quotes eld
-\end_inset
+\begin_layout Itemize
+previous sensor that is hit
+\end_layout
 
-initial sensor
-\begin_inset Quotes erd
-\end_inset
+\begin_layout Itemize
+expected next sensor (primary claim)
+\end_layout
 
- message to the sensor server via the sensor courier.
- The initial sensor comes from the input of the operator of the program
- entering the correct inital node for the engineer create command (e trainNumber
- initialNodeIndex).
+\begin_layout Itemize
+expected sensor if the primary claim did not trigger (secondary claim)
+\end_layout
+
+\begin_layout Standard
+When the sensor worker tells the senser server that a sensor has been triggered,
+ the sensor server looks at this list to decide to whom it should be attributed
+ to.
+ The primary claims are checked first, and if is no match, then the secondary
+ claims are checked.
+ If multiple trains have the same primary claim, or the same secondary claim,
+ then the train with the smallest previous sensor hit timestamp gets attributed.
+ This is used to handle the edge case of multiple trains on a really long
+ edge between two sensors.
+ When the sensor is attributed, the sensor server updates the attribution
+ info with the timestamp and previous sensor infomation, and notify the
+ engineer via the engineer courier.
 \end_layout
 
 \begin_layout Section
@@ -2714,16 +2725,75 @@ Stopped
 \end_layout
 
 \begin_layout Subsubsection
-Sensor Update
+Sensor Claims and Error Hanlding
 \end_layout
 
 \begin_layout Standard
-The engineer task notified of sensor update via the sensorCourier, with
- the other end being the sensorServer.
- The sensorCourier first calls Send() to the sensorServer, and when the
- sensor server receives an update, the sensorCourier is replied with the
- sensor node index and a timestamp.
- The courier then call Send() to the engineer task with the exact data.
+Since two or more trains are required to run simultaneously on the track,
+ the program would need to separate out the sensor hits between trains,
+ as well as sensors that are triggered 
+\begin_inset Quotes eld
+\end_inset
+
+spuriorsly
+\begin_inset Quotes erd
+\end_inset
+
+.
+ In order to do this, when engineer servers are initialized, they 
+\begin_inset Quotes eld
+\end_inset
+
+claim
+\begin_inset Quotes erd
+\end_inset
+
+ the initial sensor that it is expected to hit by sending an 
+\begin_inset Quotes eld
+\end_inset
+
+initial sensor
+\begin_inset Quotes erd
+\end_inset
+
+ message to the sensor server via the sensor courier.
+ The initial sensor comes from the input of the operator of the program
+ entering the correct inital node for the engineer create command (
+\family typewriter
+e trainNumber initialNodeIndex
+\family default
+).
+ In this way, whenever the initial claimed sensor is hit, that trigger is
+ attributed to that particular engineer.
+ After this, the engineer can make new claims by checking the next sensors
+ down the paths.
+\end_layout
+
+\begin_layout Standard
+An sensor claim message which the engineer sends to the sensor server consists
+ of two sensors:
+\end_layout
+
+\begin_layout Itemize
+primary sensor: the sensor expected to be hit if the switch state in our
+ program is consistent with the physical state of the track
+\end_layout
+
+\begin_layout Itemize
+secondary sensor: the sensor expected to be hit if the next branch fails
+\end_layout
+
+\begin_layout Standard
+New claims are made every time a sensor is hit.
+ The primary sensor is computed by traversing the track graph from the triggered
+ sensor until the next sensor is found, and the secondary claim sensor is
+ computed by finding the next sensor by following the track and finding
+ the next sensor, and also assuming the next branch, or the next sensor,
+ which ever comes first, has failed.
+\end_layout
+
+\begin_layout Subsubsection
+Receiving Sensor Updates
 \end_layout
 
 \begin_layout Standard
