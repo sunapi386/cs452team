@@ -2386,6 +2386,7 @@ train drivers
 \begin_layout Standard
 \begin_inset Graphics
 	filename sensor_update.png
+	scale 40
 
 \end_inset
 
@@ -2480,428 +2481,51 @@ When the sensor worker tells the senser server that a sensor has been triggered,
 \end_layout
 
 \begin_layout Section
-Train Control
-\end_layout
-
-\begin_layout Standard
-There is one controller for many trains.
- At the moment there is just one train control supported so we have one
- engineer and no controller.
+Reservation
 \end_layout
 
 \begin_layout Subsection
-Track Data Structure
+Track Server And Reservation Management
 \end_layout
 
 \begin_layout Standard
-The provided track data structure is used.
- On start of the kernel, the user could load either track A or track B using
- the k {a|b} command.
-\end_layout
-
-\begin_layout Subsection
-Engineer
+Reservation is handled by the track server.
+ Track nodes are reserved, and once one node is reserved, the only engineer
+ that may pass the node is the owner of the node.
+ To reserve a node, the engineers compute expected time of hitting a future
+ node, and send it to the server via a courier.
+ The main reservation logic is implemented in the engineer; for example,
+ engineers are expected to manage the proper release of the node making
+ sure that the reserved nodes are contiguous.
+ This is done to keep the logic of the track server as simple as possible
+ so that it could avoid congestion and handle a large amount of requets
+ from multiple engineers.
+ The track server only handles one type of message, which is consists of
+ a list of nodes to be released, the schedule of each reservation (intervals
+ of time the train is expected to arrive at each node to be reserved) and
+ a list of nodes to be reserved.
 \end_layout
 
 \begin_layout Standard
-A train engineer is the task that calculates information such as displacement
- and velocity of a train.
- It is a server which receives from the LocationWorker, CommandWorker, SensorCou
-rier, and the parser.
- Associated with the Engineer are data such as: 
-\end_layout
-
-\begin_layout Itemize
-State
-\end_layout
-
-\begin_deeper
-\begin_layout Itemize
-Init: the initial state when the engineer is created.
-\end_layout
-
-\begin_layout Itemize
-Stopped: when the train has been given speed 0, and has finished 
+The track server manages a modified version of the track data structure
+ provided.
+ The track_node is modified to contain a list of reservations, where each
+ 
 \begin_inset Quotes eld
 \end_inset
 
-Decelerating
+reservation
 \begin_inset Quotes erd
 \end_inset
 
-
+ contains the time interval of the reservation, and the ID of the corresponding
+ engineer.
+ In essense, the reservation server simply manages the adding and removing
+ of these entires, and the reserve/release logic is detailed under the Engineer
+ section.
 \end_layout
 
-\begin_layout Itemize
-Running: when the train is running in constant velocity
-\end_layout
-
-\begin_layout Itemize
-Reversing: when the train has came to a complete stop, and just issued a
- reverse command
-\end_layout
-
-\begin_layout Itemize
-Decelerating: when the train is going in constant velocity, and the command
- of setting speed to 0 is executed
-\end_layout
-
-\begin_layout Itemize
-Accelerating: when the speed is transitioning from 0 to a value that is
- greater than 0
-\end_layout
-
-\end_deeper
-\begin_layout Itemize
-Position and displacement
-\end_layout
-
-\begin_deeper
-\begin_layout Itemize
-Direction of the train, which forward is defined as the pick up being at
- the front of the train
-\end_layout
-
-\begin_layout Itemize
-Previous sensor node
-\end_layout
-
-\begin_layout Itemize
-Next sensor node
-\end_layout
-
-\begin_layout Itemize
-Previous track node
-\end_layout
-
-\begin_layout Itemize
-Next track node
-\end_layout
-
-\begin_layout Itemize
-Distance after the previous track node
-\end_layout
-
-\end_deeper
-\begin_layout Itemize
-Speed (from 0 to 14)
-\end_layout
-
-\begin_layout Itemize
-Velocity
-\end_layout
-
-\begin_layout Itemize
-Timestamps for the previous sensor update
-\end_layout
-
-\begin_layout Itemize
-A buffer of queued commands
-\end_layout
-
-\begin_layout Subsubsection
-Update And Display Of Location Information
-\end_layout
-
-\begin_layout Standard
-The display of location information is managed by both the engineer and
- the LocationWorker.
- The LocationWorker is a worker task created by the Engineer that calls
- Send() to the engineer with an 
-\begin_inset Quotes eld
-\end_inset
-
-update_location
-\begin_inset Quotes erd
-\end_inset
-
- request to the 5 ticks.
- After the engineer process the request, it is replied with data to be printed
- onto the screen.
- Upon being unblocked, it then prints out the replied data to COM2 output
- server via a printf() call.
-\end_layout
-
-\begin_layout Standard
-On receiving an 
-\begin_inset Quotes eld
-\end_inset
-
-update_location
-\begin_inset Quotes erd
-\end_inset
-
- request, the engineer computes it's velocity based on the current state
- of the train.
- For example, if the state is 
-\begin_inset Quotes eld
-\end_inset
-
-Decelerating
-\begin_inset Quotes erd
-\end_inset
-
-, then the acceleration estimation of the train is computed, and velocity
- is decreased until zero; otherwise, if the state of the train is anything
- other than 
-\begin_inset Quotes eld
-\end_inset
-
-Stopped
-\begin_inset Quotes erd
-\end_inset
-
-, the velocity is computed by 
-\family typewriter
-(distance between previous and next sensor) / (calibrated time between the
- previous and next sensor)
-\family default
-.
- If the current train state is 
-\begin_inset Quotes eld
-\end_inset
-
-Reversing
-\begin_inset Quotes erd
-\end_inset
-
-, the previous and the next node, as well as the previous and the next sensor
- nodes recorded by the engineer, are swapped.
-\end_layout
-
-\begin_layout Standard
-With velocity calculated, the task then could compute how far it's gone
- over previous track node, and the remaining distance to the next track
- node.
- If the remaining distance is equal to or smaller than 0 and that the next
- node is not a sensor node, then the current node and the next node is updated
- and replied to the LocationWorker.
- If the engineer has yet to reach the next node, the LocationWorker is replied
- with the updated distance to next node.
-\end_layout
-
-\begin_layout Standard
-If the next node is a sensor and the distance to the sensor node is smaller
- or equal to zero, a negative distance is outputed.
- This is done because we only reach a sensor when the engineer receives
- a sensor update.
-\end_layout
-
-\begin_layout Subsubsection
-Linear Deceleration
-\end_layout
-
-\begin_layout Standard
-The deceleration is computed using the following formula:
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula $accel=-v_{i}*v_{i}/(2*stoppingDistance)$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-When the train enters into the 
-\begin_inset Quotes eld
-\end_inset
-
-Decelerating
-\begin_inset Quotes erd
-\end_inset
-
- state, this acceleration value is computed once, and the velocity is decremente
-d according to the deceleration until it reaches zero, then the state of
- the train is set to 
-\begin_inset Quotes eld
-\end_inset
-
-Stopped
-\begin_inset Quotes erd
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Subsubsection
-Sensor Claims and Error Hanlding
-\end_layout
-
-\begin_layout Standard
-Since two or more trains are required to run simultaneously on the track,
- the program would need to separate out the sensor hits between trains,
- as well as sensors that are triggered 
-\begin_inset Quotes eld
-\end_inset
-
-spuriorsly
-\begin_inset Quotes erd
-\end_inset
-
-.
- In order to do this, when engineer servers are initialized, they 
-\begin_inset Quotes eld
-\end_inset
-
-claim
-\begin_inset Quotes erd
-\end_inset
-
- the initial sensor that it is expected to hit by sending an 
-\begin_inset Quotes eld
-\end_inset
-
-initial sensor
-\begin_inset Quotes erd
-\end_inset
-
- message to the sensor server via the sensor courier.
- The initial sensor comes from the input of the operator of the program
- entering the correct inital node for the engineer create command (
-\family typewriter
-e trainNumber initialNodeIndex
-\family default
-).
- In this way, whenever the initial claimed sensor is hit, that trigger is
- attributed to that particular engineer.
- After this, the engineer can make new claims by checking the next sensors
- down the paths.
-\end_layout
-
-\begin_layout Standard
-An sensor claim message which the engineer sends to the sensor server consists
- of two sensors:
-\end_layout
-
-\begin_layout Itemize
-primary sensor: the sensor expected to be hit if the switch state in our
- program is consistent with the physical state of the track
-\end_layout
-
-\begin_layout Itemize
-secondary sensor: the sensor expected to be hit if the next branch fails
-\end_layout
-
-\begin_layout Standard
-New claims are made every time a sensor is hit.
- The primary sensor is computed by traversing the track graph from the triggered
- sensor until the next sensor is found, and the secondary claim sensor is
- computed by finding the next sensor by following the track and finding
- the next sensor, and also assuming the next branch, or the next sensor,
- which ever comes first, has failed.
-\end_layout
-
-\begin_layout Subsubsection
-Receiving Sensor Updates
-\end_layout
-
-\begin_layout Standard
-When a sensor update is delivered to the engineer, the engineer knows that
- a sensor has been triggered.
- The sensor updates the timeDeltas table that stores time differences between
- pairs of sensors, updates the previous landmark, next landmark, distance
- to next landmark, previous sensor (which is the sensor in this sensor update),
- current velocity (
-\family typewriter
-length of segment between previous & next sensor / time since last sensor
-\family default
-), expected time (which is looked up from timeDeltas table), the actual
- time (which is the timestamp of the sensor update), and error (
-\family typewriter
-abs(actual time - expected time)
-\family default
-).
-\end_layout
-
-\begin_layout Subsubsection
-Execution Of Train Commands And Command Notifications
-\end_layout
-
-\begin_layout Standard
-Previously, the execution of train commands are directly sent to the COM1
- input server by the parser.
- The downside of this solution is that it is not scalable for multiple trains,
- since reverse require two Delay() calls.
- Another problem that associates with this is that in the original solution
- where the parser task puts commands to COM2 input server, the engineer
- task is unaware of when these bytes are actually put into the buffer.
- The commandWorker is introduced to resolve these issues.
-\end_layout
-
-\begin_layout Standard
-On start, the engineer creates a commandWorker.
- The commandWorker then immedietly becomes receive blocked on the engineer.
- When the engineer receives a command from the parser, the engineer puts
- the command into it's command buffer.
- The command worker would then be taken off the send queue by an Reply()
- call with the first command on the command queue.
-\end_layout
-
-\begin_layout Standard
-The execution of the 
-\family typewriter
-tr
-\family default
- and 
-\family typewriter
-rv
-\family default
- command is carried out by the commandWorker.
- Setting the speed is straight forward, where the worker simply print two
- bytes, indicating the desired speed and the train number.
- For reverse, 300 ticks of delay is inserted between setting the train to
- speed 0 and setting reverse, and a delay of 15 ticks is inserted between
- the reverse command and the setting of previous speed.
-\end_layout
-
-\begin_layout Standard
-After each set speed or set reverse command, the commandWorker calls Send()
- to the engineer, letting it know that the certain action has been carried
- out.
- For an 
-\family typewriter
-rv
-\family default
- call, the command worker receives three notifications: SetSpeed (0), SetReverse
-, and SetSpeed (original speed).
- In this way, the engineer is able to garauntee to have the correct internal
- state when various commands are executed.
-\end_layout
-
-\begin_layout Subsubsection
-X Marks The Spot
-\end_layout
-
-\begin_layout Standard
-For the train has to be able to stop at arbitrarily far from a sensor position,
- the engineer receives a 
-\begin_inset Quotes eld
-\end_inset
-
-X Marks The Spot
-\begin_inset Quotes erd
-\end_inset
-
- command from the parser.
- The user inputs 
-\begin_inset Quotes eld
-\end_inset
-
-x [node index] [offset]
-\begin_inset Quotes erd
-\end_inset
-
- from the terminal, and the parser task would Send() to the engineer task.
- On receiving the message, the track node is retrieved using the track index.
- In subsequent update_location messages, the displacement between the current
- landmark and the target landmark is checked, with the offset taken into
- consideration.
- If the distance is smaller or equal to the stopping distance of the current
- speed, the stop command is issued.
-\end_layout
-
-\begin_layout Subsection
+\begin_layout Section
 Path Finding
 \end_layout
 
@@ -3441,8 +3065,426 @@ His only new responsibility is to correctly switch any turnouts that is
  on his path.
 \end_layout
 
+\begin_layout Section
+Train Control
+\end_layout
+
+\begin_layout Standard
+There is one controller for many trains.
+ At the moment there is just one train control supported so we have one
+ engineer and no controller.
+\end_layout
+
 \begin_layout Subsection
-Reservation
+Track Data Structure
+\end_layout
+
+\begin_layout Standard
+The provided track data structure is used.
+ On start of the kernel, the user could load either track A or track B using
+ the k {a|b} command.
+\end_layout
+
+\begin_layout Subsection
+Engineer
+\end_layout
+
+\begin_layout Standard
+A train engineer is the task that calculates information such as displacement
+ and velocity of a train.
+ It is a server which receives from the LocationWorker, CommandWorker, SensorCou
+rier, and the parser.
+ Associated with the Engineer are data such as: 
+\end_layout
+
+\begin_layout Itemize
+State
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Init: the initial state when the engineer is created.
+\end_layout
+
+\begin_layout Itemize
+Stopped: when the train has been given speed 0, and has finished 
+\begin_inset Quotes eld
+\end_inset
+
+Decelerating
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Running: when the train is running in constant velocity
+\end_layout
+
+\begin_layout Itemize
+Reversing: when the train has came to a complete stop, and just issued a
+ reverse command
+\end_layout
+
+\begin_layout Itemize
+Decelerating: when the train is going in constant velocity, and the command
+ of setting speed to 0 is executed
+\end_layout
+
+\begin_layout Itemize
+Accelerating: when the speed is transitioning from 0 to a value that is
+ greater than 0
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+Position and displacement
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Direction of the train, which forward is defined as the pick up being at
+ the front of the train
+\end_layout
+
+\begin_layout Itemize
+Previous sensor node
+\end_layout
+
+\begin_layout Itemize
+Next sensor node
+\end_layout
+
+\begin_layout Itemize
+Previous track node
+\end_layout
+
+\begin_layout Itemize
+Next track node
+\end_layout
+
+\begin_layout Itemize
+Distance after the previous track node
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+Speed (from 0 to 14)
+\end_layout
+
+\begin_layout Itemize
+Velocity
+\end_layout
+
+\begin_layout Itemize
+Timestamps for the previous sensor update
+\end_layout
+
+\begin_layout Itemize
+A buffer of queued commands
+\end_layout
+
+\begin_layout Subsubsection
+Update And Display Of Location Information
+\end_layout
+
+\begin_layout Standard
+The display of location information is managed by both the engineer and
+ the LocationWorker.
+ The LocationWorker is a worker task created by the Engineer that calls
+ Send() to the engineer with an 
+\begin_inset Quotes eld
+\end_inset
+
+update_location
+\begin_inset Quotes erd
+\end_inset
+
+ request to the 5 ticks.
+ After the engineer process the request, it is replied with data to be printed
+ onto the screen.
+ Upon being unblocked, it then prints out the replied data to COM2 output
+ server via a printf() call.
+\end_layout
+
+\begin_layout Standard
+On receiving an 
+\begin_inset Quotes eld
+\end_inset
+
+update_location
+\begin_inset Quotes erd
+\end_inset
+
+ request, the engineer computes it's velocity based on the current state
+ of the train.
+ For example, if the state is 
+\begin_inset Quotes eld
+\end_inset
+
+Decelerating
+\begin_inset Quotes erd
+\end_inset
+
+, then the acceleration estimation of the train is computed, and velocity
+ is decreased until zero; otherwise, if the state of the train is anything
+ other than 
+\begin_inset Quotes eld
+\end_inset
+
+Stopped
+\begin_inset Quotes erd
+\end_inset
+
+, the velocity is computed by 
+\family typewriter
+(distance between previous and next sensor) / (calibrated time between the
+ previous and next sensor)
+\family default
+.
+ If the current train state is 
+\begin_inset Quotes eld
+\end_inset
+
+Reversing
+\begin_inset Quotes erd
+\end_inset
+
+, the previous and the next node, as well as the previous and the next sensor
+ nodes recorded by the engineer, are swapped.
+\end_layout
+
+\begin_layout Standard
+With velocity calculated, the task then could compute how far it's gone
+ over previous track node, and the remaining distance to the next track
+ node.
+ If the remaining distance is equal to or smaller than 0 and that the next
+ node is not a sensor node, then the current node and the next node is updated
+ and replied to the LocationWorker.
+ If the engineer has yet to reach the next node, the LocationWorker is replied
+ with the updated distance to next node.
+\end_layout
+
+\begin_layout Standard
+If the next node is a sensor and the distance to the sensor node is smaller
+ or equal to zero, a negative distance is outputed.
+ This is done because we only reach a sensor when the engineer receives
+ a sensor update.
+\end_layout
+
+\begin_layout Subsubsection
+Linear Deceleration
+\end_layout
+
+\begin_layout Standard
+The deceleration is computed using the following formula:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $accel=-v_{i}*v_{i}/(2*stoppingDistance)$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When the train enters into the 
+\begin_inset Quotes eld
+\end_inset
+
+Decelerating
+\begin_inset Quotes erd
+\end_inset
+
+ state, this acceleration value is computed once, and the velocity is decremente
+d according to the deceleration until it reaches zero, then the state of
+ the train is set to 
+\begin_inset Quotes eld
+\end_inset
+
+Stopped
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsubsection
+Sensor Claims and Error Hanlding
+\end_layout
+
+\begin_layout Standard
+Since two or more trains are required to run simultaneously on the track,
+ the program would need to separate out the sensor hits between trains,
+ as well as sensors that are triggered 
+\begin_inset Quotes eld
+\end_inset
+
+spuriorsly
+\begin_inset Quotes erd
+\end_inset
+
+.
+ In order to do this, when engineer servers are initialized, they 
+\begin_inset Quotes eld
+\end_inset
+
+claim
+\begin_inset Quotes erd
+\end_inset
+
+ the initial sensor that it is expected to hit by sending an 
+\begin_inset Quotes eld
+\end_inset
+
+initial sensor
+\begin_inset Quotes erd
+\end_inset
+
+ message to the sensor server via the sensor courier.
+ The initial sensor comes from the input of the operator of the program
+ entering the correct inital node for the engineer create command (
+\family typewriter
+e trainNumber initialNodeIndex
+\family default
+).
+ In this way, whenever the initial claimed sensor is hit, that trigger is
+ attributed to that particular engineer.
+ After this, the engineer can make new claims by checking the next sensors
+ down the paths.
+\end_layout
+
+\begin_layout Standard
+An sensor claim message which the engineer sends to the sensor server consists
+ of two sensors:
+\end_layout
+
+\begin_layout Itemize
+primary sensor: the sensor expected to be hit if the switch state in our
+ program is consistent with the physical state of the track
+\end_layout
+
+\begin_layout Itemize
+secondary sensor: the sensor expected to be hit if the next branch fails
+\end_layout
+
+\begin_layout Standard
+New claims are made every time a sensor is hit.
+ The primary sensor is computed by traversing the track graph from the triggered
+ sensor until the next sensor is found, and the secondary claim sensor is
+ computed by finding the next sensor by following the track and finding
+ the next sensor, and also assuming the next branch, or the next sensor,
+ which ever comes first, has failed.
+\end_layout
+
+\begin_layout Subsubsection
+Receiving Sensor Updates
+\end_layout
+
+\begin_layout Standard
+When a sensor update is delivered to the engineer, the engineer knows that
+ a sensor has been triggered.
+ The sensor updates the timeDeltas table that stores time differences between
+ pairs of sensors, updates the previous landmark, next landmark, distance
+ to next landmark, previous sensor (which is the sensor in this sensor update),
+ current velocity (
+\family typewriter
+length of segment between previous & next sensor / time since last sensor
+\family default
+), expected time (which is looked up from timeDeltas table), the actual
+ time (which is the timestamp of the sensor update), and error (
+\family typewriter
+abs(actual time - expected time)
+\family default
+).
+\end_layout
+
+\begin_layout Subsubsection
+Execution Of Train Commands And Command Notifications
+\end_layout
+
+\begin_layout Standard
+Previously, the execution of train commands are directly sent to the COM1
+ input server by the parser.
+ The downside of this solution is that it is not scalable for multiple trains,
+ since reverse require two Delay() calls.
+ Another problem that associates with this is that in the original solution
+ where the parser task puts commands to COM2 input server, the engineer
+ task is unaware of when these bytes are actually put into the buffer.
+ The commandWorker is introduced to resolve these issues.
+\end_layout
+
+\begin_layout Standard
+On start, the engineer creates a commandWorker.
+ The commandWorker then immedietly becomes receive blocked on the engineer.
+ When the engineer receives a command from the parser, the engineer puts
+ the command into it's command buffer.
+ The command worker would then be taken off the send queue by an Reply()
+ call with the first command on the command queue.
+\end_layout
+
+\begin_layout Standard
+The execution of the 
+\family typewriter
+tr
+\family default
+ and 
+\family typewriter
+rv
+\family default
+ command is carried out by the commandWorker.
+ Setting the speed is straight forward, where the worker simply print two
+ bytes, indicating the desired speed and the train number.
+ For reverse, 300 ticks of delay is inserted between setting the train to
+ speed 0 and setting reverse, and a delay of 15 ticks is inserted between
+ the reverse command and the setting of previous speed.
+\end_layout
+
+\begin_layout Standard
+After each set speed or set reverse command, the commandWorker calls Send()
+ to the engineer, letting it know that the certain action has been carried
+ out.
+ For an 
+\family typewriter
+rv
+\family default
+ call, the command worker receives three notifications: SetSpeed (0), SetReverse
+, and SetSpeed (original speed).
+ In this way, the engineer is able to garauntee to have the correct internal
+ state when various commands are executed.
+\end_layout
+
+\begin_layout Subsubsection
+X Marks The Spot
+\end_layout
+
+\begin_layout Standard
+For the train has to be able to stop at arbitrarily far from a sensor position,
+ the engineer receives a 
+\begin_inset Quotes eld
+\end_inset
+
+X Marks The Spot
+\begin_inset Quotes erd
+\end_inset
+
+ command from the parser.
+ The user inputs 
+\begin_inset Quotes eld
+\end_inset
+
+x [node index] [offset]
+\begin_inset Quotes erd
+\end_inset
+
+ from the terminal, and the parser task would Send() to the engineer task.
+ On receiving the message, the track node is retrieved using the track index.
+ In subsequent update_location messages, the displacement between the current
+ landmark and the target landmark is checked, with the offset taken into
+ consideration.
+ If the distance is smaller or equal to the stopping distance of the current
+ speed, the stop command is issued.
 \end_layout
 
 \begin_layout Section
