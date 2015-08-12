@@ -2386,7 +2386,7 @@ train drivers
 \begin_layout Standard
 \begin_inset Graphics
 	filename sensor_update.png
-	scale 40
+	scale 45
 
 \end_inset
 
@@ -2485,7 +2485,7 @@ Reservation
 \end_layout
 
 \begin_layout Subsection
-Track Server And Reservation Management
+Track Server and Reservation Management
 \end_layout
 
 \begin_layout Standard
@@ -2507,6 +2507,13 @@ Reservation is handled by the track server.
 \end_layout
 
 \begin_layout Standard
+The track node may only be reserved if there are no overlapping schedule
+ reserved for that node (following), or it's reverse (head-on).
+ If that is not the case, then all reserved nodes made before it are automatical
+ly released, and the engineer is replied with a reservation failed result.
+\end_layout
+
+\begin_layout Standard
 The track server manages a modified version of the track data structure
  provided.
  The track_node is modified to contain a list of reservations, where each
@@ -2523,6 +2530,74 @@ reservation
  In essense, the reservation server simply manages the adding and removing
  of these entires, and the reserve/release logic is detailed under the Engineer
  section.
+\end_layout
+
+\begin_layout Subsection
+Reserving and Releasing
+\end_layout
+
+\begin_layout Standard
+Every time when an engineer reaches a new sensor node, it computes a list
+ of track nodes and the arriving time widnows for each node, and it also
+ computes a list of nodes to be released (other nodes, such as branches,
+ are not considered because the arriving at such nodes are based on predicted
+ velocities).
+ The engineer does both reserve & release by sending a message to the track
+ server.
+ The request format is described in the section above.
+\end_layout
+
+\begin_layout Subsubsection
+Reserve
+\end_layout
+
+\begin_layout Standard
+A schedule is defined as the timing window of a train passing a track node,
+ which is the beginning and the ending time.
+ Reserving nodes are calculated by the engineer; the engineer computes the
+ nodes and the schedules in front of the moving direction of the train,
+ within it's stopping distance plus a fixed padding.
+ The nodes are found by iterating on the track data structure, and times
+ computed using the estimated current velocity (the computation of the velocity
+ is described in the Engineer section).
+\end_layout
+
+\begin_layout Standard
+If the reservation fails, the engineer is replied a failure message, and
+ there are two kinds: same direction, opposite direction.
+ Same direction indicates two trains following each other, and opposite
+ direction implies a head-on collision.
+\end_layout
+
+\begin_layout Subsubsection
+Release
+\end_layout
+
+\begin_layout Standard
+An engineer keeps track of all its track nodes passed by in the past and
+ in the future using a queue; the reserved nodes are added to the back of
+ the queue, and the earlier nodes are in the front of the queue.
+ The primary use of this queue is so that the engineer knows which nodes
+ to release.
+ When a sensor triggers, all the nodes within the queue which are before
+ that sensor plus a fixed padding, are popped off from the front of the
+ queue.
+\end_layout
+
+\begin_layout Subsection
+Collision Avoidance
+\end_layout
+
+\begin_layout Standard
+When a reservation request fails, the engineer issues stop command immedietly.
+ This prevents collisions because nodes are reserved in advance, and the
+ distance is greater than the stopping distance (1 stopping distance + fixed
+ padding).
+\end_layout
+
+\begin_layout Standard
+When the train comes to an emergency stop when it's following a path, a
+ new path is recomputed, and the train is set to a new speed.
 \end_layout
 
 \begin_layout Section
