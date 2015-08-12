@@ -123,7 +123,7 @@ tc2
 \end_layout
 
 \begin_layout Itemize
-Or, checkout by SHA1 hash: 
+Or, checkout by SHA1 hash: e55985d019441fb7d82ee3235a7c2420c565dd12
 \end_layout
 
 \begin_layout Itemize
@@ -3578,14 +3578,16 @@ Constant Velocity
 
 \begin_layout Standard
 A two dimensional array is declared in the engineer task to store time differenc
-es between any two sensors: int timeDeltas[NUM_SENSORS][NUM_SENSOR];
+es between sensors: int timeDeltas[NUM_SENSORS], where the NUM_SENSORS is
+ defined as 80, the maximum number of sensors; the indices are also indices
+ of the sensor nodes in the track data array.
 \end_layout
 
 \begin_layout Standard
-Constant velocity is calibrated by populating the timeDeltas table described
+Constant velocity is calibrated by populating the timeDeltas array described
  above.
- The actual data recorded in the two-dimensional table, with the two indices
- being sensor node indices, are time difference between the two sensors.
+ The actual data recorded in the array is the time taken from the previous
+ sensor to the indexed sensor.
  The table is updated upon hitting a new sensor in a feedback loop fashion
  for accurate train velocity estimation 
 \begin_inset Formula $v_{1}=(1-\alpha)v_{0}+\alpha v'$
